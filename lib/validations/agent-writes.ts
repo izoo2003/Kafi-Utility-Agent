@@ -1,0 +1,97 @@
+import { z } from "zod";
+import {
+  kitchenInventoryInsertSchema,
+  kitchenInventoryUpdateSchema,
+} from "@/lib/validations/kitchen-inventory";
+import {
+  itEquipmentInsertSchema,
+  itEquipmentUpdateSchema,
+} from "@/lib/validations/it-equipment";
+import {
+  generatorFuelLogInsertSchema,
+  generatorFuelLogUpdateSchema,
+  generatorMaintenanceInsertSchema,
+  generatorMaintenanceUpdateSchema,
+} from "@/lib/validations/generator";
+import {
+  solarMonitoringLogInsertSchema,
+  solarMonitoringLogUpdateSchema,
+  solarSpecsInsertSchema,
+  solarSpecsUpdateSchema,
+} from "@/lib/validations/solar";
+import {
+  utilityAccountInsertSchema,
+  utilityAccountUpdateSchema,
+} from "@/lib/validations/utilities";
+
+export const WRITE_TOOL_NAMES = [
+  "kitchen_inventory_create",
+  "kitchen_inventory_update",
+  "kitchen_inventory_delete",
+  "it_equipment_create",
+  "it_equipment_update",
+  "it_equipment_delete",
+  "generator_maintenance_create",
+  "generator_maintenance_update",
+  "generator_maintenance_delete",
+  "generator_fuel_log_create",
+  "generator_fuel_log_update",
+  "generator_fuel_log_delete",
+  "solar_specs_create",
+  "solar_specs_update",
+  "solar_specs_delete",
+  "solar_monitoring_create",
+  "solar_monitoring_update",
+  "solar_monitoring_delete",
+  "utility_accounts_create",
+  "utility_accounts_update",
+  "utility_accounts_delete",
+] as const;
+
+export type WriteToolName = (typeof WRITE_TOOL_NAMES)[number];
+
+export const writeToolNameSchema = z.enum(WRITE_TOOL_NAMES);
+
+export const idOnlySchema = z.object({
+  id: z.string().uuid(),
+});
+
+export const kitchenCreateSchema = kitchenInventoryInsertSchema;
+export const kitchenUpdateSchema = kitchenInventoryUpdateSchema.required({
+  id: true,
+});
+
+export const itCreateSchema = itEquipmentInsertSchema;
+export const itUpdateSchema = itEquipmentUpdateSchema
+  .extend({
+    asset_tag_lookup: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => Boolean(v.id || v.asset_tag_lookup), {
+    message: "Provide id or asset_tag_lookup to find the row",
+  });
+
+export const generatorMaintenanceCreateSchema =
+  generatorMaintenanceInsertSchema;
+export const generatorMaintenanceUpdateSchemaAgent =
+  generatorMaintenanceUpdateSchema.required({ id: true });
+
+export const generatorFuelCreateSchema = generatorFuelLogInsertSchema;
+export const generatorFuelUpdateSchemaAgent =
+  generatorFuelLogUpdateSchema.required({ id: true });
+
+/** Chat cannot set/upload spec files — dashboard only */
+export const solarSpecsCreateSchema = solarSpecsInsertSchema.omit({
+  spec_file_url: true,
+});
+export const solarSpecsUpdateSchemaAgent = solarSpecsUpdateSchema
+  .omit({ spec_file_url: true })
+  .required({ id: true });
+
+export const solarMonitoringCreateSchema = solarMonitoringLogInsertSchema;
+export const solarMonitoringUpdateSchemaAgent =
+  solarMonitoringLogUpdateSchema.required({ id: true });
+
+export const utilityCreateSchema = utilityAccountInsertSchema;
+export const utilityUpdateSchemaAgent = utilityAccountUpdateSchema.required({
+  id: true,
+});

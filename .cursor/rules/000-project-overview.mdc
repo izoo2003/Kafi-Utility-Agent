@@ -1,0 +1,28 @@
+---
+description: Project overview — always loaded
+globs:
+alwaysApply: true
+---
+
+# Project: Facility Ops Agent
+
+A chat agent + dashboard that tracks and manages facility/operations records for a single site (one office/building). It replaces scattered spreadsheets and manual logs with a single source of truth that can be queried and updated either through a web dashboard or by chatting with the agent.
+
+## Tracked domains (current scope)
+Priority is inherited from the source register and drives build order.
+
+| # | Domain | Format (source) | Priority |
+|---|--------|------------------|----------|
+| 8 | Kitchen inventory list & reorder levels | Excel | High |
+| 9 | IT equipment register | Excel | High |
+| 10 | Generator maintenance schedule & fuel log | Excel | High |
+| 11 | Solar system specs & monitoring requirements | Word / PDF | High |
+| 12 | Internet & utility account details | Excel | Medium |
+
+More domains (items 1–7) may be added later — every new domain must follow the same table + CRUD + agent-tool pattern already established, not a one-off structure.
+
+## Core principle
+The chat agent is a thin conversational layer over the dashboard's data layer. It never writes directly to the database with ad-hoc queries — it only calls the same typed functions/API routes the dashboard UI uses. This keeps both surfaces consistent and auditable.
+
+## Build discipline
+This project is built in explicit phases (see `040-build-phases.mdc`). Do not implement a later phase's functionality while working on an earlier one, even if it looks like a quick win. Flag it and move on when the current phase is done.

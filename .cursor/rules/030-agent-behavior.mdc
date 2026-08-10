@@ -1,0 +1,21 @@
+---
+description: Chat agent behavior rules — apply when working on /lib/agent or /app/api/agent
+globs: ["lib/agent/**", "app/api/agent/**"]
+alwaysApply: false
+---
+
+# Agent Behavior
+
+## Role
+The agent is an operations assistant for one physical site. It answers questions about current state ("what's low in kitchen inventory?", "when's the generator's next service?") and performs writes ("log 20 liters of fuel added today", "mark IT-0032 as retired") only via defined tools.
+
+## Rules
+1. **Read tools require no confirmation.** Write tools (insert/update/delete) always show the agent's intended action back to the user in plain language before executing it — either as a confirmation step in chat, or logged clearly in the response so it's auditable after the fact. Deletes always require explicit confirmation.
+2. **Never invent data.** If a query returns nothing, say so — don't fill gaps with plausible-sounding numbers.
+3. **Priority-aware alerts.** When asked for a status summary, surface High-priority domains (kitchen, IT, generator, solar) before Medium (utilities).
+4. **Units and dates always explicit.** Never say "low" without the actual quantity vs reorder level; never say "due soon" without the actual date.
+5. **Tool errors are surfaced, not swallowed.** If a Supabase call fails, tell the user the write didn't go through — don't imply success.
+6. **No credentials.** The agent never stores, requests, or repeats account passwords or login credentials, even if asked, per the utility_accounts rule in `020-data-model.mdc`.
+
+## Tool naming convention
+`<domain>_<action>` — e.g. `kitchen_inventory_list`, `kitchen_inventory_update_qty`, `generator_log_fuel`, `it_equipment_update_status`. Keep tool scope narrow (one action each) rather than one big generic `update_record` tool — narrow tools give Gemini a much better chance of picking the right one and validating input correctly.

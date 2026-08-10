@@ -1,0 +1,23 @@
+---
+description: Build phase plan — always loaded, defines what may and may not be built right now
+globs:
+alwaysApply: true
+---
+
+# Build Phases
+
+Build strictly in this order. Do not start a phase until the previous one is confirmed working. Update the "Current phase" line below as phases complete — this is how continuity is maintained across chats.
+
+**Current phase: Phase 7**
+
+- **Phase 0 — Foundation:** Next.js project scaffold, Supabase project + migrations for all 5 domain tables, Supabase Auth (single user/admin login), Storage bucket for solar spec files. No UI beyond a login page and empty dashboard shell.
+- **Phase 1 — Dashboard CRUD, High-priority domains:** Kitchen inventory, IT equipment, Generator (maintenance + fuel log) — full list/add/edit/delete views for each.
+- **Phase 2 — Dashboard CRUD, remaining domains:** Solar (specs + monitoring log, including file upload), Internet & utility accounts.
+- **Phase 3 — Alerts & derived state:** Low-stock flags on kitchen inventory, generator service-due warnings, warranty-expiry flags on IT equipment, solar alert flags. Surfaced on the dashboard home view.
+- **Phase 4 — Chat agent, read-only:** Gemini API integration, tool definitions for all `_list`/`_get` style read tools across every domain, chat UI, system prompt per `030-agent-behavior.mdc`.
+- **Phase 5 — Chat agent, write actions:** Add the write tools (update qty, log fuel, log maintenance, update equipment status, etc.) with confirmation flow.
+- **Phase 6 — Notifications:** Scheduled check (cron via Vercel or Supabase) that pushes high-priority alerts (email, or WhatsApp if wired up) — low stock, generator service due, warranty expiring, solar anomaly.
+- **Phase 7 — Polish & reporting:** Export to CSV/PDF per domain, basic history views, cleanup.
+
+## Rule
+When asked to "just build the whole thing" or similar, push back and confirm which phase to execute — this file exists specifically to prevent skipping ahead.

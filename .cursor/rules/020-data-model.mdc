@@ -1,0 +1,84 @@
+---
+description: Data model conventions for each tracked domain — apply when working on schema, migrations, or Supabase queries
+globs: ["supabase/**", "lib/supabase/**"]
+alwaysApply: false
+---
+
+# Data Model
+
+Every table includes: `id uuid pk default gen_random_uuid()`, `created_at timestamptz default now()`, `updated_at timestamptz default now()`, `updated_by` (references auth.users, nullable while single-user).
+
+## 1. Kitchen inventory (`kitchen_inventory`)
+- item_name text
+- category text
+- unit text (kg, litre, pack, etc.)
+- current_qty numeric
+- reorder_level numeric
+- reorder_qty numeric
+- supplier text
+- cost_per_unit numeric
+- last_restocked_at date
+- notes text
+
+Derived state: `status = current_qty <= reorder_level ? 'low' : 'ok'` — computed, not stored.
+
+## 2. IT equipment register (`it_equipment`)
+- asset_tag text unique
+- item_name text
+- category text (laptop, monitor, router, printer, etc.)
+- assigned_to text
+- serial_number text
+- purchase_date date
+- warranty_expiry date
+- status text (active, in_repair, retired)
+- location text
+- notes text
+
+## 3. Generator (`generator_maintenance`, `generator_fuel_log`)
+`generator_maintenance`:
+- service_date date
+- next_service_due date
+- service_type text
+- vendor text
+- cost numeric
+- notes text
+
+`generator_fuel_log`:
+- log_date date
+- liters_added numeric
+- running_hours numeric
+- fuel_level_pct numeric
+- cost numeric
+- notes text
+
+## 4. Solar system (`solar_specs`, `solar_monitoring_log`)
+`solar_specs` (effectively one row, but keep as a table for history):
+- panel_capacity_kw numeric
+- inverter_model text
+- battery_capacity_kwh numeric
+- install_date date
+- vendor text
+- warranty_expiry date
+- spec_file_url text (Supabase Storage path — original Word/PDF)
+
+`solar_monitoring_log`:
+- log_date date
+- generation_kwh numeric
+- consumption_kwh numeric
+- battery_soc_pct numeric
+- alert_flag boolean default false
+- notes text
+
+## 5. Internet & utility accounts (`utility_accounts`)
+- utility_type text (internet, electricity, gas, water)
+- provider text
+- account_number text
+- billing_cycle text
+- monthly_avg_cost numeric
+- due_date_day int (day of month bill is due)
+- contact_person text
+- notes text
+- **never store passwords/credentials in this table or anywhere in the app.** Reference a password manager entry name only.
+
+## Adding a new domain later
+Follow the same shape: base audit columns + domain fields + one `..._log` table if the domain has recurring events (like fuel or monitoring). Don't invent a different pattern.

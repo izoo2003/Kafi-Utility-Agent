@@ -1,0 +1,156 @@
+import { SchemaType, type FunctionDeclaration } from "@google/generative-ai";
+import { WRITE_TOOL_NAMES } from "@/lib/validations/agent-writes";
+import { agentWriteTools } from "@/lib/agent/write-tools";
+
+export { WRITE_TOOL_NAMES };
+
+const agentReadTools: FunctionDeclaration[] = [
+  {
+    name: "ops_alerts_list",
+    description:
+      "List current site alerts: kitchen low stock, IT warranty expiry, generator service due, solar alert flags. Use for status summaries.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: "kitchen_inventory_list",
+    description:
+      "List all kitchen inventory items with quantities, reorder levels, and derived low/ok status.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        low_only: {
+          type: SchemaType.BOOLEAN,
+          description:
+            "If true, only return items at or below reorder level.",
+        },
+      },
+    },
+  },
+  {
+    name: "kitchen_inventory_get",
+    description: "Get one kitchen inventory item by id.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        id: {
+          type: SchemaType.STRING,
+          description: "Kitchen inventory row UUID",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "it_equipment_list",
+    description:
+      "List IT equipment assets (asset tag, status, assignment, warranty).",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["active", "in_repair", "retired"],
+          description: "Optional status filter",
+        },
+      },
+    },
+  },
+  {
+    name: "it_equipment_get",
+    description: "Get one IT equipment record by id or asset_tag.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        id: {
+          type: SchemaType.STRING,
+          description: "Equipment row UUID",
+        },
+        asset_tag: {
+          type: SchemaType.STRING,
+          description: "Unique asset tag",
+        },
+      },
+    },
+  },
+  {
+    name: "generator_maintenance_list",
+    description:
+      "List generator maintenance records, newest service dates first.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        limit: {
+          type: SchemaType.NUMBER,
+          description: "Max rows to return (default 20)",
+        },
+      },
+    },
+  },
+  {
+    name: "generator_fuel_log_list",
+    description: "List generator fuel log entries, newest first.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        limit: {
+          type: SchemaType.NUMBER,
+          description: "Max rows to return (default 20)",
+        },
+      },
+    },
+  },
+  {
+    name: "solar_specs_list",
+    description: "List solar system specification records.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: "solar_monitoring_list",
+    description: "List solar monitoring log entries.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        alerts_only: {
+          type: SchemaType.BOOLEAN,
+          description: "If true, only rows with alert_flag true.",
+        },
+        limit: {
+          type: SchemaType.NUMBER,
+          description: "Max rows to return (default 20)",
+        },
+      },
+    },
+  },
+  {
+    name: "utility_accounts_list",
+    description:
+      "List utility accounts (internet, electricity, gas, water). Never returns passwords.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        utility_type: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["internet", "electricity", "gas", "water"],
+        },
+      },
+    },
+  },
+];
+
+/** Gemini function declarations — reads + full CRUD writes */
+export const agentTools: FunctionDeclaration[] = [
+  ...agentReadTools,
+  ...agentWriteTools,
+];
+
+export function isWriteTool(name: string): boolean {
+  return (WRITE_TOOL_NAMES as readonly string[]).includes(name);
+}

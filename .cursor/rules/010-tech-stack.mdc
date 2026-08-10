@@ -1,0 +1,49 @@
+---
+description: Tech stack and folder structure conventions — always loaded
+globs:
+alwaysApply: true
+---
+
+# Tech Stack
+
+- **Framework:** Next.js 14+ (App Router, TypeScript)
+- **Database/Auth/Storage:** Supabase (Postgres, Supabase Auth, Supabase Storage for files like solar spec PDFs/Word docs)
+- **UI:** Tailwind CSS + shadcn/ui
+- **Agent:** Google Gemini API with tool-calling (function calling), not a separate framework — keep it a direct API integration unless a real need for an orchestration library shows up
+- **Hosting:** Vercel (app) + Supabase (managed backend)
+
+## Folder structure conventions
+
+```
+/app
+  /dashboard
+    /kitchen-inventory
+    /it-equipment
+    /generator
+    /solar
+    /utilities
+  /api
+    /kitchen-inventory
+    /it-equipment
+    /generator
+    /solar
+    /utilities
+    /agent          <- chat endpoint, tool dispatch
+/lib
+  /supabase         <- client init, typed queries per domain
+  /agent
+    tools.ts         <- tool definitions exposed to Gemini
+    system-prompt.ts
+/components
+  /dashboard         <- shared table/form components
+  /chat              <- chat UI components
+/supabase
+  /migrations
+```
+
+## Conventions
+
+- One Supabase table (or small table group) per domain — see `020-data-model.mdc`.
+- Every domain gets: a typed query module in `/lib/supabase`, API routes in `/app/api/<domain>`, a dashboard page in `/app/dashboard/<domain>`, and a matching agent tool in `/lib/agent/tools.ts`. No domain skips a layer.
+- Use Zod for input validation on every API route and every agent tool — the agent will pass loosely-structured data from natural language, so validation is not optional here.
+- No raw SQL from the chat agent, ever. It calls tools; tools call typed Supabase queries.
