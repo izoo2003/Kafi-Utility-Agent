@@ -12,19 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { WriteToolName } from "@/lib/validations/agent-writes";
-
-type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-  imagePreviews?: string[];
-};
-
-type PendingConfirmation = {
-  tool: WriteToolName;
-  summary: string;
-  args: Record<string, unknown>;
-};
+import {
+  useChatSession,
+  type ChatMessage,
+  type PendingConfirmation,
+} from "@/components/chat/chat-session-context";
 
 type PendingImage = {
   id: string;
@@ -88,15 +80,23 @@ async function fileToPendingImage(file: File): Promise<PendingImage> {
 }
 
 export function ChatPanel() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const {
+    messages,
+    setMessages,
+    pending,
+    setPending,
+    toolsUsed,
+    setToolsUsed,
+    modelUsed,
+    setModelUsed,
+    keyLabel,
+    setKeyLabel,
+    loading,
+    setLoading,
+  } = useChatSession();
   const [input, setInput] = useState("");
   const [images, setImages] = useState<PendingImage[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toolsUsed, setToolsUsed] = useState<string[]>([]);
-  const [modelUsed, setModelUsed] = useState<string | null>(null);
-  const [keyLabel, setKeyLabel] = useState<string | null>(null);
-  const [pending, setPending] = useState<PendingConfirmation | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -252,7 +252,7 @@ export function ChatPanel() {
   }
 
   return (
-    <div className="flex h-[min(70dvh,760px)] min-h-[22rem] flex-col overflow-hidden rounded-xl border border-[oklch(0.88_0.02_220)] bg-white/75 shadow-[0_1px_0_oklch(0.9_0.02_220)] backdrop-blur-sm sm:h-[min(72vh,760px)] sm:rounded-2xl">
+    <div className="flex h-[min(72dvh,820px)] min-h-[22rem] w-full flex-col overflow-hidden rounded-xl border border-[oklch(0.88_0.02_220)] bg-white/75 shadow-[0_1px_0_oklch(0.9_0.02_220)] backdrop-blur-sm sm:h-[min(75vh,820px)] sm:rounded-2xl">
       <div className="flex items-center gap-2 border-b border-[oklch(0.9_0.02_220)] px-3 py-3 sm:px-4">
         <span className="inline-flex size-9 items-center justify-center rounded-xl bg-[oklch(0.93_0.04_195)] text-[oklch(0.38_0.08_195)]">
           <Sparkles className="size-4" />
@@ -260,7 +260,7 @@ export function ChatPanel() {
         <div className="min-w-0">
           <p className="font-heading text-sm font-semibold">Ops assistant</p>
           <p className="truncate text-xs text-muted-foreground">
-            Text, images, confirmed writes · dual API key failover
+            History kept while you browse · clears on logout / refresh
           </p>
         </div>
       </div>

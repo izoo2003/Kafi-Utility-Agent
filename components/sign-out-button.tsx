@@ -2,12 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useChatSession } from "@/components/chat/chat-session-context";
 import { Button } from "@/components/ui/button";
 
 export function SignOutButton() {
   const router = useRouter();
+  const { clearChatSession } = useChatSession();
 
   async function signOut() {
+    clearChatSession();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push("/login");

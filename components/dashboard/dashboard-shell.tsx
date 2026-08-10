@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
 import { SignOutButton } from "@/components/sign-out-button";
 import { PageTransition } from "@/components/dashboard/page-transition";
+import { ChatSessionProvider } from "@/components/chat/chat-session-context";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +64,7 @@ export function DashboardShell({
   );
 
   return (
+    <ChatSessionProvider>
     <div className="flex min-h-full min-h-dvh flex-1">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[oklch(0.88_0.02_220)] bg-[oklch(0.975_0.012_220_/_0.92)] backdrop-blur-md print:hidden md:flex">
@@ -140,5 +142,6 @@ export function DashboardShell({
         </main>
       </div>
     </div>
+    </ChatSessionProvider>
   );
 }
