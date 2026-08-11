@@ -53,13 +53,25 @@ export function DashboardShell({
     </div>
   );
 
+  const sidebarFooter = (
+    <div className="mt-auto border-t border-[oklch(0.9_0.02_220)] p-3 space-y-3">
+      <div className="px-1 text-center">
+        <p className="text-[11px] font-medium leading-snug text-[oklch(0.38_0.04_195)]">
+          Made By Izaan Bin Mujeeb
+        </p>
+        <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+          For Kafi Commodities
+        </p>
+      </div>
+      <SignOutButton />
+    </div>
+  );
+
   const sidebarBody = (
     <>
       {brand}
       <SidebarNav onNavigate={() => setMobileOpen(false)} />
-      <div className="mt-auto border-t border-[oklch(0.9_0.02_220)] p-3">
-        <SignOutButton />
-      </div>
+      {sidebarFooter}
     </>
   );
 
@@ -112,9 +124,7 @@ export function DashboardShell({
               <span className="font-medium text-foreground">{username}</span>
             </div>
             <SidebarNav onNavigate={() => setMobileOpen(false)} />
-            <div className="mt-auto border-t border-[oklch(0.9_0.02_220)] p-3">
-              <SignOutButton />
-            </div>
+            {sidebarFooter}
           </div>
         </aside>
       </div>
