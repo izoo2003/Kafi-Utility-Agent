@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
+import { RecordViewDialog } from "@/components/dashboard/record-view-dialog";
 import {
   CellText,
   TableActions,
@@ -91,6 +92,8 @@ export function SolarPanel({
   const [logOpen, setLogOpen] = useState(false);
   const [editingSpecs, setEditingSpecs] = useState<SolarSpecs | null>(null);
   const [editingLog, setEditingLog] = useState<SolarMonitoringLog | null>(null);
+  const [viewingSpecs, setViewingSpecs] = useState<SolarSpecs | null>(null);
+  const [viewingLog, setViewingLog] = useState<SolarMonitoringLog | null>(null);
   const [specsForm, setSpecsForm] = useState<SpecsForm>(emptySpecs);
   const [logForm, setLogForm] = useState<LogForm>(emptyLog);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
@@ -308,6 +311,13 @@ export function SolarPanel({
                     <TableCell className="max-w-none">
                       <TableActions>
                         <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewingSpecs(row)}
+                        >
+                          View
+                        </Button>
+                        <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
@@ -422,6 +432,13 @@ export function SolarPanel({
                     <TableCell className="max-w-none">
                       <TableActions>
                         <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewingLog(row)}
+                        >
+                          View
+                        </Button>
+                        <Button
                           variant="outline"
                           size="sm"
                           onClick={() => {
@@ -469,6 +486,107 @@ export function SolarPanel({
           </Table>
         </TableShell>
       </section>
+
+      <RecordViewDialog
+        open={viewingSpecs != null}
+        onOpenChange={(open) => {
+          if (!open) setViewingSpecs(null);
+        }}
+        title="View solar specs"
+        fields={
+          viewingSpecs
+            ? [
+                {
+                  label: "Panel capacity",
+                  value:
+                    viewingSpecs.panel_capacity_kw == null
+                      ? null
+                      : `${viewingSpecs.panel_capacity_kw} kW`,
+                },
+                {
+                  label: "Battery capacity",
+                  value:
+                    viewingSpecs.battery_capacity_kwh == null
+                      ? null
+                      : `${viewingSpecs.battery_capacity_kwh} kWh`,
+                },
+                {
+                  label: "Inverter model",
+                  value: viewingSpecs.inverter_model,
+                },
+                { label: "Vendor", value: viewingSpecs.vendor },
+                { label: "Install date", value: viewingSpecs.install_date },
+                {
+                  label: "Warranty expiry",
+                  value: viewingSpecs.warranty_expiry,
+                },
+                {
+                  label: "Spec file",
+                  value: viewingSpecs.spec_file_url
+                    ? fileNameFromPath(viewingSpecs.spec_file_url)
+                    : null,
+                },
+                {
+                  label: "Created",
+                  value: viewingSpecs.created_at?.slice(0, 19).replace("T", " "),
+                },
+                {
+                  label: "Updated",
+                  value: viewingSpecs.updated_at?.slice(0, 19).replace("T", " "),
+                },
+              ]
+            : []
+        }
+      />
+
+      <RecordViewDialog
+        open={viewingLog != null}
+        onOpenChange={(open) => {
+          if (!open) setViewingLog(null);
+        }}
+        title="View monitoring log"
+        fields={
+          viewingLog
+            ? [
+                { label: "Log date", value: viewingLog.log_date },
+                {
+                  label: "Generation",
+                  value:
+                    viewingLog.generation_kwh == null
+                      ? null
+                      : `${viewingLog.generation_kwh} kWh`,
+                },
+                {
+                  label: "Consumption",
+                  value:
+                    viewingLog.consumption_kwh == null
+                      ? null
+                      : `${viewingLog.consumption_kwh} kWh`,
+                },
+                {
+                  label: "Battery SOC",
+                  value:
+                    viewingLog.battery_soc_pct == null
+                      ? null
+                      : `${viewingLog.battery_soc_pct}%`,
+                },
+                {
+                  label: "Alert",
+                  value: viewingLog.alert_flag ? "alert" : "ok",
+                },
+                { label: "Notes", value: viewingLog.notes },
+                {
+                  label: "Created",
+                  value: viewingLog.created_at?.slice(0, 19).replace("T", " "),
+                },
+                {
+                  label: "Updated",
+                  value: viewingLog.updated_at?.slice(0, 19).replace("T", " "),
+                },
+              ]
+            : []
+        }
+      />
 
       <Dialog open={specsOpen} onOpenChange={setSpecsOpen}>
         <DialogContent className="sm:max-w-lg">

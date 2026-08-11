@@ -7,6 +7,7 @@ import {
 } from "@/lib/sems/alert-rules";
 import { SemsClient } from "@/lib/sems/client";
 import { getSemsConfig } from "@/lib/sems/config";
+import { fetchDayEnergy } from "@/lib/sems/day-energy";
 import { fetchLiveFlow } from "@/lib/sems/flow";
 import {
   upsertSolarLiveSnapshot,
@@ -67,6 +68,12 @@ export async function syncSemsLive(
       config.password,
     );
     const flow = await fetchLiveFlow(client, config.stationId);
+    // Flow is instantaneous power; daily kWh usually comes from telecounting.
+    const dayEnergy = await fetchDayEnergy(client, config.stationId);
+    const generationToday =
+      dayEnergy.generationTodayKwh ?? flow.eGen ?? null;
+    const consumptionToday =
+      dayEnergy.consumptionTodayKwh ?? flow.eUse ?? null;
     const fetchedAt = new Date().toISOString();
 
     const alerts = evaluateSemsAlerts(
@@ -74,7 +81,7 @@ export async function syncSemsLive(
         fetchedAt,
         pvPowerKw: flow.pSystem ?? null,
         batterySocPct: flow.soc ?? null,
-        generationTodayKwh: flow.eGen ?? null,
+        generationTodayKwh: generationToday,
       },
       thresholds,
     );
@@ -90,9 +97,16 @@ export async function syncSemsLive(
         grid_power_kw: flow.pGrid ?? null,
         battery_power_kw: flow.pBat ?? null,
         battery_soc_pct: flow.soc ?? null,
-        generation_today_kwh: flow.eGen ?? null,
-        consumption_today_kwh: flow.eUse ?? null,
-        raw: flow.raw,
+        generation_today_kwh: generationToday,
+        consumption_today_kwh: consumptionToday,
+        raw: {
+          ...flow.raw,
+          _dayEnergySource:
+            dayEnergy.generationTodayKwh != null ||
+            dayEnergy.consumptionTodayKwh != null
+              ? "telecounting"
+              : "flow",
+        },
         last_error: null,
       },
     );
@@ -107,8 +121,8 @@ export async function syncSemsLive(
     const { data: logRow, error: logError } =
       await upsertSolarMonitoringLogByDate(supabase, {
         log_date: logDate,
-        generation_kwh: flow.eGen ?? null,
-        consumption_kwh: flow.eUse ?? null,
+        generation_kwh: generationToday,
+        consumption_kwh: consumptionToday,
         battery_soc_pct: flow.soc ?? null,
         alert_flag: alerts.length > 0,
         notes: formatAlertNotes(alerts),

@@ -85,8 +85,19 @@ export function parseFlowPayload(json: unknown): LiveFlow {
       "generationEnergy",
       "ePvToday",
       "proPvStatsToday",
+      "todayGeneration",
+      "pvToday",
+      "e_day",
     ),
-    eUse: pick("eUse", "eLoadToday", "consumptionEnergy", "eConsumToday"),
+    eUse: pick(
+      "eUse",
+      "eLoadToday",
+      "consumptionEnergy",
+      "eConsumToday",
+      "proLoadStatsToday",
+      "todayConsumption",
+      "loadToday",
+    ),
     raw: flat,
   };
 }
