@@ -37,9 +37,21 @@ export const dashboardNav = [
   {
     href: "/dashboard/solar",
     label: "Solar",
-    description: "Specs, monitoring, and file uploads",
+    description: "Specs, monitoring logs, and SEMS+ live data",
     icon: "solar",
     accent: "teal",
+    children: [
+      {
+        href: "/dashboard/solar",
+        label: "Records",
+        match: "exact" as const,
+      },
+      {
+        href: "/dashboard/solar/sems",
+        label: "SEMS+",
+        match: "prefix" as const,
+      },
+    ],
   },
   {
     href: "/dashboard/utilities",

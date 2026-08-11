@@ -3,8 +3,13 @@ import type {
   GeneratorMaintenance,
   ItEquipment,
   KitchenInventory,
+  SolarLiveSnapshot,
   SolarMonitoringLog,
 } from "@/lib/types/database";
+import {
+  evaluateSnapshotAlerts,
+  findingsToOpsAlerts,
+} from "@/lib/sems/alert-rules";
 import { kitchenInventoryStatus } from "@/lib/supabase/kitchen-inventory";
 import type { OpsAlert } from "@/lib/alerts/types";
 
@@ -32,7 +37,7 @@ function daysUntil(dateIso: string) {
 export async function collectOpsAlerts(
   supabase: SupabaseClient,
 ): Promise<OpsAlert[]> {
-  const [kitchen, it, maintenance, solar] = await Promise.all([
+  const [kitchen, it, maintenance, solar, live] = await Promise.all([
     supabase.from("kitchen_inventory").select("*"),
     supabase.from("it_equipment").select("*"),
     supabase
@@ -45,6 +50,12 @@ export async function collectOpsAlerts(
       .select("*")
       .eq("alert_flag", true)
       .order("log_date", { ascending: false }),
+    supabase
+      .from("solar_live_snapshot")
+      .select("*")
+      .order("fetched_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const alerts: OpsAlert[] = [];
@@ -106,7 +117,20 @@ export async function collectOpsAlerts(
     });
   }
 
+  // Live SEMS+ baselines (SOC, daytime PV, stale sync, sync errors)
+  if (
+    !live.error ||
+    !/solar_live_snapshot|does not exist|schema cache/i.test(
+      live.error.message,
+    )
+  ) {
+    const snapshot = (live.data ?? null) as SolarLiveSnapshot | null;
+    alerts.push(...findingsToOpsAlerts(evaluateSnapshotAlerts(snapshot)));
+  }
+
   for (const row of (solar.data ?? []) as SolarMonitoringLog[]) {
+    // Skip rows that only mirror SEMS auto-alerts already covered above
+    if (row.notes?.startsWith("SEMS+ auto-alert:")) continue;
     alerts.push({
       id: `solar-alert-${row.id}`,
       domain: "solar",

@@ -6,6 +6,16 @@ import { dashboardNav } from "@/lib/dashboard/nav";
 import { NavIcon } from "@/components/dashboard/nav-icon";
 import { cn } from "@/lib/utils";
 
+function childActive(
+  pathname: string,
+  child: { href: string; match: "exact" | "prefix" },
+) {
+  if (child.match === "exact") {
+    return pathname === child.href;
+  }
+  return pathname === child.href || pathname.startsWith(`${child.href}/`);
+}
+
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
@@ -16,30 +26,56 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           item.href === "/dashboard"
             ? pathname === "/dashboard"
             : pathname.startsWith(item.href);
+        const children =
+          "children" in item && item.children ? item.children : null;
 
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={cn(
-              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-out sm:text-[0.95rem]",
-              active
-                ? "bg-[oklch(0.96_0.02_195)] text-[oklch(0.32_0.06_195)] shadow-[inset_3px_0_0_0_oklch(0.55_0.1_195)]"
-                : "text-[oklch(0.4_0.02_230)] hover:translate-x-0.5 hover:bg-white/70 hover:text-[oklch(0.28_0.04_230)]",
-            )}
-          >
-            <NavIcon
-              name={item.icon}
-              accent={item.accent}
-              size="sm"
+          <div key={item.href} className="space-y-0.5">
+            <Link
+              href={item.href}
+              onClick={onNavigate}
               className={cn(
-                "transition-transform duration-200",
-                active ? "scale-105" : "group-hover:scale-105",
+                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ease-out sm:text-[0.95rem]",
+                active
+                  ? "bg-[oklch(0.96_0.02_195)] text-[oklch(0.32_0.06_195)] shadow-[inset_3px_0_0_0_oklch(0.55_0.1_195)]"
+                  : "text-[oklch(0.4_0.02_230)] hover:translate-x-0.5 hover:bg-white/70 hover:text-[oklch(0.28_0.04_230)]",
               )}
-            />
-            <span className="truncate">{item.label}</span>
-          </Link>
+            >
+              <NavIcon
+                name={item.icon}
+                accent={item.accent}
+                size="sm"
+                className={cn(
+                  "transition-transform duration-200",
+                  active ? "scale-105" : "group-hover:scale-105",
+                )}
+              />
+              <span className="truncate">{item.label}</span>
+            </Link>
+
+            {active && children ? (
+              <div className="ml-4 space-y-0.5 border-l border-[oklch(0.9_0.02_195)] pl-2">
+                {children.map((child) => {
+                  const isChildActive = childActive(pathname, child);
+                  return (
+                    <Link
+                      key={child.href + child.label}
+                      href={child.href}
+                      onClick={onNavigate}
+                      className={cn(
+                        "block rounded-lg px-3 py-1.5 text-sm transition-colors",
+                        isChildActive
+                          ? "bg-white/80 font-medium text-[oklch(0.32_0.06_195)]"
+                          : "text-[oklch(0.45_0.02_230)] hover:bg-white/60 hover:text-[oklch(0.28_0.04_230)]",
+                      )}
+                    >
+                      {child.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
         );
       })}
     </nav>

@@ -1,33 +1,40 @@
 import { NextResponse } from "next/server";
 import { authorizeCron } from "@/lib/api/authorize-cron";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { runAlertDigest } from "@/lib/notifications/run-alert-digest";
+import { syncSemsLive } from "@/lib/sems/sync";
 
 async function handle(request: Request) {
   const auth = authorizeCron(request);
   if (!auth.ok) return auth.response;
 
-  const force =
-    new URL(request.url).searchParams.get("force") === "1" ||
-    new URL(request.url).searchParams.get("force") === "true";
-
   try {
     const supabase = createAdminClient();
-    const result = await runAlertDigest(supabase, { force });
+    const result = await syncSemsLive(supabase);
+    if (!result.configured) {
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: result.error,
+      });
+    }
+    if (result.error && !result.snapshot) {
+      return NextResponse.json(
+        { ok: false, error: result.error },
+        { status: 502 },
+      );
+    }
     return NextResponse.json({ ok: true, data: result });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Alert digest failed";
+      error instanceof Error ? error.message : "SEMS+ cron sync failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-/** Vercel Cron calls GET */
 export async function GET(request: Request) {
   return handle(request);
 }
 
-/** Manual trigger: POST with same auth */
 export async function POST(request: Request) {
   return handle(request);
 }

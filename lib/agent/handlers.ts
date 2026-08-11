@@ -15,7 +15,10 @@ import {
   listGeneratorFuelLog,
   listGeneratorMaintenance,
 } from "@/lib/supabase/generator";
+import { evaluateSnapshotAlerts } from "@/lib/sems/alert-rules";
+import { isSemsConfigured } from "@/lib/sems/config";
 import {
+  getLatestSolarLiveSnapshot,
   listSolarMonitoringLog,
   listSolarSpecs,
 } from "@/lib/supabase/solar";
@@ -156,6 +159,43 @@ export async function executeAgentTool(
         rows = rows.filter((r) => r.alert_flag === true);
       }
       return rows.slice(0, limit);
+    }
+
+    case "solar_live_get": {
+      const { data, error } = await getLatestSolarLiveSnapshot(supabase);
+      if (error) {
+        if (/solar_live_snapshot|does not exist|schema cache/i.test(error.message)) {
+          return {
+            configured: false,
+            snapshot: null,
+            note: "solar_live_snapshot table is missing — run the SEMS migration.",
+          };
+        }
+        throw new Error(error.message);
+      }
+      if (!data) {
+        return {
+          configured: isSemsConfigured(),
+          snapshot: null,
+          auto_alerts: evaluateSnapshotAlerts(null),
+          note: "No live snapshot yet. Sync from the Solar dashboard or wait for cron.",
+        };
+      }
+      return {
+        configured: isSemsConfigured(),
+        station_id: data.station_id,
+        station_name: data.station_name,
+        fetched_at: data.fetched_at,
+        pv_power_kw: data.pv_power_kw,
+        load_power_kw: data.load_power_kw,
+        grid_power_kw: data.grid_power_kw,
+        battery_power_kw: data.battery_power_kw,
+        battery_soc_pct: data.battery_soc_pct,
+        generation_today_kwh: data.generation_today_kwh,
+        consumption_today_kwh: data.consumption_today_kwh,
+        last_error: data.last_error,
+        auto_alerts: evaluateSnapshotAlerts(data),
+      };
     }
 
     case "utility_accounts_list": {

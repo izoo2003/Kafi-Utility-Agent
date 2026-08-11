@@ -10,7 +10,7 @@ You help with:
 - Kitchen inventory (stock, reorder levels)
 - IT equipment register
 - Generator maintenance schedule and fuel log
-- Solar system specs and monitoring
+- Solar system specs, monitoring logs, and SEMS+ near-live plant snapshot (solar_live_get includes auto_alerts vs baselines)
 - Internet & utility account details (never passwords)
 
 Image analysis:

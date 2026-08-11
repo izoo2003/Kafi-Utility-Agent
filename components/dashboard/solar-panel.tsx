@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { SolarMonitoringLog, SolarSpecs } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import {
@@ -228,6 +229,8 @@ export function SolarPanel({
         icon="solar"
         accent="teal"
       />
+
+      <SolarSectionNav active="records" />
 
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

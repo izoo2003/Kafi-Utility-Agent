@@ -129,6 +129,15 @@ const agentReadTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "solar_live_get",
+    description:
+      "Get the latest SEMS+ live plant snapshot (PV/load/grid/battery power, SOC, today generation/consumption). Does not call SEMS directly — reads the last polled snapshot from the database.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {},
+    },
+  },
+  {
     name: "utility_accounts_list",
     description:
       "List utility accounts (internet, electricity, gas, water). Never returns passwords.",

@@ -82,6 +82,40 @@ export type SolarMonitoringLog = AuditColumns & {
   notes: string | null;
 };
 
+/** Latest polled SEMS+ plant telemetry (one row per station). */
+export type SolarLiveSnapshot = {
+  id: Uuid;
+  created_at: IsoTimestamptz;
+  updated_at: IsoTimestamptz;
+  station_id: string;
+  station_name: string | null;
+  fetched_at: IsoTimestamptz;
+  pv_power_kw: number | null;
+  load_power_kw: number | null;
+  grid_power_kw: number | null;
+  battery_power_kw: number | null;
+  battery_soc_pct: number | null;
+  generation_today_kwh: number | null;
+  consumption_today_kwh: number | null;
+  raw: Record<string, unknown> | null;
+  last_error: string | null;
+};
+
+export type SolarLiveSnapshotUpsert = {
+  station_id: string;
+  station_name?: string | null;
+  fetched_at?: IsoTimestamptz;
+  pv_power_kw?: number | null;
+  load_power_kw?: number | null;
+  grid_power_kw?: number | null;
+  battery_power_kw?: number | null;
+  battery_soc_pct?: number | null;
+  generation_today_kwh?: number | null;
+  consumption_today_kwh?: number | null;
+  raw?: Record<string, unknown> | null;
+  last_error?: string | null;
+};
+
 export type UtilityType = "internet" | "electricity" | "gas" | "water";
 
 export type UtilityAccount = AuditColumns & {
@@ -129,6 +163,11 @@ export type Database = {
       generator_fuel_log: { Row: GeneratorFuelLog; Insert: GeneratorFuelLogInsert; Update: GeneratorFuelLogUpdate };
       solar_specs: { Row: SolarSpecs; Insert: SolarSpecsInsert; Update: SolarSpecsUpdate };
       solar_monitoring_log: { Row: SolarMonitoringLog; Insert: SolarMonitoringLogInsert; Update: SolarMonitoringLogUpdate };
+      solar_live_snapshot: {
+        Row: SolarLiveSnapshot;
+        Insert: SolarLiveSnapshotUpsert;
+        Update: Partial<SolarLiveSnapshotUpsert>;
+      };
       utility_accounts: { Row: UtilityAccount; Insert: UtilityAccountInsert; Update: UtilityAccountUpdate };
       alert_notifications: {
         Row: AlertNotification;
