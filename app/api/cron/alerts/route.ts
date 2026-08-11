@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizeCron } from "@/lib/api/authorize-cron";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runAlertDigest } from "@/lib/notifications/run-alert-digest";
+import { syncSemsLive } from "@/lib/sems/sync";
 
 async function handle(request: Request) {
   const auth = authorizeCron(request);
@@ -13,8 +14,13 @@ async function handle(request: Request) {
 
   try {
     const supabase = createAdminClient();
+    // Hobby plan allows one daily cron — refresh SEMS before digesting alerts.
+    const solar = await syncSemsLive(supabase);
     const result = await runAlertDigest(supabase, { force });
-    return NextResponse.json({ ok: true, data: result });
+    return NextResponse.json({
+      ok: true,
+      data: { solar, alerts: result },
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Alert digest failed";
