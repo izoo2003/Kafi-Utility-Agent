@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { KitchenInventory } from "@/lib/types/database";
 import { kitchenInventoryStatus } from "@/lib/supabase/kitchen-inventory";
 import { apiFetch } from "@/lib/dashboard/api-client";
-import { sortNewestFirst } from "@/lib/dashboard/sort";
+import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
@@ -141,7 +141,7 @@ export function KitchenInventoryPanel({
           "/api/kitchen-inventory",
           { method: "POST", body: JSON.stringify(payload) },
         );
-        setItems((prev) => [...prev, data]);
+        setItems((prev) => upsertById(prev, data));
       }
       setOpen(false);
       router.refresh();

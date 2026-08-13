@@ -14,7 +14,7 @@ import {
 } from "@/lib/generator/maintenance";
 import { formatDate } from "@/lib/format/datetime";
 import { apiFetch } from "@/lib/dashboard/api-client";
-import { sortNewestFirst } from "@/lib/dashboard/sort";
+import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
@@ -166,7 +166,7 @@ export function GeneratorPanel({
           "/api/generator/maintenance",
           { method: "POST", body: JSON.stringify(payload) },
         );
-        setMaintenance((prev) => [...prev, data]);
+        setMaintenance((prev) => upsertById(prev, data));
       }
       setMaintOpen(false);
       router.refresh();
@@ -231,7 +231,7 @@ export function GeneratorPanel({
           method: "POST",
           body: JSON.stringify(payload),
         });
-        setFuel((prev) => [...prev, data]);
+        setFuel((prev) => upsertById(prev, data));
       }
       setFuelOpen(false);
       router.refresh();

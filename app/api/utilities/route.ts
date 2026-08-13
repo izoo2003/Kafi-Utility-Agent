@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { parseJsonBody, supabaseErrorResponse } from "@/lib/api/parse";
+import { domainWriteResponse } from "@/lib/api/dedupe-response";
 import { withUpdatedBy } from "@/lib/api/with-user";
 import {
   createUtilityAccount,
@@ -24,10 +25,7 @@ export async function POST(request: Request) {
   const parsed = await parseJsonBody(request, utilityAccountInsertSchema);
   if (parsed.error) return parsed.error;
 
-  const { data, error } = await createUtilityAccount(
-    supabase,
-    withUpdatedBy(parsed.data, user),
+  return domainWriteResponse(
+    await createUtilityAccount(supabase, withUpdatedBy(parsed.data, user)),
   );
-  if (error) return supabaseErrorResponse(error.message);
-  return NextResponse.json({ data }, { status: 201 });
 }

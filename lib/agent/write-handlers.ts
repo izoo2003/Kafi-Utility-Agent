@@ -25,6 +25,15 @@ import {
   updateGeneratorMaintenance,
 } from "@/lib/supabase/generator";
 import { withDefaultNextServiceDue } from "@/lib/generator/maintenance";
+import { outcomeSummary, type DedupeOutcome } from "@/lib/dashboard/dedupe";
+
+function finalizeCreateSummary(base: string, outcome: DedupeOutcome) {
+  if (outcome === "created") return base;
+  if (outcome === "updated") {
+    return base.replace(/^Create\b/i, "Update duplicate").replace(/\.$/, "") + " (more recent — overwrote existing).";
+  }
+  return outcomeSummary(outcome, base.replace(/^Create\s+/i, "").replace(/\.$/, ""));
+}
 import {
   createSolarMonitoringLog,
   createSolarSpecs,
@@ -163,7 +172,7 @@ export async function executeWriteTool(
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
-      const { data, error } = await createKitchenInventoryItem(
+      const { data, error, outcome } = await createKitchenInventoryItem(
         supabase,
         withUpdatedBy({ ...payload }, user),
       );
@@ -171,7 +180,8 @@ export async function executeWriteTool(
       const item = data as KitchenInventory;
       return {
         status: "ok",
-        summary,
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
         item: { ...item, status: kitchenInventoryStatus(item) },
       };
     }
@@ -231,12 +241,17 @@ export async function executeWriteTool(
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
-      const { data, error } = await createItEquipment(
+      const { data, error, outcome } = await createItEquipment(
         supabase,
         withUpdatedBy({ ...payload }, user),
       );
       if (error) throw new Error(error.message);
-      return { status: "ok", summary, item: data };
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
     }
 
     case "it_equipment_update": {
@@ -318,12 +333,17 @@ export async function executeWriteTool(
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
-      const { data, error } = await createGeneratorMaintenance(
+      const { data, error, outcome } = await createGeneratorMaintenance(
         supabase,
         withUpdatedBy({ ...payload }, user),
       );
       if (error) throw new Error(error.message);
-      return { status: "ok", summary, item: data };
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
     }
 
     case "generator_maintenance_update": {
@@ -374,12 +394,17 @@ export async function executeWriteTool(
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
-      const { data, error } = await createGeneratorFuelLog(
+      const { data, error, outcome } = await createGeneratorFuelLog(
         supabase,
         withUpdatedBy({ ...payload }, user),
       );
       if (error) throw new Error(error.message);
-      return { status: "ok", summary, item: data };
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
     }
 
     case "generator_fuel_log_update": {
@@ -430,12 +455,17 @@ export async function executeWriteTool(
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
-      const { data, error } = await createGeneratorExpense(
+      const { data, error, outcome } = await createGeneratorExpense(
         supabase,
         withUpdatedBy({ ...payload }, user),
       );
       if (error) throw new Error(error.message);
-      return { status: "ok", summary, item: data };
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
     }
 
     case "generator_expense_update": {
@@ -486,12 +516,17 @@ export async function executeWriteTool(
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
-      const { data, error } = await createSolarSpecs(
+      const { data, error, outcome } = await createSolarSpecs(
         supabase,
         withUpdatedBy({ ...payload }, user),
       );
       if (error) throw new Error(error.message);
-      return { status: "ok", summary, item: data };
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
     }
 
     case "solar_specs_update": {
@@ -546,12 +581,17 @@ export async function executeWriteTool(
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
-      const { data, error } = await createSolarMonitoringLog(
+      const { data, error, outcome } = await createSolarMonitoringLog(
         supabase,
         withUpdatedBy({ ...payload }, user),
       );
       if (error) throw new Error(error.message);
-      return { status: "ok", summary, item: data };
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
     }
 
     case "solar_monitoring_update": {
@@ -602,7 +642,7 @@ export async function executeWriteTool(
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
-      const { data, error } = await createUtilityAccount(
+      const { data, error, outcome } = await createUtilityAccount(
         supabase,
         withUpdatedBy({ ...payload }, user),
       );
@@ -610,7 +650,8 @@ export async function executeWriteTool(
       const row = data as UtilityAccount;
       return {
         status: "ok",
-        summary,
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
         item: {
           id: row.id,
           utility_type: row.utility_type,

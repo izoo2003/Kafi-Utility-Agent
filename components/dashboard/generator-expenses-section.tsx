@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { GeneratorExpense } from "@/lib/types/database";
 import { formatDate } from "@/lib/format/datetime";
 import { apiFetch } from "@/lib/dashboard/api-client";
-import { sortNewestFirst } from "@/lib/dashboard/sort";
+import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
@@ -102,7 +102,7 @@ export function GeneratorExpensesSection({
           "/api/generator/expenses",
           { method: "POST", body: JSON.stringify(payload) },
         );
-        setExpenses((prev) => [...prev, data]);
+        setExpenses((prev) => upsertById(prev, data));
       }
       setOpen(false);
       router.refresh();

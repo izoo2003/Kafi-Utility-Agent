@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SolarMonitoringLog, SolarSpecs } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
-import { sortNewestFirst } from "@/lib/dashboard/sort";
+import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
@@ -201,7 +201,7 @@ export function SolarPanel({
           "/api/solar/monitoring",
           { method: "POST", body: JSON.stringify(payload) },
         );
-        setLogs((prev) => [data, ...prev]);
+        setLogs((prev) => upsertById(prev, data));
       }
       setLogOpen(false);
       router.refresh();
