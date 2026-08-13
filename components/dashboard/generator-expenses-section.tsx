@@ -6,9 +6,11 @@ import type { GeneratorExpense } from "@/lib/types/database";
 import { formatDate } from "@/lib/format/datetime";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
+import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import {
   CellText,
   TableActions,
@@ -71,13 +73,27 @@ export function GeneratorExpensesSection({
   const [form, setForm] = useState<ExpenseForm>(emptyExpense);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
-  const sorted = useMemo(() => sortNewestFirst(expenses), [expenses]);
+  const filtered = useMemo(() => {
+    return expenses.filter((row) => {
+      const d = row.expense_date;
+      if (dateFrom && d < dateFrom) return false;
+      if (dateTo && d > dateTo) return false;
+      return true;
+    });
+  }, [expenses, dateFrom, dateTo]);
+
+  const sorted = useMemo(() => sortNewestFirst(filtered), [filtered]);
+  const { page, setPage, pageRows, total } = usePagedRows(sorted);
 
   const totalDebit = useMemo(
-    () => expenses.reduce((sum, r) => sum + (Number(r.debit) || 0), 0),
-    [expenses],
+    () => filtered.reduce((sum, r) => sum + (Number(r.debit) || 0), 0),
+    [filtered],
   );
+
+  const rangeActive = Boolean(dateFrom || dateTo);
 
   async function save() {
     setSaving(true);
@@ -133,14 +149,70 @@ export function GeneratorExpensesSection({
         </div>
       </div>
 
-      <div className="rounded-xl border border-[oklch(0.88_0.02_220)] bg-[oklch(0.985_0.01_220)] px-4 py-3 sm:px-5">
-        <p className="text-sm font-medium text-foreground">
-          Total expense (sum of debit): {formatMoney(totalDebit)}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {expenses.length} row{expenses.length === 1 ? "" : "s"} · dates shown
-          as DD/MM/YYYY
-        </p>
+      <div className="space-y-3 rounded-xl border border-[oklch(0.88_0.02_220)] bg-[oklch(0.985_0.01_220)] px-4 py-3 sm:px-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="space-y-1.5">
+            <Label htmlFor="expense-from" className="text-xs">
+              From
+            </Label>
+            <Input
+              id="expense-from"
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="w-full sm:w-[11.5rem]"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="expense-to" className="text-xs">
+              To
+            </Label>
+            <Input
+              id="expense-to"
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="w-full sm:w-[11.5rem]"
+            />
+          </div>
+          {rangeActive ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setDateFrom("");
+                setDateTo("");
+                setPage(1);
+              }}
+            >
+              Clear dates
+            </Button>
+          ) : null}
+        </div>
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            Total expense (sum of debit): {formatMoney(totalDebit)}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {filtered.length} row{filtered.length === 1 ? "" : "s"}
+            {rangeActive
+              ? ` in range${dateFrom ? ` from ${formatDate(dateFrom)}` : ""}${dateTo ? ` to ${formatDate(dateTo)}` : ""}`
+              : ""}{" "}
+            · dates shown as DD/MM/YYYY
+            {rangeActive && filtered.length !== expenses.length
+              ? ` · ${expenses.length} total`
+              : ""}
+          </p>
+        </div>
       </div>
 
       <TableShell>
@@ -162,11 +234,13 @@ export function GeneratorExpensesSection({
                   colSpan={6}
                   className="max-w-none py-8 text-center text-muted-foreground"
                 >
-                  No expenses yet. Use Import PDF/Image or add a row.
+                  {rangeActive
+                    ? "No expenses in this date range."
+                    : "No expenses yet. Use Import PDF/Image or add a row."}
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((row) => (
+              pageRows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
                     <CellText>{formatDate(row.expense_date)}</CellText>
@@ -226,6 +300,7 @@ export function GeneratorExpensesSection({
           </TableBody>
         </Table>
       </TableShell>
+      <TablePagination total={total} page={page} onPageChange={setPage} />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">

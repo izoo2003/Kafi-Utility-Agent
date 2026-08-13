@@ -6,9 +6,11 @@ import type { KitchenInventory } from "@/lib/types/database";
 import { kitchenInventoryStatus } from "@/lib/supabase/kitchen-inventory";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
+import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { formatDateTime } from "@/lib/format/datetime";
 import {
@@ -110,6 +112,7 @@ export function KitchenInventoryPanel({
   const [saving, setSaving] = useState(false);
 
   const sorted = useMemo(() => sortNewestFirst(items), [items]);
+  const { page, setPage, pageRows, total } = usePagedRows(sorted);
 
   function openCreate() {
     setEditing(null);
@@ -202,7 +205,7 @@ export function KitchenInventoryPanel({
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((item) => {
+              pageRows.map((item) => {
                 const status = kitchenInventoryStatus(item);
                 const qtyLabel = `${item.current_qty}${item.unit ? ` ${item.unit}` : ""}`;
                 return (
@@ -258,6 +261,7 @@ export function KitchenInventoryPanel({
           </TableBody>
         </Table>
       </TableShell>
+      <TablePagination total={total} page={page} onPageChange={setPage} />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">

@@ -15,11 +15,13 @@ import {
 import { formatDate } from "@/lib/format/datetime";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
+import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { GeneratorExpensesSection } from "@/components/dashboard/generator-expenses-section";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import {
   CellText,
   TableActions,
@@ -128,6 +130,8 @@ export function GeneratorPanel({
     [maintenance],
   );
   const fuelSorted = useMemo(() => sortNewestFirst(fuel), [fuel]);
+  const maintPage = usePagedRows(maintSorted);
+  const fuelPage = usePagedRows(fuelSorted);
 
   const schedule = useMemo(
     () => nextDueFromMaintenanceRows(maintenance),
@@ -330,7 +334,7 @@ export function GeneratorPanel({
                   </TableCell>
                 </TableRow>
               ) : (
-                maintSorted.map((row) => (
+                maintPage.pageRows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
                       <CellText>{formatDate(row.service_date)}</CellText>
@@ -423,6 +427,11 @@ export function GeneratorPanel({
             </TableBody>
           </Table>
         </TableShell>
+        <TablePagination
+          total={maintPage.total}
+          page={maintPage.page}
+          onPageChange={maintPage.setPage}
+        />
       </section>
 
       <GeneratorExpensesSection initialExpenses={initialExpenses} />
@@ -468,7 +477,7 @@ export function GeneratorPanel({
                   </TableCell>
                 </TableRow>
               ) : (
-                fuelSorted.map((row) => (
+                fuelPage.pageRows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
                       <CellText>{formatDate(row.log_date)}</CellText>
@@ -534,6 +543,11 @@ export function GeneratorPanel({
             </TableBody>
           </Table>
         </TableShell>
+        <TablePagination
+          total={fuelPage.total}
+          page={fuelPage.page}
+          onPageChange={fuelPage.setPage}
+        />
       </section>
 
       <Dialog open={maintOpen} onOpenChange={setMaintOpen}>

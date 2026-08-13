@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import type { SolarMonitoringLog, SolarSpecs } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
+import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { RecordViewDialog } from "@/components/dashboard/record-view-dialog";
 import {
@@ -104,6 +106,8 @@ export function SolarPanel({
 
   const specsSorted = useMemo(() => sortNewestFirst(specs), [specs]);
   const logsSorted = useMemo(() => sortNewestFirst(logs), [logs]);
+  const specsPage = usePagedRows(specsSorted);
+  const logsPage = usePagedRows(logsSorted);
 
   async function saveSpecs() {
     setSaving(true);
@@ -272,7 +276,7 @@ export function SolarPanel({
                   </TableCell>
                 </TableRow>
               ) : (
-                specsSorted.map((row) => (
+                specsPage.pageRows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
                       <CellText>{row.panel_capacity_kw ?? "—"}</CellText>
@@ -358,6 +362,11 @@ export function SolarPanel({
             </TableBody>
           </Table>
         </TableShell>
+        <TablePagination
+          total={specsPage.total}
+          page={specsPage.page}
+          onPageChange={specsPage.setPage}
+        />
       </section>
 
       <section className="space-y-4">
@@ -402,7 +411,7 @@ export function SolarPanel({
                   </TableCell>
                 </TableRow>
               ) : (
-                logsSorted.map((row) => (
+                logsPage.pageRows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
                       <CellText>{row.log_date}</CellText>
@@ -482,6 +491,11 @@ export function SolarPanel({
             </TableBody>
           </Table>
         </TableShell>
+        <TablePagination
+          total={logsPage.total}
+          page={logsPage.page}
+          onPageChange={logsPage.setPage}
+        />
       </section>
 
       <RecordViewDialog

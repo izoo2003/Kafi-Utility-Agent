@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import type { UtilityAccount, UtilityType } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
+import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
+import { TablePagination } from "@/components/dashboard/table-pagination";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { formatDateTime } from "@/lib/format/datetime";
 import {
@@ -73,6 +75,7 @@ export function UtilitiesPanel({
   const [saving, setSaving] = useState(false);
 
   const sorted = useMemo(() => sortNewestFirst(items), [items]);
+  const { page, setPage, pageRows, total } = usePagedRows(sorted);
 
   function openCreate() {
     setEditing(null);
@@ -179,7 +182,7 @@ export function UtilitiesPanel({
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((item) => (
+              pageRows.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <Badge variant="secondary">{item.utility_type}</Badge>
@@ -239,6 +242,7 @@ export function UtilitiesPanel({
           </TableBody>
         </Table>
       </TableShell>
+      <TablePagination total={total} page={page} onPageChange={setPage} />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">

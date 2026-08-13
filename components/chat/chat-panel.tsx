@@ -47,6 +47,14 @@ function applyConfirmations(
   setPendingQueue(list.slice(1));
 }
 
+function formatToolsUsed(tools: string[]): string {
+  const counts = new Map<string, number>();
+  for (const t of tools) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return [...counts.entries()]
+    .map(([name, n]) => (n > 1 ? `${name} × ${n}` : name))
+    .join(", ");
+}
+
 export function ChatPanel() {
   const {
     messages,
@@ -346,18 +354,18 @@ export function ChatPanel() {
     }
   }
 
-  function cancelPending() {
+  function leavePending() {
     if (!pending || loading) return;
     const skipped = 1 + pendingQueue.length;
     setMessages((prev) => [
       ...prev,
-      { role: "user", content: "Cancel that change." },
+      { role: "user", content: "Leave — discard pending confirms." },
       {
         role: "assistant",
         content:
           skipped > 1
-            ? `Cancelled — nothing was changed (${skipped} pending records discarded).`
-            : "Cancelled — nothing was changed.",
+            ? `Left as-is — nothing was saved (${skipped} pending records discarded).`
+            : "Left as-is — nothing was saved.",
       },
     ]);
     setPending(null);
@@ -457,58 +465,6 @@ export function ChatPanel() {
           ))
         )}
 
-        {pending && !loading ? (
-          <div className="mr-auto max-w-[92%] space-y-3 rounded-2xl border border-[oklch(0.82_0.06_85)] bg-[oklch(0.98_0.03_95)] px-3.5 py-3 sm:max-w-[85%]">
-            <p className="text-sm font-medium text-foreground">
-              {queueTotal > 1
-                ? `Confirm record 1 of ${queueTotal}?`
-                : "Confirm this change?"}
-            </p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {pending.summary}
-            </p>
-            {queueTotal > 1 ? (
-              <p className="text-xs text-muted-foreground">
-                {pendingQueue.length} more after this. Use Confirm all to save
-                every pending record in one click. Cancel discards all
-                remaining.
-              </p>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => void confirmPending()}
-                className="gap-1.5"
-              >
-                <Check className="size-3.5" />
-                Confirm
-              </Button>
-              {queueTotal > 1 ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void confirmAllPending()}
-                  className="gap-1.5"
-                >
-                  <CheckCheck className="size-3.5" />
-                  Confirm all ({queueTotal})
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={cancelPending}
-                className="gap-1.5"
-              >
-                <X className="size-3.5" />
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
         {loading ? (
           <div className="mr-auto inline-flex items-center gap-2 rounded-2xl border border-[oklch(0.9_0.02_220)] bg-[oklch(0.985_0.01_220)] px-3.5 py-2.5 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
@@ -525,8 +481,63 @@ export function ChatPanel() {
         <div ref={bottomRef} />
       </div>
 
+      {pending && !loading ? (
+        <div className="shrink-0 space-y-3 border-t border-[oklch(0.82_0.06_85)] bg-[oklch(0.98_0.03_95)] px-3 py-3 sm:px-4">
+          <p className="text-sm font-medium text-foreground">
+            {queueTotal > 1
+              ? `Confirm record 1 of ${queueTotal}?`
+              : "Confirm this change?"}
+          </p>
+          <p className="max-h-20 overflow-y-auto text-sm leading-relaxed text-muted-foreground">
+            {pending.summary}
+          </p>
+          {queueTotal > 1 ? (
+            <p className="text-xs text-muted-foreground">
+              {pendingQueue.length} more after this. Confirm saves one; Confirm
+              all saves every pending record; Leave discards all without saving.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Confirm saves this record; Leave discards it without saving.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void confirmPending()}
+              className="gap-1.5"
+            >
+              <Check className="size-3.5" />
+              Confirm
+            </Button>
+            {queueTotal > 1 ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void confirmAllPending()}
+                className="gap-1.5"
+              >
+                <CheckCheck className="size-3.5" />
+                Confirm all ({queueTotal})
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={leavePending}
+              className="gap-1.5"
+            >
+              <X className="size-3.5" />
+              Leave
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {(error || toolsUsed.length > 0 || modelUsed || keyLabel) && (
-        <div className="space-y-1 border-t border-[oklch(0.92_0.015_220)] px-4 py-2 text-xs">
+        <div className="shrink-0 space-y-1 border-t border-[oklch(0.92_0.015_220)] px-4 py-2 text-xs">
           {error ? (
             <p className="text-destructive" role="alert">
               {error}
@@ -540,7 +551,7 @@ export function ChatPanel() {
           ) : null}
           {toolsUsed.length > 0 ? (
             <p className="text-muted-foreground">
-              Tools used: {toolsUsed.join(", ")}
+              Tools used: {formatToolsUsed(toolsUsed)}
             </p>
           ) : null}
         </div>

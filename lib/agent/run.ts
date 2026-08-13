@@ -95,7 +95,11 @@ async function runWithModel(
     if (!functionCalls?.length) {
       const text = result.response.text()?.trim();
       return {
-        reply: text || "I couldn’t produce a response. Try asking again.",
+        reply:
+          text ||
+          (pendingConfirmations.length
+            ? `Found ${pendingConfirmations.length} record${pendingConfirmations.length === 1 ? "" : "s"} ready to review. Use Confirm, Confirm all, or Leave below.`
+            : "I couldn’t produce a response. Try asking again."),
         toolsUsed,
         model: modelName,
         pendingConfirmations,
@@ -111,6 +115,7 @@ async function runWithModel(
           ctx,
           call.name,
           (call.args ?? {}) as Record<string, unknown>,
+          { allowConfirm: false },
         );
         const pending = extractPendingConfirmation(toolResult);
         if (pending) {
@@ -139,12 +144,24 @@ async function runWithModel(
       }
     }
 
+    // Stop as soon as writes need UI confirmation — do not let the model
+    // continue and attempt confirmed=true on its own.
+    if (pendingConfirmations.length > 0) {
+      return {
+        reply: `Found ${pendingConfirmations.length} record${pendingConfirmations.length === 1 ? "" : "s"} from your file. Nothing is saved yet — use Confirm (one), Confirm all, or Leave below.`,
+        toolsUsed,
+        model: modelName,
+        pendingConfirmations,
+      };
+    }
+
     result = await chat.sendMessage(responseParts);
   }
 
   return {
-    reply:
-      "I hit the tool-call limit while looking that up. Ask a narrower question, or try again.",
+    reply: pendingConfirmations.length
+      ? `Found ${pendingConfirmations.length} record${pendingConfirmations.length === 1 ? "" : "s"} ready to review. Use Confirm, Confirm all, or Leave below.`
+      : "I hit the tool-call limit while looking that up. Ask a narrower question, or try again.",
     toolsUsed,
     model: modelName,
     pendingConfirmations,
@@ -238,6 +255,7 @@ export async function confirmAgentWrite(
     { supabase, user },
     tool,
     { ...args, confirmed: true },
+    { allowConfirm: true },
   );
 
   if (

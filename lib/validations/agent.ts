@@ -41,7 +41,7 @@ export const agentChatRequestSchema = z
     images: z.array(chatAttachmentSchema).max(8).optional(),
     confirmWrite: confirmWriteSchema.optional(),
     /** Confirm many queued writes in one request (Confirm all). */
-    confirmWrites: z.array(confirmWriteSchema).min(1).max(120).optional(),
+    confirmWrites: z.array(confirmWriteSchema).min(1).max(500).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.confirmWrite || v.confirmWrites?.length) return;

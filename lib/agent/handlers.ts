@@ -69,9 +69,14 @@ export async function executeAgentTool(
   ctx: AgentToolContext,
   name: string,
   input: Record<string, unknown>,
+  options?: { allowConfirm?: boolean },
 ): Promise<unknown> {
   if (isWriteTool(name)) {
-    return executeWriteTool(ctx, name as WriteToolName, input);
+    // Model-invoked writes must never self-confirm; only the UI confirm path may.
+    const safeInput = options?.allowConfirm
+      ? input
+      : { ...input, confirmed: false };
+    return executeWriteTool(ctx, name as WriteToolName, safeInput);
   }
 
   const { supabase } = ctx;
