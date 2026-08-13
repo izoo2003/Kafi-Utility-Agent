@@ -16,7 +16,6 @@ import { TablePagination } from "@/components/dashboard/table-pagination";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { formatDate } from "@/lib/format/datetime";
 import {
-  CellPrimary,
   CellText,
   TableActions,
   TableShell,
@@ -44,6 +43,7 @@ import {
 import {
   SITE_UTILITY_PROVIDERS,
   providerByKey,
+  providerByLabel,
   type SiteUtilityProviderKey,
 } from "@/lib/utilities/providers";
 import {
@@ -54,7 +54,6 @@ import {
 import { cn } from "@/lib/utils";
 
 type AccountForm = {
-  providerKey: SiteUtilityProviderKey | "";
   account_number: string;
   monthly_avg_cost: string;
   contact_person: string;
@@ -68,7 +67,6 @@ type PayForm = {
 };
 
 const emptyAccount = (): AccountForm => ({
-  providerKey: "",
   account_number: "",
   monthly_avg_cost: "",
   contact_person: "",
@@ -124,6 +122,37 @@ function statusBadge(
   }
 }
 
+/** Prefer exact provider label match; if duplicates, newest account. */
+function accountForProvider(
+  items: UtilityAccount[],
+  key: SiteUtilityProviderKey,
+): UtilityAccount | null {
+  const provider = providerByKey(key);
+  if (!provider) return null;
+  const matches = items.filter((item) => {
+    const byLabel = providerByLabel(item.provider);
+    return byLabel?.key === key;
+  });
+  if (!matches.length) {
+    // Fallback: type-only for unique types (not internet — PTCL + Jazz share it)
+    if (provider.utility_type !== "internet") {
+      const byType = items.filter(
+        (i) => i.utility_type === provider.utility_type,
+      );
+      return (
+        [...byType].sort((a, b) =>
+          b.updated_at.localeCompare(a.updated_at),
+        )[0] ?? null
+      );
+    }
+    return null;
+  }
+  return (
+    [...matches].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ??
+    null
+  );
+}
+
 export function UtilitiesPanel({
   initialItems,
   initialPayments,
@@ -134,110 +163,84 @@ export function UtilitiesPanel({
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [payments, setPayments] = useState(initialPayments);
+  const [selectedKey, setSelectedKey] = useState<SiteUtilityProviderKey>(
+    SITE_UTILITY_PROVIDERS[0]!.key,
+  );
 
   const [accountOpen, setAccountOpen] = useState(false);
-  const [editing, setEditing] = useState<UtilityAccount | null>(null);
   const [accountForm, setAccountForm] = useState<AccountForm>(emptyAccount);
 
   const [payOpen, setPayOpen] = useState(false);
-  const [payAccount, setPayAccount] = useState<UtilityAccount | null>(null);
   const [payForm, setPayForm] = useState<PayForm>(emptyPay);
-
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyAccount, setHistoryAccount] = useState<UtilityAccount | null>(
-    null,
-  );
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [ensuring, setEnsuring] = useState(false);
 
-  const paymentsByAccount = useMemo(() => {
-    const map = new Map<string, UtilityPaymentLog[]>();
-    for (const p of payments) {
-      const list = map.get(p.utility_account_id) ?? [];
-      list.push(p);
-      map.set(p.utility_account_id, list);
-    }
-    return map;
-  }, [payments]);
-
-  const rows = useMemo(() => {
-    const today = todayIso();
-    const order = new Map(
-      SITE_UTILITY_PROVIDERS.map((p, i) => [p.label.toLowerCase(), i]),
-    );
-    return [...items]
-      .map((account) => {
-        const last = latestPayment(paymentsByAccount.get(account.id) ?? []);
-        const nextDue = last ? nextDueFromLastPaid(last.paid_on) : null;
-        const status = billStatus(nextDue, today);
-        return { account, last, nextDue, status };
-      })
-      .sort((a, b) => {
-        const ai =
-          order.get((a.account.provider ?? "").toLowerCase()) ?? 99;
-        const bi =
-          order.get((b.account.provider ?? "").toLowerCase()) ?? 99;
-        return ai - bi;
-      });
-  }, [items, paymentsByAccount]);
-
-  const sortedForPage = useMemo(
-    () => rows.map((r) => r.account),
-    [rows],
+  const selectedProvider = providerByKey(selectedKey)!;
+  const account = useMemo(
+    () => accountForProvider(items, selectedKey),
+    [items, selectedKey],
   );
-  // page over composed rows, not raw accounts
-  const { page, setPage, pageRows: pageAccounts, total } =
-    usePagedRows(sortedForPage);
-  const pageRows = useMemo(() => {
-    const ids = new Set(pageAccounts.map((a) => a.id));
-    return rows.filter((r) => ids.has(r.account.id));
-  }, [pageAccounts, rows]);
 
-  const historyLogs = useMemo(() => {
-    if (!historyAccount) return [];
+  const accountPayments = useMemo(() => {
+    if (!account) return [];
     return sortNewestFirst(
-      (paymentsByAccount.get(historyAccount.id) ?? []).map((p) => ({
-        ...p,
-        created_at: p.created_at,
-      })),
+      payments.filter((p) => p.utility_account_id === account.id),
     ).sort((a, b) => b.paid_on.localeCompare(a.paid_on));
-  }, [historyAccount, paymentsByAccount]);
+  }, [payments, account]);
 
-  function openCreate() {
-    setEditing(null);
-    setAccountForm(emptyAccount());
+  const { page, setPage, pageRows, total } = usePagedRows(accountPayments);
+
+  const last = latestPayment(accountPayments);
+  const nextDue = last ? nextDueFromLastPaid(last.paid_on) : null;
+  const status = billStatus(nextDue, todayIso());
+  const badge = statusBadge(status);
+
+  async function ensureSelectedAccount(): Promise<UtilityAccount | null> {
+    if (account) return account;
+    setEnsuring(true);
     setError(null);
-    setAccountOpen(true);
+    try {
+      const data = await apiFetch<UtilityAccount>("/api/utilities", {
+        method: "POST",
+        body: JSON.stringify({
+          utility_type: selectedProvider.utility_type,
+          provider: selectedProvider.label,
+          billing_cycle: selectedProvider.billing_cycle,
+          notes: `Site ${selectedProvider.label} bill. Next due = last paid + 1 month.`,
+        }),
+      });
+      setItems((prev) => upsertById(prev, data));
+      return data;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not create account");
+      return null;
+    } finally {
+      setEnsuring(false);
+    }
   }
 
-  function openEdit(item: UtilityAccount) {
-    const match = SITE_UTILITY_PROVIDERS.find(
-      (p) =>
-        p.label.toLowerCase() === (item.provider ?? "").toLowerCase() ||
-        p.utility_type === item.utility_type,
-    );
-    setEditing(item);
+  function openEdit() {
+    if (!account) return;
     setAccountForm({
-      providerKey: (match?.key ?? "") as SiteUtilityProviderKey | "",
-      account_number: item.account_number ?? "",
+      account_number: account.account_number ?? "",
       monthly_avg_cost:
-        item.monthly_avg_cost == null ? "" : String(item.monthly_avg_cost),
-      contact_person: item.contact_person ?? "",
-      notes: item.notes ?? "",
+        account.monthly_avg_cost == null ? "" : String(account.monthly_avg_cost),
+      contact_person: account.contact_person ?? "",
+      notes: account.notes ?? "",
     });
     setError(null);
     setAccountOpen(true);
   }
 
-  function openPay(account: UtilityAccount) {
-    setPayAccount(account);
+  async function openPay() {
+    const acct = await ensureSelectedAccount();
+    if (!acct) return;
     setPayForm({
       paid_on: todayIso(),
       amount:
-        account.monthly_avg_cost == null
-          ? ""
-          : String(account.monthly_avg_cost),
+        acct.monthly_avg_cost == null ? "" : String(acct.monthly_avg_cost),
       notes: "",
     });
     setError(null);
@@ -245,22 +248,14 @@ export function UtilitiesPanel({
   }
 
   async function saveAccount() {
-    if (!accountForm.providerKey && !editing) {
-      setError("Select a utility from the dropdown.");
-      return;
-    }
+    if (!account) return;
     setSaving(true);
     setError(null);
     try {
-      const provider = accountForm.providerKey
-        ? providerByKey(accountForm.providerKey)
-        : null;
       const payload = {
-        utility_type: (provider?.utility_type ??
-          editing?.utility_type ??
-          "internet") as UtilityType,
-        provider: provider?.label ?? editing?.provider ?? "",
-        billing_cycle: provider?.billing_cycle ?? "monthly",
+        utility_type: account.utility_type as UtilityType,
+        provider: selectedProvider.label,
+        billing_cycle: selectedProvider.billing_cycle,
         account_number: accountForm.account_number,
         monthly_avg_cost:
           accountForm.monthly_avg_cost === ""
@@ -269,19 +264,11 @@ export function UtilitiesPanel({
         contact_person: accountForm.contact_person,
         notes: accountForm.notes,
       };
-      if (editing) {
-        const data = await apiFetch<UtilityAccount>(
-          `/api/utilities/${editing.id}`,
-          { method: "PATCH", body: JSON.stringify(payload) },
-        );
-        setItems((prev) => prev.map((i) => (i.id === data.id ? data : i)));
-      } else {
-        const data = await apiFetch<UtilityAccount>("/api/utilities", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        setItems((prev) => upsertById(prev, data));
-      }
+      const data = await apiFetch<UtilityAccount>(
+        `/api/utilities/${account.id}`,
+        { method: "PATCH", body: JSON.stringify(payload) },
+      );
+      setItems((prev) => prev.map((i) => (i.id === data.id ? data : i)));
       setAccountOpen(false);
       router.refresh();
     } catch (e) {
@@ -292,7 +279,8 @@ export function UtilitiesPanel({
   }
 
   async function savePayment() {
-    if (!payAccount || !payForm.paid_on) {
+    const acct = account ?? (await ensureSelectedAccount());
+    if (!acct || !payForm.paid_on) {
       setError("Paid date is required.");
       return;
     }
@@ -302,7 +290,7 @@ export function UtilitiesPanel({
       const data = await apiFetch<UtilityPaymentLog>("/api/utilities/payments", {
         method: "POST",
         body: JSON.stringify({
-          utility_account_id: payAccount.id,
+          utility_account_id: acct.id,
           paid_on: payForm.paid_on,
           amount: payForm.amount === "" ? null : Number(payForm.amount),
           notes: payForm.notes,
@@ -312,13 +300,14 @@ export function UtilitiesPanel({
       if (payForm.amount !== "") {
         setItems((prev) =>
           prev.map((a) =>
-            a.id === payAccount.id
+            a.id === acct.id
               ? { ...a, monthly_avg_cost: Number(payForm.amount) }
               : a,
           ),
         );
       }
       setPayOpen(false);
+      setPage(1);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not log payment");
@@ -332,123 +321,175 @@ export function UtilitiesPanel({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title="Internet & utilities"
-          description="K-Electric, PTCL, SSGC, KWSB, and Jazz — log each payment; next due is one month later. Dates: DD/MM/YYYY."
+          description="Pick a utility from the dropdown, then log payments. Next due is one month after last paid. Dates: DD/MM/YYYY."
           icon="utilities"
           accent="slate"
         />
         <div className="flex shrink-0 flex-col items-stretch gap-2 self-start sm:items-end">
           <ExportButtons resource="utilities" />
-          <Button onClick={openCreate}>Add account</Button>
         </div>
       </div>
 
-      <TableShell>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[18%]">Utility</TableHead>
-              <TableHead className="w-[12%]">Type</TableHead>
-              <TableHead className="w-[14%]">Last paid</TableHead>
-              <TableHead className="w-[14%]">Next due</TableHead>
-              <TableHead className="w-[12%]">Status</TableHead>
-              <TableHead className="w-[12%]">Amount</TableHead>
-              <TableHead className="w-[18%] text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {pageRows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="max-w-none py-8 text-center text-muted-foreground"
-                >
-                  No utility accounts yet. Run the latest migration, then refresh.
-                </TableCell>
-              </TableRow>
+      <div className="space-y-2 rounded-xl border border-[oklch(0.88_0.02_220)] bg-[oklch(0.985_0.01_220)] px-4 py-4 sm:px-5">
+        <Label htmlFor="utility-select">Utility</Label>
+        <select
+          id="utility-select"
+          className="flex h-10 w-full max-w-md rounded-lg border border-input bg-white px-3 text-sm"
+          value={selectedKey}
+          onChange={(e) => {
+            setSelectedKey(e.target.value as SiteUtilityProviderKey);
+            setPage(1);
+            setError(null);
+          }}
+        >
+          {SITE_UTILITY_PROVIDERS.map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Showing one utility at a time — K-Electric, PTCL, SSGC, KWSB, or Jazz.
+        </p>
+      </div>
+
+      <div
+        className={cn(
+          "space-y-3 rounded-xl border px-4 py-4 sm:px-5",
+          status === "overdue" || status === "due_today"
+            ? "border-[oklch(0.82_0.08_25)] bg-[oklch(0.97_0.02_25)]"
+            : "border-[oklch(0.88_0.02_220)] bg-white/70",
+        )}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-medium">{selectedProvider.label}</h2>
+              <Badge variant="secondary">{selectedProvider.utility_type}</Badge>
+              <span
+                className={cn(
+                  "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
+                  badge.className,
+                )}
+              >
+                {badge.label}
+              </span>
+            </div>
+            {account?.account_number ? (
+              <p className="text-sm text-muted-foreground">
+                Account #{account.account_number}
+              </p>
             ) : (
-              pageRows.map(({ account, last, nextDue, status }) => {
-                const badge = statusBadge(status);
-                return (
-                  <TableRow key={account.id}>
+              <p className="text-sm text-muted-foreground">
+                {account
+                  ? "No account number set — use Edit details if needed."
+                  : "No record yet — Log payment will create it."}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => void openPay()}
+              disabled={ensuring || saving}
+            >
+              {ensuring ? "Preparing…" : "Log payment"}
+            </Button>
+            {account ? (
+              <Button variant="outline" onClick={openEdit}>
+                Edit details
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Last paid</p>
+            <p className="text-sm font-medium">
+              {last ? formatDate(last.paid_on) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Next due</p>
+            <p className="text-sm font-medium">
+              {nextDue ? formatDate(nextDue) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Last amount</p>
+            <p className="text-sm font-medium">
+              {last?.amount != null
+                ? formatMoney(Number(last.amount))
+                : account?.monthly_avg_cost != null
+                  ? formatMoney(Number(account.monthly_avg_cost))
+                  : "—"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {error && !payOpen && !accountOpen ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      <section className="space-y-3">
+        <h3 className="text-base font-medium">
+          Payment history — {selectedProvider.label}
+        </h3>
+        <TableShell>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[25%]">Paid on</TableHead>
+                <TableHead className="w-[25%]">Next due</TableHead>
+                <TableHead className="w-[20%]">Amount</TableHead>
+                <TableHead className="w-[20%]">Notes</TableHead>
+                <TableHead className="w-[10%] text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {!account || accountPayments.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="max-w-none py-8 text-center text-muted-foreground"
+                  >
+                    No payments for {selectedProvider.label} yet. Use Log
+                    payment after each bill is paid.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                pageRows.map((log) => (
+                  <TableRow key={log.id}>
                     <TableCell>
-                      <CellPrimary
-                        title={account.provider ?? "—"}
-                        subtitle={
-                          account.account_number
-                            ? `#${account.account_number}`
-                            : null
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{account.utility_type}</Badge>
+                      <CellText>{formatDate(log.paid_on)}</CellText>
                     </TableCell>
                     <TableCell>
                       <CellText>
-                        {last ? formatDate(last.paid_on) : "—"}
+                        {formatDate(nextDueFromLastPaid(log.paid_on))}
                       </CellText>
                     </TableCell>
                     <TableCell>
                       <CellText>
-                        {nextDue ? formatDate(nextDue) : "—"}
+                        {log.amount == null
+                          ? "—"
+                          : formatMoney(Number(log.amount))}
                       </CellText>
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={cn(
-                          "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
-                          badge.className,
-                        )}
-                      >
-                        {badge.label}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <CellText>
-                        {last?.amount != null
-                          ? formatMoney(Number(last.amount))
-                          : account.monthly_avg_cost != null
-                            ? formatMoney(Number(account.monthly_avg_cost))
-                            : "—"}
-                      </CellText>
+                      <CellText>{log.notes ?? "—"}</CellText>
                     </TableCell>
                     <TableCell className="max-w-none">
                       <TableActions>
-                        <Button
-                          size="sm"
-                          onClick={() => openPay(account)}
-                        >
-                          Log payment
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setHistoryAccount(account);
-                            setHistoryOpen(true);
-                          }}
-                        >
-                          History
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEdit(account)}
-                        >
-                          Edit
-                        </Button>
                         <ConfirmDeleteButton
                           onConfirm={async () => {
-                            await apiFetch(`/api/utilities/${account.id}`, {
+                            await apiFetch(`/api/utilities/payments/${log.id}`, {
                               method: "DELETE",
                             });
-                            setItems((prev) =>
-                              prev.filter((i) => i.id !== account.id),
-                            );
                             setPayments((prev) =>
-                              prev.filter(
-                                (p) => p.utility_account_id !== account.id,
-                              ),
+                              prev.filter((p) => p.id !== log.id),
                             );
                             router.refresh();
                           }}
@@ -456,49 +497,22 @@ export function UtilitiesPanel({
                       </TableActions>
                     </TableCell>
                   </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableShell>
-      <TablePagination total={total} page={page} onPageChange={setPage} />
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableShell>
+        {account && accountPayments.length > 0 ? (
+          <TablePagination total={total} page={page} onPageChange={setPage} />
+        ) : null}
+      </section>
 
       <Dialog open={accountOpen} onOpenChange={setAccountOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {editing ? "Edit utility account" : "Add utility account"}
-            </DialogTitle>
+            <DialogTitle>Edit {selectedProvider.label}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="provider">Utility</Label>
-              <select
-                id="provider"
-                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-                value={accountForm.providerKey}
-                disabled={Boolean(editing)}
-                onChange={(e) =>
-                  setAccountForm((p) => ({
-                    ...p,
-                    providerKey: e.target.value as SiteUtilityProviderKey | "",
-                  }))
-                }
-              >
-                <option value="">Select utility…</option>
-                {SITE_UTILITY_PROVIDERS.map((p) => (
-                  <option key={p.key} value={p.key}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-              {editing ? (
-                <p className="text-xs text-muted-foreground">
-                  Provider is fixed for site bills ({editing.provider}).
-                </p>
-              ) : null}
-            </div>
             <div className="space-y-2">
               <Label>Account number</Label>
               <Input
@@ -568,13 +582,10 @@ export function UtilitiesPanel({
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              Log payment
-              {payAccount?.provider ? ` — ${payAccount.provider}` : ""}
-            </DialogTitle>
+            <DialogTitle>Log payment — {selectedProvider.label}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Next due will be set to one month after this paid date.
+            Next due will be one month after this paid date.
           </p>
           <div className="grid gap-3">
             <div className="space-y-2">
@@ -623,62 +634,6 @@ export function UtilitiesPanel({
               disabled={saving || !payForm.paid_on}
             >
               {saving ? "Saving…" : "Save payment"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              Payment history
-              {historyAccount?.provider ? ` — ${historyAccount.provider}` : ""}
-            </DialogTitle>
-          </DialogHeader>
-          {historyLogs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No payments logged yet. Use Log payment to add the last paid bill.
-            </p>
-          ) : (
-            <ul className="max-h-72 space-y-2 overflow-y-auto">
-              {historyLogs.map((log) => (
-                <li
-                  key={log.id}
-                  className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2 text-sm"
-                >
-                  <div>
-                    <p className="font-medium">{formatDate(log.paid_on)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Next due {formatDate(nextDueFromLastPaid(log.paid_on))}
-                      {log.notes ? ` · ${log.notes}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>
-                      {log.amount == null
-                        ? "—"
-                        : formatMoney(Number(log.amount))}
-                    </span>
-                    <ConfirmDeleteButton
-                      onConfirm={async () => {
-                        await apiFetch(`/api/utilities/payments/${log.id}`, {
-                          method: "DELETE",
-                        });
-                        setPayments((prev) =>
-                          prev.filter((p) => p.id !== log.id),
-                        );
-                        router.refresh();
-                      }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setHistoryOpen(false)}>
-              Close
             </Button>
           </DialogFooter>
         </DialogContent>
