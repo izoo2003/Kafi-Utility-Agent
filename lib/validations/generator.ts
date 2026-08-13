@@ -4,6 +4,7 @@ import {
   optionalNumber,
   optionalText,
   requiredDate,
+  requiredNumber,
 } from "@/lib/validations/helpers";
 
 export const generatorCheckupStatusSchema = z.enum(["done", "not_done"]);
@@ -16,6 +17,9 @@ export const generatorMaintenanceInsertSchema = z.object({
   cost: optionalNumber.pipe(z.union([z.number().nonnegative(), z.null()])),
   notes: optionalText,
   checkup_status: generatorCheckupStatusSchema.optional(),
+  hour_meter: optionalNumber.pipe(
+    z.union([z.number().nonnegative(), z.null()]),
+  ),
 });
 
 export const generatorMaintenanceUpdateSchema =
@@ -39,6 +43,20 @@ export const generatorFuelLogInsertSchema = z.object({
 });
 
 export const generatorFuelLogUpdateSchema = generatorFuelLogInsertSchema
+  .partial()
+  .extend({
+    id: z.string().uuid().optional(),
+  });
+
+export const generatorRunLogInsertSchema = z.object({
+  run_date: requiredDate,
+  hours_run: requiredNumber.pipe(z.number().positive()),
+  started_at: optionalText,
+  ended_at: optionalText,
+  notes: optionalText,
+});
+
+export const generatorRunLogUpdateSchema = generatorRunLogInsertSchema
   .partial()
   .extend({
     id: z.string().uuid().optional(),

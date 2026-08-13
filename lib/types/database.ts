@@ -56,6 +56,8 @@ export type GeneratorMaintenance = AuditColumns & {
   notes: string | null;
   /** Monthly checkup completed (done) or still pending (not_done). */
   checkup_status: GeneratorCheckupStatus;
+  /** Hour-meter reading at service time (oil-change interval tracking). */
+  hour_meter: number | null;
 };
 
 export type GeneratorFuelLog = AuditColumns & {
@@ -64,6 +66,15 @@ export type GeneratorFuelLog = AuditColumns & {
   running_hours: number | null;
   fuel_level_pct: number | null;
   cost: number | null;
+  notes: string | null;
+};
+
+/** Manual generator run during an outage (not live telemetry). */
+export type GeneratorRunLog = AuditColumns & {
+  run_date: IsoDate;
+  hours_run: number;
+  started_at: IsoTimestamptz | null;
+  ended_at: IsoTimestamptz | null;
   notes: string | null;
 };
 
@@ -187,6 +198,11 @@ export type Database = {
       it_equipment: { Row: ItEquipment; Insert: ItEquipmentInsert; Update: ItEquipmentUpdate };
       generator_maintenance: { Row: GeneratorMaintenance; Insert: GeneratorMaintenanceInsert; Update: GeneratorMaintenanceUpdate };
       generator_fuel_log: { Row: GeneratorFuelLog; Insert: GeneratorFuelLogInsert; Update: GeneratorFuelLogUpdate };
+      generator_run_log: {
+        Row: GeneratorRunLog;
+        Insert: GeneratorRunLogInsert;
+        Update: GeneratorRunLogUpdate;
+      };
       generator_expenses: { Row: GeneratorExpense; Insert: GeneratorExpenseInsert; Update: GeneratorExpenseUpdate };
       solar_specs: { Row: SolarSpecs; Insert: SolarSpecsInsert; Update: SolarSpecsUpdate };
       solar_monitoring_log: { Row: SolarMonitoringLog; Insert: SolarMonitoringLogInsert; Update: SolarMonitoringLogUpdate };
@@ -232,6 +248,12 @@ export type GeneratorFuelLogInsert = Partial<OmitAuditOnWrite<GeneratorFuelLog>>
   log_date: IsoDate;
 };
 export type GeneratorFuelLogUpdate = Partial<OmitAuditOnWrite<GeneratorFuelLog>>;
+
+export type GeneratorRunLogInsert = Partial<OmitAuditOnWrite<GeneratorRunLog>> & {
+  run_date: IsoDate;
+  hours_run: number;
+};
+export type GeneratorRunLogUpdate = Partial<OmitAuditOnWrite<GeneratorRunLog>>;
 
 export type GeneratorExpenseInsert = Partial<OmitAuditOnWrite<GeneratorExpense>> & {
   expense_date: IsoDate;

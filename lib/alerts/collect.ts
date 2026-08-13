@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   GeneratorMaintenance,
+  GeneratorRunLog,
   ItEquipment,
   KitchenInventory,
   SolarLiveSnapshot,
@@ -19,6 +20,12 @@ import {
   latestPayment,
   nextDueFromLastPaid,
 } from "@/lib/utilities/billing";
+import {
+  OIL_CHANGE_INTERVAL_HOURS,
+  hoursRunSinceOilChange,
+  lastOilChangeRecord,
+  oilChangeStatus,
+} from "@/lib/generator/oil-change";
 import { formatDate } from "@/lib/format/datetime";
 
 const WARRANTY_WARNING_DAYS = 30;
@@ -45,15 +52,17 @@ function daysUntil(dateIso: string) {
 export async function collectOpsAlerts(
   supabase: SupabaseClient,
 ): Promise<OpsAlert[]> {
-  const [kitchen, it, maintenance, solar, live, utilities, payments] =
+  const [kitchen, it, maintenance, runs, solar, live, utilities, payments] =
     await Promise.all([
       supabase.from("kitchen_inventory").select("*"),
       supabase.from("it_equipment").select("*"),
       supabase
         .from("generator_maintenance")
         .select("*")
-        .not("next_service_due", "is", null)
-        .order("next_service_due", { ascending: true }),
+        .order("service_date", { ascending: false }),
+      supabase
+        .from("generator_run_log")
+        .select("run_date, hours_run"),
       supabase
         .from("solar_monitoring_log")
         .select("*")
@@ -114,7 +123,9 @@ export async function collectOpsAlerts(
   {
     const rows = (maintenance.data ?? []) as GeneratorMaintenance[];
     const notDone = rows.filter(
-      (r) => r.checkup_status === "not_done" && (r.next_service_due || r.service_date),
+      (r) =>
+        r.checkup_status === "not_done" &&
+        (r.next_service_due || r.service_date),
     );
     const latestDone = [...rows]
       .filter((r) => r.checkup_status === "done")
@@ -162,6 +173,47 @@ export async function collectOpsAlerts(
           : `Next checkup due ${due} (${remaining} day${remaining === 1 ? "" : "s"}) — last done ${latestDone.service_date}.`,
         href: "/dashboard/generator",
       });
+    }
+
+    // Oil change: every 200h of logged outage/run time (not live)
+    if (
+      !runs.error ||
+      !/generator_run_log|does not exist|schema cache/i.test(
+        runs.error.message,
+      )
+    ) {
+      const lastOil = lastOilChangeRecord(rows);
+      const since = hoursRunSinceOilChange(
+        (runs.data ?? []) as Pick<GeneratorRunLog, "run_date" | "hours_run">[],
+        lastOil?.service_date ?? null,
+      );
+      const { due, remaining } = oilChangeStatus(since);
+      if (due) {
+        alerts.push({
+          id: "generator-oil-change",
+          domain: "generator",
+          severity: "critical",
+          title: "Generator oil change needed",
+          detail: lastOil
+            ? `${since} h of outage runs logged since oil change on ${formatDate(lastOil.service_date)} (interval ${OIL_CHANGE_INTERVAL_HOURS} h).`
+            : `${since} h of outage runs logged with no oil change yet (≥ ${OIL_CHANGE_INTERVAL_HOURS} h).`,
+          href: "/dashboard/generator",
+        });
+      } else if (
+        since > 0 &&
+        remaining != null &&
+        remaining <= 20 &&
+        remaining > 0
+      ) {
+        alerts.push({
+          id: "generator-oil-change-soon",
+          domain: "generator",
+          severity: "warning",
+          title: "Generator oil change due soon",
+          detail: `About ${remaining} h of generator run time left until the ${OIL_CHANGE_INTERVAL_HOURS} h oil-change interval (${since} h logged since last oil change).`,
+          href: "/dashboard/generator",
+        });
+      }
     }
   }
 

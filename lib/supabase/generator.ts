@@ -9,6 +9,9 @@ import type {
   GeneratorMaintenance,
   GeneratorMaintenanceInsert,
   GeneratorMaintenanceUpdate,
+  GeneratorRunLog,
+  GeneratorRunLogInsert,
+  GeneratorRunLogUpdate,
 } from "@/lib/types/database";
 import {
   incomingShouldOverwrite,
@@ -18,6 +21,7 @@ import { writeErr, writeOk, type DomainWriteResult } from "@/lib/supabase/write-
 
 const MAINTENANCE = "generator_maintenance" as const;
 const FUEL = "generator_fuel_log" as const;
+const RUNS = "generator_run_log" as const;
 const EXPENSES = "generator_expenses" as const;
 
 export async function listGeneratorMaintenance(supabase: SupabaseClient) {
@@ -161,6 +165,43 @@ export async function deleteGeneratorFuelLog(
   id: string,
 ) {
   return supabase.from(FUEL).delete().eq("id", id);
+}
+
+export async function listGeneratorRunLog(supabase: SupabaseClient) {
+  return supabase
+    .from(RUNS)
+    .select("*")
+    .order("run_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .returns<GeneratorRunLog[]>();
+}
+
+export async function createGeneratorRunLog(
+  supabase: SupabaseClient,
+  input: GeneratorRunLogInsert,
+): Promise<DomainWriteResult<GeneratorRunLog>> {
+  const { data, error } = await supabase
+    .from(RUNS)
+    .insert(input)
+    .select("*")
+    .single<GeneratorRunLog>();
+  if (error) return writeErr(error.message);
+  return writeOk(data, "created");
+}
+
+export async function updateGeneratorRunLog(
+  supabase: SupabaseClient,
+  id: string,
+  input: GeneratorRunLogUpdate,
+) {
+  return supabase.from(RUNS).update(input).eq("id", id).select("*").single();
+}
+
+export async function deleteGeneratorRunLog(
+  supabase: SupabaseClient,
+  id: string,
+) {
+  return supabase.from(RUNS).delete().eq("id", id);
 }
 
 export async function listGeneratorExpenses(supabase: SupabaseClient) {

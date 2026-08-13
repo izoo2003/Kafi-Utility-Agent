@@ -29,7 +29,8 @@ export const SITE_UTILITY_PROVIDERS = [
   {
     key: "jazz",
     label: "Jazz monthly bill",
-    utility_type: "mobile" as const satisfies UtilityType,
+    // Stored as internet so it works even before the 'mobile' check is applied.
+    utility_type: "internet" as const satisfies UtilityType,
     billing_cycle: "monthly",
   },
 ] as const;

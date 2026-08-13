@@ -150,7 +150,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "generator_maintenance_create",
     description:
-      "Create a generator maintenance/checkup record. If next_service_due is omitted, defaults to service_date + 1 month. checkup_status is done or not_done. Requires confirmation.",
+      "Create a generator maintenance/checkup/oil-change record. For oil changes set service_type to 'Oil change' and hour_meter to the current hour reading. Oil change is due every 200 running hours. If next_service_due is omitted for regular checkups, defaults to +1 month. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -159,7 +159,14 @@ export const agentWriteTools: FunctionDeclaration[] = [
           type: SchemaType.STRING,
           description: "YYYY-MM-DD; defaults to +1 month from service_date",
         },
-        service_type: { type: SchemaType.STRING },
+        service_type: {
+          type: SchemaType.STRING,
+          description: "e.g. Monthly checkup, Oil change",
+        },
+        hour_meter: {
+          type: SchemaType.NUMBER,
+          description: "Hour-meter reading at service (needed for oil change)",
+        },
         vendor: { type: SchemaType.STRING },
         cost: { type: SchemaType.NUMBER },
         notes: { type: SchemaType.STRING },
@@ -175,7 +182,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "generator_maintenance_update",
     description:
-      "Update a generator maintenance record (including checkup_status done/not_done). Requires confirmation.",
+      "Update a generator maintenance record (including checkup_status done/not_done and hour_meter). Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -183,6 +190,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
         service_date: { type: SchemaType.STRING },
         next_service_due: { type: SchemaType.STRING },
         service_type: { type: SchemaType.STRING },
+        hour_meter: { type: SchemaType.NUMBER },
         vendor: { type: SchemaType.STRING },
         cost: { type: SchemaType.NUMBER },
         notes: { type: SchemaType.STRING },

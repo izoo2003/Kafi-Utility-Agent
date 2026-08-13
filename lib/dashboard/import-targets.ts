@@ -89,7 +89,7 @@ export function importPromptFor(target: ImportTarget): string {
     case "utilities":
       return [
         "IMPORT TARGET: Internet & utility accounts / bill payments ONLY.",
-        "Site providers are: K-Electric (electricity), PTCL (internet), SSGC (Gas), KWSB (Water Board), Jazz monthly bill (mobile).",
+        "Site providers are: K-Electric (electricity), PTCL (internet), SSGC (Gas), KWSB (Water Board), Jazz monthly bill (internet).",
         "Prefer utility_payment_create when the sheet is a paid bill (map paid date → paid_on, amount → amount) after resolving utility_account_id via utility_accounts_list.",
         "For new accounts call utility_accounts_create with confirmed=false. Never store passwords. Do not write to other domains.",
       ].join(" ");

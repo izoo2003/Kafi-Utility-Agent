@@ -63,9 +63,9 @@ export function AlertsPanel({ alerts }: { alerts: OpsAlert[] }) {
             Alerts
           </h2>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-            Derived from inventory, warranties, generator service, solar flags,
-            and utility bills (due one month after last paid). Digests can email
-            once per alert per 24 hours.
+            Derived from inventory, warranties, generator service / oil change
+            (200 h of logged outage runs), solar flags, and utility bills.
+            Digests can email once per alert per 24 hours.
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:items-end">

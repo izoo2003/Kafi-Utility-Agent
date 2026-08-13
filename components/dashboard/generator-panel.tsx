@@ -7,12 +7,20 @@ import type {
   GeneratorExpense,
   GeneratorFuelLog,
   GeneratorMaintenance,
+  GeneratorRunLog,
 } from "@/lib/types/database";
 import {
   defaultNextServiceDue,
   nextDueFromMaintenanceRows,
 } from "@/lib/generator/maintenance";
-import { formatDate } from "@/lib/format/datetime";
+import {
+  OIL_CHANGE_INTERVAL_HOURS,
+  hoursBetween,
+  hoursRunSinceOilChange,
+  lastOilChangeRecord,
+  oilChangeStatus,
+} from "@/lib/generator/oil-change";
+import { formatDate, formatDateTime } from "@/lib/format/datetime";
 import {
   isIsoDateInRange,
   normalizeToIsoDate,
@@ -60,6 +68,7 @@ type MaintForm = {
   cost: string;
   notes: string;
   checkup_status: GeneratorCheckupStatus;
+  hour_meter: string;
 };
 
 type FuelForm = {
@@ -79,7 +88,20 @@ const emptyMaint = (): MaintForm => ({
   cost: "",
   notes: "",
   checkup_status: "done",
+  hour_meter: "",
 });
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function toDatetimeLocal(value: string | null | undefined) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 const emptyFuel = (): FuelForm => ({
   log_date: "",
@@ -112,21 +134,43 @@ function formatMoney(n: number) {
   });
 }
 
+type RunForm = {
+  run_date: string;
+  hours_run: string;
+  started_at: string;
+  ended_at: string;
+  notes: string;
+};
+
+const emptyRun = (): RunForm => ({
+  run_date: todayIso(),
+  hours_run: "",
+  started_at: "",
+  ended_at: "",
+  notes: "",
+});
+
 export function GeneratorPanel({
   initialMaintenance,
   initialFuel,
   initialExpenses,
+  initialRuns,
 }: {
   initialMaintenance: GeneratorMaintenance[];
   initialFuel: GeneratorFuelLog[];
   initialExpenses: GeneratorExpense[];
+  initialRuns: GeneratorRunLog[];
 }) {
   const router = useRouter();
   const [maintenance, setMaintenance] = useState(initialMaintenance);
   const [fuel, setFuel] = useState(initialFuel);
+  const [runs, setRuns] = useState(initialRuns);
 
   const [maintOpen, setMaintOpen] = useState(false);
   const [fuelOpen, setFuelOpen] = useState(false);
+  const [runOpen, setRunOpen] = useState(false);
+  const [editingRun, setEditingRun] = useState<GeneratorRunLog | null>(null);
+  const [runForm, setRunForm] = useState<RunForm>(emptyRun);
   const [editingMaint, setEditingMaint] =
     useState<GeneratorMaintenance | null>(null);
   const [editingFuel, setEditingFuel] = useState<GeneratorFuelLog | null>(null);
@@ -174,15 +218,30 @@ export function GeneratorPanel({
   );
   const nextDueHint = daysUntilLabel(schedule.nextDue);
 
+  const oilInfo = useMemo(() => {
+    const lastOil = lastOilChangeRecord(maintenance);
+    const since = hoursRunSinceOilChange(
+      runs,
+      lastOil?.service_date ?? null,
+    );
+    const status = oilChangeStatus(since);
+    return { lastOil, since, runCount: runs.length, ...status };
+  }, [runs, maintenance]);
+
+  const runsSorted = useMemo(() => sortNewestFirst(runs), [runs]);
+  const runsPage = usePagedRows(runsSorted);
+
   async function saveMaint() {
     setSaving(true);
     setError(null);
     try {
-      const nextDue =
-        maintForm.next_service_due ||
-        (maintForm.service_date
-          ? defaultNextServiceDue(maintForm.service_date)
-          : null);
+      const isOilChange = /oil\s*change/i.test(maintForm.service_type);
+      const nextDue = isOilChange
+        ? maintForm.next_service_due || null
+        : maintForm.next_service_due ||
+          (maintForm.service_date
+            ? defaultNextServiceDue(maintForm.service_date)
+            : null);
       const payload = {
         service_date: maintForm.service_date,
         next_service_due: nextDue,
@@ -191,6 +250,8 @@ export function GeneratorPanel({
         cost: maintForm.cost === "" ? null : Number(maintForm.cost),
         notes: maintForm.notes,
         checkup_status: maintForm.checkup_status,
+        hour_meter:
+          maintForm.hour_meter === "" ? null : Number(maintForm.hour_meter),
       };
       if (editingMaint) {
         const data = await apiFetch<GeneratorMaintenance>(
@@ -240,6 +301,68 @@ export function GeneratorPanel({
     }
   }
 
+  function syncRunHoursFromTimes(next: RunForm): RunForm {
+    if (!next.started_at || !next.ended_at) return next;
+    const hrs = hoursBetween(
+      new Date(next.started_at).toISOString(),
+      new Date(next.ended_at).toISOString(),
+    );
+    if (hrs == null) return next;
+    return { ...next, hours_run: String(hrs) };
+  }
+
+  async function saveRun() {
+    setSaving(true);
+    setError(null);
+    try {
+      let hours = runForm.hours_run === "" ? NaN : Number(runForm.hours_run);
+      if (
+        (!Number.isFinite(hours) || hours <= 0) &&
+        runForm.started_at &&
+        runForm.ended_at
+      ) {
+        const calc = hoursBetween(
+          new Date(runForm.started_at).toISOString(),
+          new Date(runForm.ended_at).toISOString(),
+        );
+        if (calc != null) hours = calc;
+      }
+      if (!Number.isFinite(hours) || hours <= 0) {
+        throw new Error("Enter hours run, or start and end times.");
+      }
+      const payload = {
+        run_date: runForm.run_date,
+        hours_run: hours,
+        started_at: runForm.started_at
+          ? new Date(runForm.started_at).toISOString()
+          : null,
+        ended_at: runForm.ended_at
+          ? new Date(runForm.ended_at).toISOString()
+          : null,
+        notes: runForm.notes,
+      };
+      if (editingRun) {
+        const data = await apiFetch<GeneratorRunLog>(
+          `/api/generator/runs/${editingRun.id}`,
+          { method: "PATCH", body: JSON.stringify(payload) },
+        );
+        setRuns((prev) => prev.map((i) => (i.id === data.id ? data : i)));
+      } else {
+        const data = await apiFetch<GeneratorRunLog>("/api/generator/runs", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        setRuns((prev) => upsertById(prev, data));
+      }
+      setRunOpen(false);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function saveFuel() {
     setSaving(true);
     setError(null);
@@ -285,7 +408,7 @@ export function GeneratorPanel({
     <div className="space-y-10">
       <PageHeader
         title="Generator"
-        description="Monthly checkups, expenses (debit total), and fuel log. Dates: DD/MM/YYYY."
+        description="Log each outage run (not live). Oil change every 200 generator hours. Also monthly checkups, expenses, fuel. Dates: DD/MM/YYYY."
         icon="generator"
         accent="orange"
       />
@@ -296,6 +419,24 @@ export function GeneratorPanel({
           <div className="flex flex-wrap items-center gap-2">
             <ExportButtons resource="generator-maintenance" />
             <ImportFilesButton target="generator-maintenance" />
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingMaint(null);
+                setMaintForm({
+                  ...emptyMaint(),
+                  service_date: todayIso(),
+                  service_type: "Oil change",
+                  checkup_status: "done",
+                  next_service_due: "",
+                  hour_meter: "",
+                });
+                setError(null);
+                setMaintOpen(true);
+              }}
+            >
+              Log oil change
+            </Button>
             <Button
               onClick={() => {
                 setEditingMaint(null);
@@ -339,7 +480,38 @@ export function GeneratorPanel({
           </p>
         </div>
 
-        {error && !maintOpen && !fuelOpen ? (
+        <div
+          className={cn(
+            "rounded-xl border px-4 py-3 sm:px-5",
+            oilInfo.due
+              ? "border-[oklch(0.82_0.08_25)] bg-[oklch(0.97_0.02_25)]"
+              : "border-[oklch(0.88_0.02_220)] bg-[oklch(0.985_0.01_220)]",
+          )}
+        >
+          <p className="text-sm font-medium text-foreground">
+            {oilInfo.due ? "Oil change needed" : "Oil change (outage hours)"}
+            {" · "}
+            every {OIL_CHANGE_INTERVAL_HOURS} h of generator run time
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Not live — when power fails and the generator runs, log that session
+            below. Hours since last oil change: {oilInfo.since} h
+            {oilInfo.lastOil
+              ? ` (last oil change ${formatDate(oilInfo.lastOil.service_date)})`
+              : " (no oil change logged yet)"}
+            {!oilInfo.due && oilInfo.remaining != null
+              ? ` · ~${oilInfo.remaining} h remaining`
+              : null}
+          </p>
+          {oilInfo.due ? (
+            <p className="mt-2 text-sm font-medium text-[oklch(0.45_0.14_25)]">
+              Logged outage runs have reached {OIL_CHANGE_INTERVAL_HOURS}+ hours
+              since the last oil change. Log an oil change when completed.
+            </p>
+          ) : null}
+        </div>
+
+        {error && !maintOpen && !fuelOpen && !runOpen ? (
           <p className="text-sm text-destructive" role="alert">
             {error}
           </p>
@@ -351,7 +523,8 @@ export function GeneratorPanel({
               <TableRow>
                 <TableHead className="w-[12%]">Service date</TableHead>
                 <TableHead className="w-[12%]">Next due</TableHead>
-                <TableHead className="w-[16%]">Status</TableHead>
+                <TableHead className="w-[10%]">Hours</TableHead>
+                <TableHead className="w-[14%]">Status</TableHead>
                 <TableHead className="w-[14%]">Type</TableHead>
                 <TableHead className="w-[14%]">Vendor</TableHead>
                 <TableHead className="w-[10%]">Cost</TableHead>
@@ -362,7 +535,7 @@ export function GeneratorPanel({
               {maintSorted.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="max-w-none py-8 text-center text-muted-foreground"
                   >
                     No maintenance records yet.
@@ -379,6 +552,11 @@ export function GeneratorPanel({
                         {row.next_service_due
                           ? formatDate(row.next_service_due)
                           : "—"}
+                      </CellText>
+                    </TableCell>
+                    <TableCell>
+                      <CellText>
+                        {row.hour_meter == null ? "—" : row.hour_meter}
                       </CellText>
                     </TableCell>
                     <TableCell className="max-w-none">
@@ -435,6 +613,10 @@ export function GeneratorPanel({
                               cost: row.cost == null ? "" : String(row.cost),
                               notes: row.notes ?? "",
                               checkup_status: row.checkup_status ?? "done",
+                              hour_meter:
+                                row.hour_meter == null
+                                  ? ""
+                                  : String(row.hour_meter),
                             });
                             setError(null);
                             setMaintOpen(true);
@@ -466,6 +648,116 @@ export function GeneratorPanel({
           total={maintPage.total}
           page={maintPage.page}
           onPageChange={maintPage.setPage}
+        />
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-medium">Outage / generator runs</h2>
+          <Button
+            onClick={() => {
+              setEditingRun(null);
+              setRunForm(emptyRun());
+              setError(null);
+              setRunOpen(true);
+            }}
+          >
+            Log run
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          When the lights go out and the generator starts, log how long it ran.
+          Those hours add up toward the {OIL_CHANGE_INTERVAL_HOURS} h oil change.
+        </p>
+        <TableShell>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[16%]">Date</TableHead>
+                <TableHead className="w-[14%]">Hours run</TableHead>
+                <TableHead className="w-[20%]">Started</TableHead>
+                <TableHead className="w-[20%]">Ended</TableHead>
+                <TableHead className="w-[14%]">Notes</TableHead>
+                <TableHead className="w-[16%] text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {runsSorted.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="max-w-none py-8 text-center text-muted-foreground"
+                  >
+                    No outage runs logged yet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                runsPage.pageRows.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <CellText>{formatDate(row.run_date)}</CellText>
+                    </TableCell>
+                    <TableCell>
+                      <CellText>{row.hours_run}</CellText>
+                    </TableCell>
+                    <TableCell>
+                      <CellText>
+                        {row.started_at
+                          ? formatDateTime(row.started_at)
+                          : "—"}
+                      </CellText>
+                    </TableCell>
+                    <TableCell>
+                      <CellText>
+                        {row.ended_at ? formatDateTime(row.ended_at) : "—"}
+                      </CellText>
+                    </TableCell>
+                    <TableCell>
+                      <CellText>{row.notes ?? "—"}</CellText>
+                    </TableCell>
+                    <TableCell className="max-w-none">
+                      <TableActions>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingRun(row);
+                            setRunForm({
+                              run_date: row.run_date,
+                              hours_run: String(row.hours_run),
+                              started_at: toDatetimeLocal(row.started_at),
+                              ended_at: toDatetimeLocal(row.ended_at),
+                              notes: row.notes ?? "",
+                            });
+                            setError(null);
+                            setRunOpen(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <ConfirmDeleteButton
+                          onConfirm={async () => {
+                            await apiFetch(`/api/generator/runs/${row.id}`, {
+                              method: "DELETE",
+                            });
+                            setRuns((prev) =>
+                              prev.filter((i) => i.id !== row.id),
+                            );
+                            router.refresh();
+                          }}
+                        />
+                      </TableActions>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableShell>
+        <TablePagination
+          total={runsPage.total}
+          page={runsPage.page}
+          onPageChange={runsPage.setPage}
         />
       </section>
 
@@ -744,6 +1036,21 @@ export function GeneratorPanel({
               />
             </div>
             <div className="space-y-2">
+              <Label>Hour meter</Label>
+              <Input
+                type="number"
+                min="0"
+                step="any"
+                value={maintForm.hour_meter}
+                onChange={(e) =>
+                  setMaintForm((p) => ({ ...p, hour_meter: e.target.value }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Required for oil changes — reading when the service was done.
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label>Vendor</Label>
               <Input
                 value={maintForm.vendor}
@@ -786,6 +1093,100 @@ export function GeneratorPanel({
             <Button
               onClick={saveMaint}
               disabled={saving || !maintForm.service_date}
+            >
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={runOpen} onOpenChange={setRunOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {editingRun ? "Edit generator run" : "Log generator run"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Use when power failed and the generator ran. Enter hours directly,
+            or start/end times to calculate hours.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Run date</Label>
+              <Input
+                type="date"
+                value={runForm.run_date}
+                onChange={(e) =>
+                  setRunForm((p) => ({ ...p, run_date: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Hours run</Label>
+              <Input
+                type="number"
+                min="0"
+                step="any"
+                value={runForm.hours_run}
+                onChange={(e) =>
+                  setRunForm((p) => ({ ...p, hours_run: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Started (optional)</Label>
+              <Input
+                type="datetime-local"
+                value={runForm.started_at}
+                onChange={(e) =>
+                  setRunForm((p) =>
+                    syncRunHoursFromTimes({
+                      ...p,
+                      started_at: e.target.value,
+                    }),
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Ended (optional)</Label>
+              <Input
+                type="datetime-local"
+                value={runForm.ended_at}
+                onChange={(e) =>
+                  setRunForm((p) =>
+                    syncRunHoursFromTimes({
+                      ...p,
+                      ended_at: e.target.value,
+                    }),
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Notes</Label>
+              <Textarea
+                placeholder="e.g. Area outage"
+                value={runForm.notes}
+                onChange={(e) =>
+                  setRunForm((p) => ({ ...p, notes: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+          {error && runOpen ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRunOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void saveRun()}
+              disabled={saving || !runForm.run_date}
             >
               {saving ? "Saving…" : "Save"}
             </Button>

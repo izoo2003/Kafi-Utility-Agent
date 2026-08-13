@@ -115,6 +115,7 @@ export async function loadExportBundle(
         columns: cols<GeneratorMaintenance>([
           { key: "service_date", header: "Service date", value: (r) => r.service_date },
           { key: "next_service_due", header: "Next due", value: (r) => r.next_service_due },
+          { key: "hour_meter", header: "Hour meter", value: (r) => r.hour_meter },
           { key: "checkup_status", header: "Status", value: (r) => r.checkup_status },
           { key: "service_type", header: "Type", value: (r) => r.service_type },
           { key: "vendor", header: "Vendor", value: (r) => r.vendor },

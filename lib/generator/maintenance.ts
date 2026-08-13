@@ -28,9 +28,18 @@ export function withDefaultNextServiceDue<
   T extends {
     service_date?: string;
     next_service_due?: string | null;
+    service_type?: string | null;
   },
 >(payload: T): T {
-  if (payload.next_service_due || !payload.service_date) return payload;
+  if (!payload.service_date) return payload;
+  // Explicit value (including empty→already handled by caller) or oil-change (hour-based)
+  if (payload.next_service_due) return payload;
+  if (
+    typeof payload.service_type === "string" &&
+    /oil\s*change/i.test(payload.service_type)
+  ) {
+    return payload;
+  }
   return {
     ...payload,
     next_service_due: defaultNextServiceDue(payload.service_date),

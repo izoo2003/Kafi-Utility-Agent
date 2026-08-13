@@ -13,7 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const DISMISS_KEY = "utility-bill-due-dismissed";
+const DISMISS_KEY = "ops-due-alerts-dismissed";
 
 function dismissSignature(alerts: OpsAlert[]) {
   return alerts
@@ -22,15 +22,16 @@ function dismissSignature(alerts: OpsAlert[]) {
     .join("|");
 }
 
-/** Popup when utility bills are due / overdue (session-dismissible). */
+function isPopupAlert(a: OpsAlert) {
+  if (!(a.severity === "critical" || a.severity === "warning")) return false;
+  if (a.domain === "utilities") return true;
+  return a.id.startsWith("generator-oil");
+}
+
+/** Popup for utility bills due and generator oil-change alerts (session-dismissible). */
 export function BillDuePopup({ alerts }: { alerts: OpsAlert[] }) {
   const utilityAlerts = useMemo(
-    () =>
-      alerts.filter(
-        (a) =>
-          a.domain === "utilities" &&
-          (a.severity === "critical" || a.severity === "warning"),
-      ),
+    () => alerts.filter(isPopupAlert),
     [alerts],
   );
 
@@ -76,7 +77,7 @@ export function BillDuePopup({ alerts }: { alerts: OpsAlert[] }) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BellRing className="size-5 text-[oklch(0.5_0.14_45)]" />
-            Utility bill{utilityAlerts.length === 1 ? "" : "s"} due
+            Attention needed
           </DialogTitle>
         </DialogHeader>
         <ul className="space-y-2.5">
@@ -95,11 +96,15 @@ export function BillDuePopup({ alerts }: { alerts: OpsAlert[] }) {
             Dismiss for now
           </Button>
           <Link
-            href="/dashboard/utilities"
+            href={
+              utilityAlerts.some((a) => a.id.startsWith("generator-oil"))
+                ? "/dashboard/generator"
+                : "/dashboard/utilities"
+            }
             onClick={dismiss}
             className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/80"
           >
-            Open utilities
+            Open section
           </Link>
         </DialogFooter>
       </DialogContent>

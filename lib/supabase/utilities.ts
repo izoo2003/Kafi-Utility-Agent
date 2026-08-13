@@ -49,16 +49,35 @@ export async function ensureSiteUtilityAccounts(supabase: SupabaseClient) {
   for (const p of SITE_UTILITY_PROVIDERS) {
     const key = normalizeKeyPart(p.label);
     if (byProvider.has(key)) continue;
-    const { data, error: insertError } = await supabase
+
+    const payload: UtilityAccountInsert = {
+      utility_type: p.utility_type,
+      provider: p.label,
+      billing_cycle: p.billing_cycle,
+      notes: `Site ${p.label} bill. Next due = last paid + 1 month.`,
+    };
+
+    let { data, error: insertError } = await supabase
       .from(TABLE)
-      .insert({
-        utility_type: p.utility_type,
-        provider: p.label,
-        billing_cycle: p.billing_cycle,
-        notes: `Site ${p.label} bill. Next due = last paid + 1 month.`,
-      } satisfies UtilityAccountInsert)
+      .insert(payload)
       .select("*")
       .single<UtilityAccount>();
+
+    // Older DBs may still reject 'mobile' — retry Jazz-like rows as internet.
+    if (
+      insertError &&
+      /utility_type_check|check constraint/i.test(insertError.message) &&
+      payload.utility_type === "mobile"
+    ) {
+      const retry = await supabase
+        .from(TABLE)
+        .insert({ ...payload, utility_type: "internet" })
+        .select("*")
+        .single<UtilityAccount>();
+      data = retry.data;
+      insertError = retry.error;
+    }
+
     if (insertError) return { error: insertError, data: null };
     if (data) byProvider.set(key, data);
   }
