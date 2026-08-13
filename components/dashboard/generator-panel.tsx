@@ -13,6 +13,10 @@ import {
   nextDueFromMaintenanceRows,
 } from "@/lib/generator/maintenance";
 import { formatDate } from "@/lib/format/datetime";
+import {
+  isIsoDateInRange,
+  normalizeToIsoDate,
+} from "@/lib/validations/helpers";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
@@ -101,6 +105,13 @@ function daysUntilLabel(iso: string | null): string | null {
   return `in ${days} days`;
 }
 
+function formatMoney(n: number) {
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 export function GeneratorPanel({
   initialMaintenance,
   initialFuel,
@@ -124,14 +135,38 @@ export function GeneratorPanel({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
+  const [fuelDateFrom, setFuelDateFrom] = useState("");
+  const [fuelDateTo, setFuelDateTo] = useState("");
 
   const maintSorted = useMemo(
     () => sortNewestFirst(maintenance),
     [maintenance],
   );
-  const fuelSorted = useMemo(() => sortNewestFirst(fuel), [fuel]);
+  const fuelFiltered = useMemo(() => {
+    if (!fuelDateFrom && !fuelDateTo) return fuel;
+    return fuel.filter((row) =>
+      isIsoDateInRange(row.log_date, fuelDateFrom, fuelDateTo),
+    );
+  }, [fuel, fuelDateFrom, fuelDateTo]);
+  const fuelSorted = useMemo(
+    () => sortNewestFirst(fuelFiltered),
+    [fuelFiltered],
+  );
   const maintPage = usePagedRows(maintSorted);
   const fuelPage = usePagedRows(fuelSorted);
+  const fuelRangeActive = Boolean(fuelDateFrom || fuelDateTo);
+  const fuelTotalCost = useMemo(
+    () => fuelFiltered.reduce((sum, r) => sum + (Number(r.cost) || 0), 0),
+    [fuelFiltered],
+  );
+  const fuelDateSpan = useMemo(() => {
+    const dates = fuel
+      .map((r) => normalizeToIsoDate(r.log_date))
+      .filter((d): d is string => Boolean(d))
+      .sort();
+    if (!dates.length) return null;
+    return { min: dates[0]!, max: dates[dates.length - 1]! };
+  }, [fuel]);
 
   const schedule = useMemo(
     () => nextDueFromMaintenanceRows(maintenance),
@@ -454,12 +489,80 @@ export function GeneratorPanel({
             </Button>
           </div>
         </div>
+
+        <div className="space-y-3 rounded-xl border border-[oklch(0.88_0.02_220)] bg-[oklch(0.985_0.01_220)] px-4 py-3 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="space-y-1.5">
+              <Label htmlFor="fuel-from" className="text-xs">
+                From (log date)
+              </Label>
+              <Input
+                id="fuel-from"
+                type="date"
+                value={fuelDateFrom}
+                max={fuelDateTo || undefined}
+                onChange={(e) => {
+                  setFuelDateFrom(e.target.value);
+                  fuelPage.setPage(1);
+                }}
+                className="w-full sm:w-[11.5rem]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="fuel-to" className="text-xs">
+                To (log date)
+              </Label>
+              <Input
+                id="fuel-to"
+                type="date"
+                value={fuelDateTo}
+                min={fuelDateFrom || undefined}
+                onChange={(e) => {
+                  setFuelDateTo(e.target.value);
+                  fuelPage.setPage(1);
+                }}
+                className="w-full sm:w-[11.5rem]"
+              />
+            </div>
+            {fuelRangeActive ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFuelDateFrom("");
+                  setFuelDateTo("");
+                  fuelPage.setPage(1);
+                }}
+              >
+                Clear dates
+              </Button>
+            ) : null}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              Total cost: {formatMoney(fuelTotalCost)}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {fuelFiltered.length} row
+              {fuelFiltered.length === 1 ? "" : "s"}
+              {fuelRangeActive
+                ? ` in range${fuelDateFrom ? ` from ${formatDate(fuelDateFrom)}` : ""}${fuelDateTo ? ` to ${formatDate(fuelDateTo)}` : ""}`
+                : ""}{" "}
+              · dates shown as DD/MM/YYYY
+              {fuelRangeActive && fuelFiltered.length !== fuel.length
+                ? ` · ${fuel.length} total`
+                : ""}
+            </p>
+          </div>
+        </div>
+
         <TableShell>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[14%]">Date</TableHead>
-                <TableHead className="w-[14%]">Liters</TableHead>
+                <TableHead className="w-[14%]">Litres</TableHead>
                 <TableHead className="w-[16%]">Running hrs</TableHead>
                 <TableHead className="w-[14%]">Level %</TableHead>
                 <TableHead className="w-[14%]">Cost</TableHead>
@@ -473,7 +576,11 @@ export function GeneratorPanel({
                     colSpan={6}
                     className="max-w-none py-8 text-center text-muted-foreground"
                   >
-                    No fuel logs yet.
+                    {fuelRangeActive
+                      ? fuelDateSpan
+                        ? `No fuel logs in this date range. Existing logs span ${formatDate(fuelDateSpan.min)} – ${formatDate(fuelDateSpan.max)}.`
+                        : "No fuel logs in this date range."
+                      : "No fuel logs yet."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -492,7 +599,9 @@ export function GeneratorPanel({
                       <CellText>{row.fuel_level_pct ?? "—"}</CellText>
                     </TableCell>
                     <TableCell>
-                      <CellText>{row.cost ?? "—"}</CellText>
+                      <CellText>
+                        {row.cost == null ? "—" : formatMoney(Number(row.cost))}
+                      </CellText>
                     </TableCell>
                     <TableCell className="max-w-none">
                       <TableActions>

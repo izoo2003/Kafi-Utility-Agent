@@ -80,9 +80,75 @@ export const generatorMaintenanceCreateSchema =
 export const generatorMaintenanceUpdateSchemaAgent =
   generatorMaintenanceUpdateSchema.required({ id: true });
 
-export const generatorFuelCreateSchema = generatorFuelLogInsertSchema;
-export const generatorFuelUpdateSchemaAgent =
-  generatorFuelLogUpdateSchema.required({ id: true });
+/** Accept common sheet/header aliases from OCR / Gemini before Zod field checks. */
+function withFuelFieldAliases(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const o = { ...(raw as Record<string, unknown>) };
+  const pick = (...keys: string[]) => {
+    for (const key of keys) {
+      if (o[key] !== undefined && o[key] !== null && o[key] !== "") {
+        return o[key];
+      }
+    }
+    return undefined;
+  };
+
+  if (o.liters_added == null || o.liters_added === "") {
+    const v = pick(
+      "litres_added",
+      "litres",
+      "liters",
+      "litre",
+      "liter",
+      "fuel_litres",
+      "fuel_liters",
+      "qty_l",
+      "quantity_l",
+      "ltrs",
+      "L",
+    );
+    if (v !== undefined) o.liters_added = v;
+  }
+  if (o.running_hours == null || o.running_hours === "") {
+    const v = pick(
+      "hours",
+      "hrs",
+      "running_hrs",
+      "run_hours",
+      "hour_meter",
+      "hmr",
+      "engine_hours",
+      "gen_hours",
+    );
+    if (v !== undefined) o.running_hours = v;
+  }
+  if (o.fuel_level_pct == null || o.fuel_level_pct === "") {
+    const v = pick(
+      "fuel_level",
+      "level_pct",
+      "level",
+      "fuel_pct",
+      "tank_level",
+      "tank_pct",
+      "fuel_level_percent",
+    );
+    if (v !== undefined) o.fuel_level_pct = v;
+  }
+  if (o.cost == null || o.cost === "") {
+    const v = pick("amount", "debit", "price", "total", "fuel_cost");
+    if (v !== undefined) o.cost = v;
+  }
+  return o;
+}
+
+export const generatorFuelCreateSchema = z.preprocess(
+  withFuelFieldAliases,
+  generatorFuelLogInsertSchema,
+);
+export const generatorFuelUpdateSchemaAgent = z.preprocess(
+  withFuelFieldAliases,
+  generatorFuelLogUpdateSchema.required({ id: true }),
+);
 
 export const generatorExpenseCreateSchema = generatorExpenseInsertSchema;
 export const generatorExpenseUpdateSchemaAgent =

@@ -4,6 +4,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GeneratorExpense } from "@/lib/types/database";
 import { formatDate } from "@/lib/format/datetime";
+import {
+  isIsoDateInRange,
+  normalizeToIsoDate,
+} from "@/lib/validations/helpers";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
@@ -77,12 +81,10 @@ export function GeneratorExpensesSection({
   const [dateTo, setDateTo] = useState("");
 
   const filtered = useMemo(() => {
-    return expenses.filter((row) => {
-      const d = row.expense_date;
-      if (dateFrom && d < dateFrom) return false;
-      if (dateTo && d > dateTo) return false;
-      return true;
-    });
+    if (!dateFrom && !dateTo) return expenses;
+    return expenses.filter((row) =>
+      isIsoDateInRange(row.expense_date, dateFrom, dateTo),
+    );
   }, [expenses, dateFrom, dateTo]);
 
   const sorted = useMemo(() => sortNewestFirst(filtered), [filtered]);
@@ -94,6 +96,15 @@ export function GeneratorExpensesSection({
   );
 
   const rangeActive = Boolean(dateFrom || dateTo);
+
+  const dataDateSpan = useMemo(() => {
+    const dates = expenses
+      .map((r) => normalizeToIsoDate(r.expense_date))
+      .filter((d): d is string => Boolean(d))
+      .sort();
+    if (!dates.length) return null;
+    return { min: dates[0]!, max: dates[dates.length - 1]! };
+  }, [expenses]);
 
   async function save() {
     setSaving(true);
@@ -153,7 +164,7 @@ export function GeneratorExpensesSection({
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <div className="space-y-1.5">
             <Label htmlFor="expense-from" className="text-xs">
-              From
+              From (expense date)
             </Label>
             <Input
               id="expense-from"
@@ -169,7 +180,7 @@ export function GeneratorExpensesSection({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="expense-to" className="text-xs">
-              To
+              To (expense date)
             </Label>
             <Input
               id="expense-to"
@@ -235,7 +246,9 @@ export function GeneratorExpensesSection({
                   className="max-w-none py-8 text-center text-muted-foreground"
                 >
                   {rangeActive
-                    ? "No expenses in this date range."
+                    ? dataDateSpan
+                      ? `No expenses in this date range. Existing logs span ${formatDate(dataDateSpan.min)} – ${formatDate(dataDateSpan.max)} (by expense date).`
+                      : "No expenses in this date range."
                     : "No expenses yet. Use Import PDF/Image or add a row."}
                 </TableCell>
               </TableRow>

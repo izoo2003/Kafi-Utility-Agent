@@ -50,9 +50,15 @@ export function importPromptFor(target: ImportTarget): string {
     case "generator-fuel":
       return [
         "IMPORT TARGET: Generator fuel log ONLY.",
-        "Read every page/photo carefully. Extract EVERY distinct fuel log row.",
+        "Read every page/photo carefully. Extract EVERY distinct fuel fill / log row.",
         "For EACH row call generator_fuel_log_create with confirmed=false (one tool call per row).",
-        "Map: date → log_date (DD/MM/YYYY); liters → liters_added; running hours → running_hours; fuel % → fuel_level_pct; cost; remarks → notes.",
+        "REQUIRED when visible on the sheet — do not leave these null if the cell/value is readable:",
+        "date → log_date (DD/MM/YYYY);",
+        "Litres/Liters/L/Qty(L)/Fuel added → liters_added (number only);",
+        "Running hours/Hrs/HMR/Hour meter/Engine hours → running_hours;",
+        "Level %/Fuel %/Tank %/Fuel level → fuel_level_pct (0-100, strip % sign);",
+        "Cost/Amount/Debit/Price → cost; Remarks/Description → notes.",
+        "Accept British 'litres' and American 'liters'. Read handwritten and printed digits carefully.",
         "Skip headers/totals/blank lines. Do not write expenses or maintenance.",
       ].join(" ");
     case "generator-expenses":

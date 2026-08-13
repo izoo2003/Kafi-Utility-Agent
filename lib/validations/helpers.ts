@@ -9,10 +9,11 @@ export const optionalText = z
     return t === "" ? null : t;
   });
 
-/** Normalize DD/MM/YYYY or YYYY-MM-DD → YYYY-MM-DD for storage. */
+/** Normalize DD/MM/YYYY or YYYY-MM-DD (optional time) → YYYY-MM-DD. */
 export function normalizeToIsoDate(value: string): string | null {
   const t = value.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  const isoDay = t.match(/^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/);
+  if (isoDay) return isoDay[1]!;
   const dmY = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
   if (dmY) {
     const day = Number(dmY[1]);
@@ -22,6 +23,21 @@ export function normalizeToIsoDate(value: string): string | null {
     return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   }
   return null;
+}
+
+/** Inclusive From/To check; blank bounds mean open-ended. */
+export function isIsoDateInRange(
+  value: string | null | undefined,
+  from: string | null | undefined,
+  to: string | null | undefined,
+): boolean {
+  const d = value ? normalizeToIsoDate(value) : null;
+  if (!d) return false;
+  const fromIso = from ? normalizeToIsoDate(from) : null;
+  const toIso = to ? normalizeToIsoDate(to) : null;
+  if (fromIso && d < fromIso) return false;
+  if (toIso && d > toIso) return false;
+  return true;
 }
 
 export const optionalDate = z
@@ -46,15 +62,40 @@ export const requiredDate = z
     return iso;
   });
 
-export const optionalNumber = z.preprocess((v) => {
-  if (v === "" || v === null || v === undefined) return null;
-  if (typeof v === "number") return v;
-  const n = Number(v);
-  return Number.isNaN(n) ? v : n;
-}, z.union([z.number(), z.null()]));
+/** Parse numbers that may include commas, %, or unit suffixes (L, litres, hrs). */
+export function parseLooseNumber(value: unknown): number | null | unknown {
+  if (value === "" || value === null || value === undefined) return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : value;
+  }
+  if (typeof value !== "string") {
+    const n = Number(value);
+    return Number.isNaN(n) ? value : n;
+  }
+  const cleaned = value
+    .trim()
+    .replace(/,/g, "")
+    .replace(/%/g, "")
+    .replace(
+      /\b(ltrs?|litres?|liters?|hrs?|hours?|hmr|pct|percent)\b/gi,
+      "",
+    )
+    .replace(/\s+/g, "")
+    .replace(/l$/i, "");
+  if (cleaned === "") return null;
+  const n = Number(cleaned);
+  return Number.isNaN(n) ? value : n;
+}
+
+export const optionalNumber = z.preprocess(
+  parseLooseNumber,
+  z.union([z.number(), z.null()]),
+);
 
 export const requiredNumber = z.preprocess((v) => {
-  if (typeof v === "number") return v;
-  if (v === "" || v === null || v === undefined) return Number.NaN;
-  return Number(v);
+  const parsed = parseLooseNumber(v);
+  if (parsed === null || parsed === undefined || parsed === "") {
+    return Number.NaN;
+  }
+  return parsed;
 }, z.number({ error: "Invalid number" }));

@@ -27,7 +27,9 @@ Section import mapping (one create tool call PER distinct row/entry, confirmed=f
   Map date → expense_date; Accounts → account; Description → description; Debit → debit; Credit → credit.
   Skip total-only lines. Total expense = sum(debit).
 - Generator fuel log → generator_fuel_log_create
-  Map date → log_date; liters; running hours; fuel %; cost; notes.
+  Map date → log_date; Litres/Liters/L/Qty → liters_added; Running hrs/HMR/Hour meter → running_hours;
+  Level %/Fuel %/Tank % → fuel_level_pct; Cost/Amount/Debit → cost; remarks → notes.
+  Never omit liters_added, running_hours, or fuel_level_pct when those values are visible on the sheet.
 - Generator maintenance → generator_maintenance_create
   Content columns that matter: Accounts → service_type; Description → notes.
   Still set service_date from the row date. Ignore debit/credit unless asked. next_service_due defaults to +1 month when omitted.

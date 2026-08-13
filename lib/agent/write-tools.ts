@@ -206,15 +206,31 @@ export const agentWriteTools: FunctionDeclaration[] = [
   },
   {
     name: "generator_fuel_log_create",
-    description: "Create a generator fuel log entry. Requires confirmation.",
+    description:
+      "Create a generator fuel log entry from a fuel sheet/log row. Include liters_added, running_hours, and fuel_level_pct whenever visible (litres/L, hrs/HMR, level%/tank%). Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
-        log_date: { type: SchemaType.STRING, description: "YYYY-MM-DD" },
-        liters_added: { type: SchemaType.NUMBER },
-        running_hours: { type: SchemaType.NUMBER },
-        fuel_level_pct: { type: SchemaType.NUMBER },
-        cost: { type: SchemaType.NUMBER },
+        log_date: {
+          type: SchemaType.STRING,
+          description: "DD/MM/YYYY or YYYY-MM-DD",
+        },
+        liters_added: {
+          type: SchemaType.NUMBER,
+          description: "Fuel added in litres/liters (from L / Qty columns)",
+        },
+        running_hours: {
+          type: SchemaType.NUMBER,
+          description: "Hour meter / running hours / HMR",
+        },
+        fuel_level_pct: {
+          type: SchemaType.NUMBER,
+          description: "Tank/fuel level percent 0-100 (strip % sign)",
+        },
+        cost: {
+          type: SchemaType.NUMBER,
+          description: "Cost/amount/debit for this fill if present",
+        },
         notes: { type: SchemaType.STRING },
         ...confirmedProperty,
       },
@@ -223,15 +239,28 @@ export const agentWriteTools: FunctionDeclaration[] = [
   },
   {
     name: "generator_fuel_log_update",
-    description: "Update a generator fuel log entry. Requires confirmation.",
+    description:
+      "Update a generator fuel log entry (liters_added, running_hours, fuel_level_pct, cost, notes). Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         ...idProp,
-        log_date: { type: SchemaType.STRING },
-        liters_added: { type: SchemaType.NUMBER },
-        running_hours: { type: SchemaType.NUMBER },
-        fuel_level_pct: { type: SchemaType.NUMBER },
+        log_date: {
+          type: SchemaType.STRING,
+          description: "DD/MM/YYYY or YYYY-MM-DD",
+        },
+        liters_added: {
+          type: SchemaType.NUMBER,
+          description: "Fuel added in litres/liters",
+        },
+        running_hours: {
+          type: SchemaType.NUMBER,
+          description: "Hour meter / running hours",
+        },
+        fuel_level_pct: {
+          type: SchemaType.NUMBER,
+          description: "Tank/fuel level percent 0-100",
+        },
         cost: { type: SchemaType.NUMBER },
         notes: { type: SchemaType.STRING },
         ...confirmedProperty,

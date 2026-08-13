@@ -390,7 +390,15 @@ export async function executeWriteTool(
       const parsed = generatorFuelCreateSchema.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
       const payload = parsed.data;
-      const summary = `Create generator fuel log for ${payload.log_date}${payload.liters_added != null ? ` — ${payload.liters_added} L` : ""}.`;
+      const summary = [
+        `Create generator fuel log for ${payload.log_date}`,
+        payload.liters_added != null ? `${payload.liters_added} L` : null,
+        payload.running_hours != null ? `${payload.running_hours} hrs` : null,
+        payload.fuel_level_pct != null ? `level ${payload.fuel_level_pct}%` : null,
+        payload.cost != null ? `cost ${payload.cost}` : null,
+      ]
+        .filter(Boolean)
+        .join(" — ");
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
