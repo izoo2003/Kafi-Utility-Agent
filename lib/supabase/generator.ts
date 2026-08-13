@@ -19,7 +19,7 @@ export async function listGeneratorMaintenance(supabase: SupabaseClient) {
   return supabase
     .from(MAINTENANCE)
     .select("*")
-    .order("service_date", { ascending: false })
+    .order("created_at", { ascending: false })
     .returns<GeneratorMaintenance[]>();
 }
 
@@ -54,7 +54,7 @@ export async function listGeneratorFuelLog(supabase: SupabaseClient) {
   return supabase
     .from(FUEL)
     .select("*")
-    .order("log_date", { ascending: false })
+    .order("created_at", { ascending: false })
     .returns<GeneratorFuelLog[]>();
 }
 
@@ -84,7 +84,7 @@ export async function listGeneratorExpenses(supabase: SupabaseClient) {
   return supabase
     .from(EXPENSES)
     .select("*")
-    .order("expense_date", { ascending: false })
+    .order("created_at", { ascending: false })
     .returns<GeneratorExpense[]>();
 }
 

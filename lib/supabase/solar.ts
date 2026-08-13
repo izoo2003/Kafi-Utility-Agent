@@ -48,7 +48,7 @@ export async function listSolarMonitoringLog(supabase: SupabaseClient) {
   return supabase
     .from(LOG)
     .select("*")
-    .order("log_date", { ascending: false })
+    .order("created_at", { ascending: false })
     .returns<SolarMonitoringLog[]>();
 }
 

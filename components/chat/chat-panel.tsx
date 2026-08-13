@@ -19,20 +19,11 @@ import {
   type ChatMessage,
   type PendingConfirmation,
 } from "@/components/chat/chat-session-context";
-
-type PendingAttachment = {
-  id: string;
-  mimeType:
-    | "image/jpeg"
-    | "image/png"
-    | "image/webp"
-    | "image/gif"
-    | "application/pdf";
-  data: string;
-  previewUrl: string | null;
-  name: string;
-  kind: "image" | "pdf";
-};
+import {
+  fileToChatAttachment,
+  MAX_CHAT_ATTACHMENTS,
+  type ChatPendingAttachment,
+} from "@/lib/chat/attachments";
 
 const SUGGESTIONS = [
   "What's low in kitchen inventory?",
@@ -40,64 +31,6 @@ const SUGGESTIONS = [
   "Import maintenance — accounts & description only",
   "Give me a site status summary",
 ];
-
-const MAX_ATTACHMENTS = 8;
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
-const MAX_PDF_BYTES = 10 * 1024 * 1024;
-
-function normalizeMime(
-  type: string,
-  fileName: string,
-): PendingAttachment["mimeType"] | null {
-  if (type === "image/jpg") return "image/jpeg";
-  if (
-    type === "image/jpeg" ||
-    type === "image/png" ||
-    type === "image/webp" ||
-    type === "image/gif" ||
-    type === "application/pdf"
-  ) {
-    return type;
-  }
-  if (!type && fileName.toLowerCase().endsWith(".pdf")) {
-    return "application/pdf";
-  }
-  return null;
-}
-
-async function fileToPendingAttachment(file: File): Promise<PendingAttachment> {
-  const mimeType = normalizeMime(file.type, file.name);
-  if (!mimeType) {
-    throw new Error(`${file.name}: use JPG, PNG, WebP, GIF, or PDF`);
-  }
-
-  const isPdf = mimeType === "application/pdf";
-  const maxBytes = isPdf ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
-  if (file.size > maxBytes) {
-    throw new Error(
-      `${file.name}: max ${isPdf ? "10 MB per PDF" : "4 MB per image"}`,
-    );
-  }
-
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
-    reader.readAsDataURL(file);
-  });
-
-  const comma = dataUrl.indexOf(",");
-  const data = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
-
-  return {
-    id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
-    mimeType,
-    data,
-    previewUrl: isPdf ? null : dataUrl,
-    name: file.name,
-    kind: isPdf ? "pdf" : "image",
-  };
-}
 
 function applyConfirmations(
   list: PendingConfirmation[],
@@ -129,12 +62,15 @@ export function ChatPanel() {
     setKeyLabel,
     loading,
     setLoading,
+    pendingImport,
+    takePendingImport,
   } = useChatSession();
   const [input, setInput] = useState("");
-  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const [attachments, setAttachments] = useState<ChatPendingAttachment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const importStartedRef = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -143,32 +79,38 @@ export function ChatPanel() {
   async function addFiles(fileList: FileList | null) {
     if (!fileList?.length) return;
     setError(null);
-    const remaining = MAX_ATTACHMENTS - attachments.length;
+    const remaining = MAX_CHAT_ATTACHMENTS - attachments.length;
     if (remaining <= 0) {
-      setError(`You can attach up to ${MAX_ATTACHMENTS} files.`);
+      setError(`You can attach up to ${MAX_CHAT_ATTACHMENTS} files.`);
       return;
     }
 
     const selected = Array.from(fileList).slice(0, remaining);
     try {
-      const next = await Promise.all(selected.map(fileToPendingAttachment));
-      setAttachments((prev) => [...prev, ...next].slice(0, MAX_ATTACHMENTS));
+      const next = await Promise.all(selected.map(fileToChatAttachment));
+      setAttachments((prev) =>
+        [...prev, ...next].slice(0, MAX_CHAT_ATTACHMENTS),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not add file");
     }
   }
 
-  async function send(content: string) {
+  async function send(
+    content: string,
+    filesOverride?: ChatPendingAttachment[],
+  ) {
+    const attached = filesOverride ?? attachments;
     const trimmed = content.trim();
     if (loading) return;
-    if (!trimmed && attachments.length === 0) return;
+    if (!trimmed && attached.length === 0) return;
 
-    const pdfCount = attachments.filter((a) => a.kind === "pdf").length;
-    const imageCount = attachments.length - pdfCount;
+    const pdfCount = attached.filter((a) => a.kind === "pdf").length;
+    const imageCount = attached.length - pdfCount;
     const displayContent =
       trimmed ||
-      (attachments.length
-        ? `Analyze ${attachments.length} attached file${attachments.length === 1 ? "" : "s"} (${[
+      (attached.length
+        ? `Analyze ${attached.length} attached file${attached.length === 1 ? "" : "s"} (${[
             pdfCount ? `${pdfCount} PDF${pdfCount === 1 ? "" : "s"}` : "",
             imageCount
               ? `${imageCount} image${imageCount === 1 ? "" : "s"}`
@@ -177,8 +119,6 @@ export function ChatPanel() {
             .filter(Boolean)
             .join(", ")}) and add each log/expense row to the correct section.`
         : "");
-
-    const attached = attachments;
     const attachmentPreviews: ChatAttachmentPreview[] = attached.map((a) =>
       a.kind === "pdf"
         ? { kind: "pdf", name: a.name }
@@ -257,6 +197,17 @@ export function ChatPanel() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!pendingImport || loading || importStartedRef.current) return;
+    const job = takePendingImport();
+    if (!job) return;
+    importStartedRef.current = true;
+    void send(job.prompt, job.attachments).finally(() => {
+      importStartedRef.current = false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once when a section import is queued
+  }, [pendingImport, loading, takePendingImport]);
 
   async function confirmPending() {
     if (!pending || loading) return;
@@ -562,7 +513,7 @@ export function ChatPanel() {
         <Button
           type="button"
           variant="outline"
-          disabled={loading || attachments.length >= MAX_ATTACHMENTS}
+          disabled={loading || attachments.length >= MAX_CHAT_ATTACHMENTS}
           className="h-11 shrink-0 px-3"
           onClick={() => fileRef.current?.click()}
           title="Attach images or PDFs"

@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SolarMonitoringLog, SolarSpecs } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import { sortNewestFirst } from "@/lib/dashboard/sort";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
+import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { RecordViewDialog } from "@/components/dashboard/record-view-dialog";
 import {
@@ -100,15 +102,8 @@ export function SolarPanel({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const specsSorted = useMemo(
-    () =>
-      [...specs].sort((a, b) => b.created_at.localeCompare(a.created_at)),
-    [specs],
-  );
-  const logsSorted = useMemo(
-    () => [...logs].sort((a, b) => b.log_date.localeCompare(a.log_date)),
-    [logs],
-  );
+  const specsSorted = useMemo(() => sortNewestFirst(specs), [specs]);
+  const logsSorted = useMemo(() => sortNewestFirst(logs), [logs]);
 
   async function saveSpecs() {
     setSaving(true);
@@ -240,6 +235,7 @@ export function SolarPanel({
           <h2 className="font-heading text-lg font-semibold">System specs</h2>
           <div className="flex flex-wrap items-center gap-2 self-start">
             <ExportButtons resource="solar-specs" />
+            <ImportFilesButton target="solar-specs" />
             <Button
               onClick={() => {
                 setEditingSpecs(null);
@@ -369,6 +365,7 @@ export function SolarPanel({
           <h2 className="font-heading text-lg font-semibold">Monitoring log</h2>
           <div className="flex flex-wrap items-center gap-2 self-start">
             <ExportButtons resource="solar-monitoring" />
+            <ImportFilesButton target="solar-monitoring" />
             <Button
               onClick={() => {
                 setEditingLog(null);

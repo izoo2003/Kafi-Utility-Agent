@@ -17,7 +17,7 @@ export async function listKitchenInventory(supabase: SupabaseClient) {
   return supabase
     .from(TABLE)
     .select("*")
-    .order("item_name", { ascending: true })
+    .order("created_at", { ascending: false })
     .returns<KitchenInventory[]>();
 }
 

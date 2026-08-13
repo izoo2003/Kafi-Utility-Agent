@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { UtilityAccount, UtilityType } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import { sortNewestFirst } from "@/lib/dashboard/sort";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
+import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { formatDateTime } from "@/lib/format/datetime";
 import {
@@ -70,13 +72,7 @@ export function UtilitiesPanel({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const sorted = useMemo(
-    () =>
-      [...items].sort((a, b) =>
-        a.utility_type.localeCompare(b.utility_type),
-      ),
-    [items],
-  );
+  const sorted = useMemo(() => sortNewestFirst(items), [items]);
 
   function openCreate() {
     setEditing(null);
@@ -153,6 +149,7 @@ export function UtilitiesPanel({
         />
         <div className="flex shrink-0 flex-col items-stretch gap-2 self-start sm:items-end">
           <ExportButtons resource="utilities" />
+          <ImportFilesButton target="utilities" />
           <Button onClick={openCreate}>Add account</Button>
         </div>
       </div>

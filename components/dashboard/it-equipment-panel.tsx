@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ItEquipment, ItEquipmentStatus } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import { sortNewestFirst } from "@/lib/dashboard/sort";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
+import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { formatDateTime } from "@/lib/format/datetime";
 import {
@@ -104,10 +106,7 @@ export function ItEquipmentPanel({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const sorted = useMemo(
-    () => [...items].sort((a, b) => a.asset_tag.localeCompare(b.asset_tag)),
-    [items],
-  );
+  const sorted = useMemo(() => sortNewestFirst(items), [items]);
 
   function openCreate() {
     setEditing(null);
@@ -171,6 +170,7 @@ export function ItEquipmentPanel({
         />
         <div className="flex shrink-0 flex-col items-stretch gap-2 self-start sm:items-end">
           <ExportButtons resource="it-equipment" />
+          <ImportFilesButton target="it-equipment" />
           <Button onClick={openCreate}>Add asset</Button>
         </div>
       </div>

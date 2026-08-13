@@ -11,7 +11,7 @@ export async function listUtilityAccounts(supabase: SupabaseClient) {
   return supabase
     .from(TABLE)
     .select("*")
-    .order("utility_type", { ascending: true })
+    .order("created_at", { ascending: false })
     .returns<UtilityAccount[]>();
 }
 

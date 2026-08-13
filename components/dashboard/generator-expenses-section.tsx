@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import type { GeneratorExpense } from "@/lib/types/database";
 import { formatDate } from "@/lib/format/datetime";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import { sortNewestFirst } from "@/lib/dashboard/sort";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
+import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import {
   CellText,
@@ -70,13 +72,7 @@ export function GeneratorExpensesSection({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const sorted = useMemo(
-    () =>
-      [...expenses].sort((a, b) =>
-        b.expense_date.localeCompare(a.expense_date),
-      ),
-    [expenses],
-  );
+  const sorted = useMemo(() => sortNewestFirst(expenses), [expenses]);
 
   const totalDebit = useMemo(
     () => expenses.reduce((sum, r) => sum + (Number(r.debit) || 0), 0),
@@ -123,6 +119,7 @@ export function GeneratorExpensesSection({
         <h2 className="text-lg font-medium">Expenses</h2>
         <div className="flex flex-wrap items-center gap-2">
           <ExportButtons resource="generator-expenses" />
+          <ImportFilesButton target="generator-expenses" />
           <Button
             onClick={() => {
               setEditing(null);
@@ -165,7 +162,7 @@ export function GeneratorExpensesSection({
                   colSpan={6}
                   className="max-w-none py-8 text-center text-muted-foreground"
                 >
-                  No expenses yet. Import from a PDF in chat or add a row.
+                  No expenses yet. Use Import PDF/Image or add a row.
                 </TableCell>
               </TableRow>
             ) : (

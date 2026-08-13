@@ -14,8 +14,10 @@ import {
 } from "@/lib/generator/maintenance";
 import { formatDate } from "@/lib/format/datetime";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import { sortNewestFirst } from "@/lib/dashboard/sort";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
+import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { GeneratorExpensesSection } from "@/components/dashboard/generator-expenses-section";
 import {
@@ -122,16 +124,10 @@ export function GeneratorPanel({
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
 
   const maintSorted = useMemo(
-    () =>
-      [...maintenance].sort((a, b) =>
-        b.service_date.localeCompare(a.service_date),
-      ),
+    () => sortNewestFirst(maintenance),
     [maintenance],
   );
-  const fuelSorted = useMemo(
-    () => [...fuel].sort((a, b) => b.log_date.localeCompare(a.log_date)),
-    [fuel],
-  );
+  const fuelSorted = useMemo(() => sortNewestFirst(fuel), [fuel]);
 
   const schedule = useMemo(
     () => nextDueFromMaintenanceRows(maintenance),
@@ -260,6 +256,7 @@ export function GeneratorPanel({
           <h2 className="text-lg font-medium">Maintenance</h2>
           <div className="flex flex-wrap items-center gap-2">
             <ExportButtons resource="generator-maintenance" />
+            <ImportFilesButton target="generator-maintenance" />
             <Button
               onClick={() => {
                 setEditingMaint(null);
@@ -435,6 +432,7 @@ export function GeneratorPanel({
           <h2 className="text-lg font-medium">Fuel log</h2>
           <div className="flex flex-wrap items-center gap-2">
             <ExportButtons resource="generator-fuel" />
+            <ImportFilesButton target="generator-fuel" />
             <Button
               onClick={() => {
                 setEditingFuel(null);

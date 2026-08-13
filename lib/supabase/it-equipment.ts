@@ -11,7 +11,7 @@ export async function listItEquipment(supabase: SupabaseClient) {
   return supabase
     .from(TABLE)
     .select("*")
-    .order("asset_tag", { ascending: true })
+    .order("created_at", { ascending: false })
     .returns<ItEquipment[]>();
 }
 

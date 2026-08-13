@@ -5,10 +5,13 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { WriteToolName } from "@/lib/validations/agent-writes";
+import type { ChatPendingAttachment } from "@/lib/chat/attachments";
+import type { ImportTarget } from "@/lib/dashboard/import-targets";
 
 export type ChatAttachmentPreview = {
   kind: "image" | "pdf";
@@ -31,6 +34,12 @@ export type PendingConfirmation = {
   args: Record<string, unknown>;
 };
 
+export type SectionImportJob = {
+  prompt: string;
+  attachments: ChatPendingAttachment[];
+  target: ImportTarget;
+};
+
 type ChatSessionContextValue = {
   messages: ChatMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
@@ -48,6 +57,10 @@ type ChatSessionContextValue = {
   setKeyLabel: React.Dispatch<React.SetStateAction<string | null>>;
   loading: boolean;
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Dashboard section import → chat auto-send */
+  pendingImport: SectionImportJob | null;
+  queueSectionImport: (job: SectionImportJob) => void;
+  takePendingImport: () => SectionImportJob | null;
   clearChatSession: () => void;
 };
 
@@ -65,6 +78,22 @@ export function ChatSessionProvider({ children }: { children: ReactNode }) {
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [keyLabel, setKeyLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pendingImport, setPendingImport] = useState<SectionImportJob | null>(
+    null,
+  );
+  const pendingImportRef = useRef<SectionImportJob | null>(null);
+
+  const queueSectionImport = useCallback((job: SectionImportJob) => {
+    pendingImportRef.current = job;
+    setPendingImport(job);
+  }, []);
+
+  const takePendingImport = useCallback(() => {
+    const job = pendingImportRef.current;
+    pendingImportRef.current = null;
+    setPendingImport(null);
+    return job;
+  }, []);
 
   const clearChatSession = useCallback(() => {
     setMessages([]);
@@ -74,6 +103,8 @@ export function ChatSessionProvider({ children }: { children: ReactNode }) {
     setModelUsed(null);
     setKeyLabel(null);
     setLoading(false);
+    pendingImportRef.current = null;
+    setPendingImport(null);
   }, []);
 
   const value = useMemo(
@@ -92,6 +123,9 @@ export function ChatSessionProvider({ children }: { children: ReactNode }) {
       setKeyLabel,
       loading,
       setLoading,
+      pendingImport,
+      queueSectionImport,
+      takePendingImport,
       clearChatSession,
     }),
     [
@@ -102,6 +136,9 @@ export function ChatSessionProvider({ children }: { children: ReactNode }) {
       modelUsed,
       keyLabel,
       loading,
+      pendingImport,
+      queueSectionImport,
+      takePendingImport,
       clearChatSession,
     ],
   );

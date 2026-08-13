@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import type { KitchenInventory } from "@/lib/types/database";
 import { kitchenInventoryStatus } from "@/lib/supabase/kitchen-inventory";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import { sortNewestFirst } from "@/lib/dashboard/sort";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
+import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { formatDateTime } from "@/lib/format/datetime";
 import {
@@ -107,11 +109,7 @@ export function KitchenInventoryPanel({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const sorted = useMemo(
-    () =>
-      [...items].sort((a, b) => a.item_name.localeCompare(b.item_name)),
-    [items],
-  );
+  const sorted = useMemo(() => sortNewestFirst(items), [items]);
 
   function openCreate() {
     setEditing(null);
@@ -175,6 +173,7 @@ export function KitchenInventoryPanel({
         />
         <div className="flex shrink-0 flex-col items-stretch gap-2 self-start sm:items-end">
           <ExportButtons resource="kitchen-inventory" />
+          <ImportFilesButton target="kitchen-inventory" />
           <Button onClick={openCreate}>Add item</Button>
         </div>
       </div>
