@@ -24,6 +24,7 @@ import {
 import {
   utilityAccountInsertSchema,
   utilityAccountUpdateSchema,
+  utilityPaymentLogInsertSchema,
 } from "@/lib/validations/utilities";
 
 export const WRITE_TOOL_NAMES = [
@@ -51,6 +52,8 @@ export const WRITE_TOOL_NAMES = [
   "utility_accounts_create",
   "utility_accounts_update",
   "utility_accounts_delete",
+  "utility_payment_create",
+  "utility_payment_delete",
 ] as const;
 
 export type WriteToolName = (typeof WRITE_TOOL_NAMES)[number];
@@ -170,3 +173,6 @@ export const utilityCreateSchema = utilityAccountInsertSchema;
 export const utilityUpdateSchemaAgent = utilityAccountUpdateSchema.required({
   id: true,
 });
+
+export const utilityPaymentCreateSchema = utilityPaymentLogInsertSchema;
+export const utilityPaymentDeleteSchema = idOnlySchema;

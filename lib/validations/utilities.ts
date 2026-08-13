@@ -2,13 +2,22 @@ import { z } from "zod";
 import {
   optionalNumber,
   optionalText,
+  requiredDate,
 } from "@/lib/validations/helpers";
-
 export const utilityTypeSchema = z.enum([
   "internet",
   "electricity",
   "gas",
   "water",
+  "mobile",
+]);
+
+export const siteUtilityProviderKeySchema = z.enum([
+  "k-electric",
+  "ptcl",
+  "ssgc",
+  "kwsb",
+  "jazz",
 ]);
 
 export const utilityAccountInsertSchema = z.object({
@@ -28,6 +37,21 @@ export const utilityAccountInsertSchema = z.object({
 });
 
 export const utilityAccountUpdateSchema = utilityAccountInsertSchema
+  .partial()
+  .extend({
+    id: z.string().uuid().optional(),
+  });
+
+export const utilityPaymentLogInsertSchema = z.object({
+  utility_account_id: z.string().uuid(),
+  paid_on: requiredDate,
+  amount: optionalNumber.pipe(
+    z.union([z.number().nonnegative(), z.null()]),
+  ),
+  notes: optionalText,
+});
+
+export const utilityPaymentLogUpdateSchema = utilityPaymentLogInsertSchema
   .partial()
   .extend({
     id: z.string().uuid().optional(),

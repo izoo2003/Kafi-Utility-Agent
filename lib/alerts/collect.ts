@@ -5,6 +5,8 @@ import type {
   KitchenInventory,
   SolarLiveSnapshot,
   SolarMonitoringLog,
+  UtilityAccount,
+  UtilityPaymentLog,
 } from "@/lib/types/database";
 import {
   evaluateSnapshotAlerts,
@@ -12,6 +14,12 @@ import {
 } from "@/lib/sems/alert-rules";
 import { kitchenInventoryStatus } from "@/lib/supabase/kitchen-inventory";
 import type { OpsAlert } from "@/lib/alerts/types";
+import {
+  billStatus,
+  latestPayment,
+  nextDueFromLastPaid,
+} from "@/lib/utilities/billing";
+import { formatDate } from "@/lib/format/datetime";
 
 const WARRANTY_WARNING_DAYS = 30;
 const SERVICE_WARNING_DAYS = 14;
@@ -37,26 +45,32 @@ function daysUntil(dateIso: string) {
 export async function collectOpsAlerts(
   supabase: SupabaseClient,
 ): Promise<OpsAlert[]> {
-  const [kitchen, it, maintenance, solar, live] = await Promise.all([
-    supabase.from("kitchen_inventory").select("*"),
-    supabase.from("it_equipment").select("*"),
-    supabase
-      .from("generator_maintenance")
-      .select("*")
-      .not("next_service_due", "is", null)
-      .order("next_service_due", { ascending: true }),
-    supabase
-      .from("solar_monitoring_log")
-      .select("*")
-      .eq("alert_flag", true)
-      .order("log_date", { ascending: false }),
-    supabase
-      .from("solar_live_snapshot")
-      .select("*")
-      .order("fetched_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  const [kitchen, it, maintenance, solar, live, utilities, payments] =
+    await Promise.all([
+      supabase.from("kitchen_inventory").select("*"),
+      supabase.from("it_equipment").select("*"),
+      supabase
+        .from("generator_maintenance")
+        .select("*")
+        .not("next_service_due", "is", null)
+        .order("next_service_due", { ascending: true }),
+      supabase
+        .from("solar_monitoring_log")
+        .select("*")
+        .eq("alert_flag", true)
+        .order("log_date", { ascending: false }),
+      supabase
+        .from("solar_live_snapshot")
+        .select("*")
+        .order("fetched_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase.from("utility_accounts").select("*"),
+      supabase
+        .from("utility_payment_logs")
+        .select("*")
+        .order("paid_on", { ascending: false }),
+    ]);
 
   const alerts: OpsAlert[] = [];
   const today = todayIso();
@@ -177,6 +191,49 @@ export async function collectOpsAlerts(
     });
   }
 
+  // Utility bills: due one month after last paid
+  if (
+    !utilities.error ||
+    !/utility_accounts|does not exist|schema cache/i.test(
+      utilities.error.message,
+    )
+  ) {
+    const accounts = (utilities.data ?? []) as UtilityAccount[];
+    const allPayments = (payments.data ?? []) as UtilityPaymentLog[];
+    const paymentsByAccount = new Map<string, UtilityPaymentLog[]>();
+    for (const p of allPayments) {
+      const list = paymentsByAccount.get(p.utility_account_id) ?? [];
+      list.push(p);
+      paymentsByAccount.set(p.utility_account_id, list);
+    }
+
+    for (const account of accounts) {
+      const label = account.provider?.trim() || account.utility_type;
+      const last = latestPayment(paymentsByAccount.get(account.id) ?? []);
+      if (!last) continue;
+      const nextDue = nextDueFromLastPaid(last.paid_on);
+      const status = billStatus(nextDue, today);
+      if (status === "ok" || status === "unknown") continue;
+
+      const remaining = daysUntil(nextDue);
+      const overdue = status === "overdue";
+      alerts.push({
+        id: `utility-bill-${account.id}`,
+        domain: "utilities",
+        severity: overdue || status === "due_today" ? "critical" : "warning",
+        title: overdue
+          ? `Bill overdue: ${label}`
+          : `Bill due: ${label}`,
+        detail: overdue
+          ? `${label} was due on ${formatDate(nextDue)} (last paid ${formatDate(last.paid_on)}).`
+          : status === "due_today"
+            ? `${label} is due today — last paid ${formatDate(last.paid_on)}.`
+            : `${label} due ${formatDate(nextDue)} (${remaining} day${remaining === 1 ? "" : "s"}) — last paid ${formatDate(last.paid_on)}.`,
+        href: "/dashboard/utilities",
+      });
+    }
+  }
+
   const severityRank: Record<OpsAlert["severity"], number> = {
     critical: 0,
     warning: 1,
@@ -189,6 +246,7 @@ export async function collectOpsAlerts(
     it: 1,
     generator: 2,
     solar: 3,
+    utilities: 4,
   };
 
   return alerts.sort((a, b) => {

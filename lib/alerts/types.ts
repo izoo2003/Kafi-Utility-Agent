@@ -4,7 +4,8 @@ export type AlertDomain =
   | "kitchen"
   | "it"
   | "generator"
-  | "solar";
+  | "solar"
+  | "utilities";
 
 export type OpsAlert = {
   id: string;

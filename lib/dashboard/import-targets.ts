@@ -88,11 +88,10 @@ export function importPromptFor(target: ImportTarget): string {
       ].join(" ");
     case "utilities":
       return [
-        "IMPORT TARGET: Internet & utility accounts ONLY.",
-        "Read every page/photo carefully. Extract EVERY distinct account row.",
-        "For EACH row call utility_accounts_create with confirmed=false (one tool call per row).",
-        "Map: type → utility_type (internet/electricity/gas/water); provider; account number; billing cycle; monthly avg cost; due day of month; contact; notes.",
-        "Never store passwords. Skip headers/blank lines. Do not write to other domains.",
+        "IMPORT TARGET: Internet & utility accounts / bill payments ONLY.",
+        "Site providers are: K-Electric (electricity), PTCL (internet), SSGC (Gas), KWSB (Water Board), Jazz monthly bill (mobile).",
+        "Prefer utility_payment_create when the sheet is a paid bill (map paid date → paid_on, amount → amount) after resolving utility_account_id via utility_accounts_list.",
+        "For new accounts call utility_accounts_create with confirmed=false. Never store passwords. Do not write to other domains.",
       ].join(" ");
   }
 }

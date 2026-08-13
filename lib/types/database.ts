@@ -130,7 +130,12 @@ export type SolarLiveSnapshotUpsert = {
   last_error?: string | null;
 };
 
-export type UtilityType = "internet" | "electricity" | "gas" | "water";
+export type UtilityType =
+  | "internet"
+  | "electricity"
+  | "gas"
+  | "water"
+  | "mobile";
 
 export type UtilityAccount = AuditColumns & {
   utility_type: UtilityType;
@@ -143,11 +148,18 @@ export type UtilityAccount = AuditColumns & {
   notes: string | null;
 };
 
+export type UtilityPaymentLog = AuditColumns & {
+  utility_account_id: Uuid;
+  paid_on: IsoDate;
+  amount: number | null;
+  notes: string | null;
+};
+
 export type AlertNotificationChannel = "email" | "console";
 
 export type AlertNotification = {
   alert_id: string;
-  domain: "kitchen" | "it" | "generator" | "solar";
+  domain: "kitchen" | "it" | "generator" | "solar" | "utilities";
   severity: "critical" | "warning" | "info";
   title: string;
   detail: string;
@@ -184,6 +196,11 @@ export type Database = {
         Update: Partial<SolarLiveSnapshotUpsert>;
       };
       utility_accounts: { Row: UtilityAccount; Insert: UtilityAccountInsert; Update: UtilityAccountUpdate };
+      utility_payment_logs: {
+        Row: UtilityPaymentLog;
+        Insert: UtilityPaymentLogInsert;
+        Update: UtilityPaymentLogUpdate;
+      };
       alert_notifications: {
         Row: AlertNotification;
         Insert: AlertNotificationInsert;
@@ -233,5 +250,15 @@ export type UtilityAccountInsert = Partial<OmitAuditOnWrite<UtilityAccount>> & {
   utility_type: UtilityType;
 };
 export type UtilityAccountUpdate = Partial<OmitAuditOnWrite<UtilityAccount>>;
+
+export type UtilityPaymentLogInsert = Partial<
+  OmitAuditOnWrite<UtilityPaymentLog>
+> & {
+  utility_account_id: Uuid;
+  paid_on: IsoDate;
+};
+export type UtilityPaymentLogUpdate = Partial<
+  OmitAuditOnWrite<UtilityPaymentLog>
+>;
 
 export const SOLAR_SPECS_BUCKET = "solar-specs" as const;

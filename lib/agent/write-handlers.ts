@@ -45,10 +45,14 @@ import {
 import { removeSolarSpecFile } from "@/lib/supabase/solar-storage";
 import {
   createUtilityAccount,
+  createUtilityPaymentLog,
   deleteUtilityAccount,
+  deleteUtilityPaymentLog,
   getUtilityAccount,
   updateUtilityAccount,
 } from "@/lib/supabase/utilities";
+import { nextDueFromLastPaid } from "@/lib/utilities/billing";
+import { formatDate } from "@/lib/format/datetime";
 import type {
   ItEquipment,
   KitchenInventory,
@@ -72,6 +76,7 @@ import {
   solarSpecsCreateSchema,
   solarSpecsUpdateSchemaAgent,
   utilityCreateSchema,
+  utilityPaymentCreateSchema,
   utilityUpdateSchemaAgent,
   type WriteToolName,
 } from "@/lib/validations/agent-writes";
@@ -728,6 +733,50 @@ export async function executeWriteTool(
         return needsConfirmation(name, summary, { id });
       }
       const { error } = await deleteUtilityAccount(supabase, id);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: id };
+    }
+
+    case "utility_payment_create": {
+      const parsed = utilityPaymentCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const payload = parsed.data;
+      const account = await getUtilityAccount(
+        supabase,
+        payload.utility_account_id,
+      );
+      if (account.error) throw new Error(account.error.message);
+      if (!account.data) return { error: "Utility account not found" };
+      const acct = account.data as UtilityAccount;
+      const label = acct.provider ?? acct.utility_type;
+      const nextDue = nextDueFromLastPaid(payload.paid_on);
+      const summary = `Log ${label} payment on ${formatDate(payload.paid_on)}${payload.amount != null ? ` — amount ${payload.amount}` : ""}. Next due ${formatDate(nextDue)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { ...payload });
+      }
+      const { data, error, outcome } = await createUtilityPaymentLog(
+        supabase,
+        withUpdatedBy({ ...payload }, user),
+      );
+      if (error) throw new Error(error.message);
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+        next_due: nextDue,
+      };
+    }
+
+    case "utility_payment_delete": {
+      const parsed = idOnlySchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id } = parsed.data;
+      const summary = `DELETE utility payment log ${id}. This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id });
+      }
+      const { error } = await deleteUtilityPaymentLog(supabase, id);
       if (error) throw new Error(error.message);
       return { status: "ok", summary, deleted_id: id };
     }

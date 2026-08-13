@@ -428,9 +428,13 @@ export const agentWriteTools: FunctionDeclaration[] = [
         utility_type: {
           type: SchemaType.STRING,
           format: "enum",
-          enum: ["internet", "electricity", "gas", "water"],
+          enum: ["internet", "electricity", "gas", "water", "mobile"],
         },
-        provider: { type: SchemaType.STRING },
+        provider: {
+          type: SchemaType.STRING,
+          description:
+            "Prefer: K-Electric, PTCL, SSGC (Gas), KWSB (Water Board), Jazz monthly bill",
+        },
         account_number: { type: SchemaType.STRING },
         billing_cycle: { type: SchemaType.STRING },
         monthly_avg_cost: { type: SchemaType.NUMBER },
@@ -456,7 +460,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
         utility_type: {
           type: SchemaType.STRING,
           format: "enum",
-          enum: ["internet", "electricity", "gas", "water"],
+          enum: ["internet", "electricity", "gas", "water", "mobile"],
         },
         provider: { type: SchemaType.STRING },
         account_number: { type: SchemaType.STRING },
@@ -473,6 +477,34 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "utility_accounts_delete",
     description: "Delete a utility account. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: { ...idProp, ...confirmedProperty },
+      required: ["id"],
+    },
+  },
+  {
+    name: "utility_payment_create",
+    description:
+      "Log a utility bill payment. Next due becomes paid_on + 1 month. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        utility_account_id: { type: SchemaType.STRING },
+        paid_on: {
+          type: SchemaType.STRING,
+          description: "DD/MM/YYYY or YYYY-MM-DD",
+        },
+        amount: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["utility_account_id", "paid_on"],
+    },
+  },
+  {
+    name: "utility_payment_delete",
+    description: "Delete a utility payment log entry. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: { ...idProp, ...confirmedProperty },

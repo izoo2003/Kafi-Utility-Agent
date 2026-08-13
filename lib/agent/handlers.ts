@@ -24,7 +24,14 @@ import {
   listSolarMonitoringLog,
   listSolarSpecs,
 } from "@/lib/supabase/solar";
-import { listUtilityAccounts } from "@/lib/supabase/utilities";
+import {
+  listUtilityAccounts,
+  listUtilityPaymentLogs,
+} from "@/lib/supabase/utilities";
+import {
+  latestPayment,
+  nextDueFromLastPaid,
+} from "@/lib/utilities/billing";
 import type { ItEquipment, KitchenInventory } from "@/lib/types/database";
 import type { WriteToolName } from "@/lib/validations/agent-writes";
 
@@ -233,23 +240,38 @@ export async function executeAgentTool(
     }
 
     case "utility_accounts_list": {
-      const { data, error } = await listUtilityAccounts(supabase);
+      const [{ data, error }, payments] = await Promise.all([
+        listUtilityAccounts(supabase),
+        listUtilityPaymentLogs(supabase),
+      ]);
       if (error) throw new Error(error.message);
       let rows = data ?? [];
       if (typeof input.utility_type === "string") {
         rows = rows.filter((r) => r.utility_type === input.utility_type);
       }
-      return rows.map((r) => ({
-        id: r.id,
-        utility_type: r.utility_type,
-        provider: r.provider,
-        account_number: r.account_number,
-        billing_cycle: r.billing_cycle,
-        monthly_avg_cost: r.monthly_avg_cost,
-        due_date_day: r.due_date_day,
-        contact_person: r.contact_person,
-        notes: r.notes,
-      }));
+      const byAccount = new Map<string, typeof payments.data>();
+      for (const p of payments.data ?? []) {
+        const list = byAccount.get(p.utility_account_id) ?? [];
+        list.push(p);
+        byAccount.set(p.utility_account_id, list);
+      }
+      return rows.map((r) => {
+        const last = latestPayment(byAccount.get(r.id) ?? []);
+        const nextDue = last ? nextDueFromLastPaid(last.paid_on) : null;
+        return {
+          id: r.id,
+          utility_type: r.utility_type,
+          provider: r.provider,
+          account_number: r.account_number,
+          billing_cycle: r.billing_cycle,
+          monthly_avg_cost: r.monthly_avg_cost,
+          last_paid_on: last?.paid_on ?? null,
+          last_paid_amount: last?.amount ?? null,
+          next_due: nextDue,
+          contact_person: r.contact_person,
+          notes: r.notes,
+        };
+      });
     }
 
     default:

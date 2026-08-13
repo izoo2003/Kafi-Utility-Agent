@@ -56,7 +56,7 @@ export const dashboardNav = [
   {
     href: "/dashboard/utilities",
     label: "Utilities",
-    description: "Internet and utility accounts",
+    description: "K-Electric, PTCL, SSGC, KWSB, Jazz bills & due dates",
     icon: "utilities",
     accent: "emerald",
   },

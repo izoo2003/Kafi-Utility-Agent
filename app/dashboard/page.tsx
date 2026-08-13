@@ -7,6 +7,7 @@ import { dashboardNav } from "@/lib/dashboard/nav";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { NavIcon } from "@/components/dashboard/nav-icon";
 import { AlertsPanel } from "@/components/dashboard/alerts-panel";
+import { BillDuePopup } from "@/components/dashboard/bill-due-popup";
 import { RecentActivityPanel } from "@/components/dashboard/recent-activity-panel";
 
 export default async function DashboardHomePage() {
@@ -24,6 +25,7 @@ export default async function DashboardHomePage() {
         description="Live alerts, recent updates, domain shortcuts, and chat over the same data."
       />
 
+      <BillDuePopup alerts={alerts} />
       <AlertsPanel alerts={alerts} />
 
       <RecentActivityPanel items={recent} />
