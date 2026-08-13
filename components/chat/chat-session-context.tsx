@@ -10,10 +10,19 @@ import {
 } from "react";
 import type { WriteToolName } from "@/lib/validations/agent-writes";
 
+export type ChatAttachmentPreview = {
+  kind: "image" | "pdf";
+  /** data URL for images; unused for PDFs */
+  url?: string;
+  name: string;
+};
+
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  /** @deprecated use attachmentPreviews */
   imagePreviews?: string[];
+  attachmentPreviews?: ChatAttachmentPreview[];
 };
 
 export type PendingConfirmation = {
@@ -25,8 +34,12 @@ export type PendingConfirmation = {
 type ChatSessionContextValue = {
   messages: ChatMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  /** Current confirmation (head of queue) */
   pending: PendingConfirmation | null;
   setPending: React.Dispatch<React.SetStateAction<PendingConfirmation | null>>;
+  /** Remaining confirmations after the current one */
+  pendingQueue: PendingConfirmation[];
+  setPendingQueue: React.Dispatch<React.SetStateAction<PendingConfirmation[]>>;
   toolsUsed: string[];
   setToolsUsed: React.Dispatch<React.SetStateAction<string[]>>;
   modelUsed: string | null;
@@ -47,6 +60,7 @@ const ChatSessionContext = createContext<ChatSessionContextValue | null>(null);
 export function ChatSessionProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pending, setPending] = useState<PendingConfirmation | null>(null);
+  const [pendingQueue, setPendingQueue] = useState<PendingConfirmation[]>([]);
   const [toolsUsed, setToolsUsed] = useState<string[]>([]);
   const [modelUsed, setModelUsed] = useState<string | null>(null);
   const [keyLabel, setKeyLabel] = useState<string | null>(null);
@@ -55,6 +69,7 @@ export function ChatSessionProvider({ children }: { children: ReactNode }) {
   const clearChatSession = useCallback(() => {
     setMessages([]);
     setPending(null);
+    setPendingQueue([]);
     setToolsUsed([]);
     setModelUsed(null);
     setKeyLabel(null);
@@ -67,6 +82,8 @@ export function ChatSessionProvider({ children }: { children: ReactNode }) {
       setMessages,
       pending,
       setPending,
+      pendingQueue,
+      setPendingQueue,
       toolsUsed,
       setToolsUsed,
       modelUsed,
@@ -80,6 +97,7 @@ export function ChatSessionProvider({ children }: { children: ReactNode }) {
     [
       messages,
       pending,
+      pendingQueue,
       toolsUsed,
       modelUsed,
       keyLabel,

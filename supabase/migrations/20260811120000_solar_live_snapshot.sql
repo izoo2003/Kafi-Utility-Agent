@@ -13,12 +13,12 @@ create table public.solar_live_snapshot (
   battery_power_kw numeric,
   battery_soc_pct numeric,
   generation_today_kwh numeric,
-  consumption_today_kwh numeric,
+  consumption_today_kwh numeric, 
   raw jsonb,
   last_error text
 );
 
-create trigger solar_live_snapshot_set_updated_at
+create trigger solar_live_snapshot_set_updated_at 
 before update on public.solar_live_snapshot
 for each row execute function public.set_updated_at();
 

@@ -37,11 +37,12 @@ Derived state: `status = current_qty <= reorder_level ? 'low' : 'ok'` — comput
 ## 3. Generator (`generator_maintenance`, `generator_fuel_log`)
 `generator_maintenance`:
 - service_date date
-- next_service_due date
+- next_service_due date (default: service_date + 1 month — monthly checkup cadence)
 - service_type text
 - vendor text
 - cost numeric
 - notes text
+- checkup_status text (`done` | `not_done`) — whether this checkup was completed
 
 `generator_fuel_log`:
 - log_date date
@@ -50,6 +51,16 @@ Derived state: `status = current_qty <= reorder_level ? 'low' : 'ok'` — comput
 - fuel_level_pct numeric
 - cost numeric
 - notes text
+
+`generator_expenses` (ledger / fuel expense sheets):
+- expense_date date
+- account text
+- description text
+- debit numeric (summed for total expense)
+- credit numeric (optional)
+- notes text
+
+Site date display/parse convention: DD/MM/YYYY (stored as ISO dates).
 
 ## 4. Solar system (`solar_specs`, `solar_monitoring_log`)
 `solar_specs` (effectively one row, but keep as a table for history):

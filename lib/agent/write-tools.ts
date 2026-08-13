@@ -149,16 +149,24 @@ export const agentWriteTools: FunctionDeclaration[] = [
   },
   {
     name: "generator_maintenance_create",
-    description: "Create a generator maintenance record. Requires confirmation.",
+    description:
+      "Create a generator maintenance/checkup record. If next_service_due is omitted, defaults to service_date + 1 month. checkup_status is done or not_done. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         service_date: { type: SchemaType.STRING, description: "YYYY-MM-DD" },
-        next_service_due: { type: SchemaType.STRING },
+        next_service_due: {
+          type: SchemaType.STRING,
+          description: "YYYY-MM-DD; defaults to +1 month from service_date",
+        },
         service_type: { type: SchemaType.STRING },
         vendor: { type: SchemaType.STRING },
         cost: { type: SchemaType.NUMBER },
         notes: { type: SchemaType.STRING },
+        checkup_status: {
+          type: SchemaType.STRING,
+          description: "done or not_done",
+        },
         ...confirmedProperty,
       },
       required: ["service_date"],
@@ -166,7 +174,8 @@ export const agentWriteTools: FunctionDeclaration[] = [
   },
   {
     name: "generator_maintenance_update",
-    description: "Update a generator maintenance record. Requires confirmation.",
+    description:
+      "Update a generator maintenance record (including checkup_status done/not_done). Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -177,6 +186,10 @@ export const agentWriteTools: FunctionDeclaration[] = [
         vendor: { type: SchemaType.STRING },
         cost: { type: SchemaType.NUMBER },
         notes: { type: SchemaType.STRING },
+        checkup_status: {
+          type: SchemaType.STRING,
+          description: "done or not_done",
+        },
         ...confirmedProperty,
       },
       required: ["id"],
@@ -229,6 +242,57 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "generator_fuel_log_delete",
     description: "Delete a generator fuel log entry. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: { ...idProp, ...confirmedProperty },
+      required: ["id"],
+    },
+  },
+  {
+    name: "generator_expense_create",
+    description:
+      "Create a generator expense ledger row (from fuel/expense sheets). Use debit for the amount. Dates may be DD/MM/YYYY or YYYY-MM-DD. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        expense_date: {
+          type: SchemaType.STRING,
+          description: "DD/MM/YYYY or YYYY-MM-DD",
+        },
+        account: { type: SchemaType.STRING },
+        description: { type: SchemaType.STRING },
+        debit: {
+          type: SchemaType.NUMBER,
+          description: "Debit amount (included in total expense)",
+        },
+        credit: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["expense_date", "debit"],
+    },
+  },
+  {
+    name: "generator_expense_update",
+    description: "Update a generator expense row. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        expense_date: { type: SchemaType.STRING },
+        account: { type: SchemaType.STRING },
+        description: { type: SchemaType.STRING },
+        debit: { type: SchemaType.NUMBER },
+        credit: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "generator_expense_delete",
+    description: "Delete a generator expense row. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: { ...idProp, ...confirmedProperty },

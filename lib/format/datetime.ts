@@ -12,10 +12,21 @@ export function formatDateTime(value: string | null | undefined) {
   });
 }
 
+/** Display dates as DD/MM/YYYY (site convention). */
 export function formatDate(value: string | null | undefined) {
   if (!value) return "—";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-");
+    return `${d}/${m}/${y}`;
+  }
+  const dmy = value.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (dmy) {
+    return `${dmy[1]!.padStart(2, "0")}/${dmy[2]!.padStart(2, "0")}/${dmy[3]}`;
+  }
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toISOString().slice(0, 10);
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const yy = d.getUTCFullYear();
+  return `${dd}/${mm}/${yy}`;
 }

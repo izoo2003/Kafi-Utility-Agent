@@ -27,17 +27,29 @@ export async function POST(request: Request) {
           message: { role: "assistant" as const, content: reply },
           toolsUsed,
           pendingConfirmation: null,
+          pendingConfirmations: [],
         },
       });
     }
 
-    const { reply, toolsUsed, model, keyLabel, pendingConfirmation } =
-      await runFacilityOpsAgent(
-        supabase,
-        user,
-        parsed.data.messages,
-        parsed.data.images,
-      );
+    const attachments = [
+      ...(parsed.data.attachments ?? []),
+      ...(parsed.data.images ?? []),
+    ].slice(0, 8);
+
+    const {
+      reply,
+      toolsUsed,
+      model,
+      keyLabel,
+      pendingConfirmation,
+      pendingConfirmations,
+    } = await runFacilityOpsAgent(
+      supabase,
+      user,
+      parsed.data.messages,
+      attachments,
+    );
     return NextResponse.json({
       data: {
         message: { role: "assistant" as const, content: reply },
@@ -45,6 +57,7 @@ export async function POST(request: Request) {
         model,
         keyLabel,
         pendingConfirmation,
+        pendingConfirmations,
       },
     });
   } catch (error) {

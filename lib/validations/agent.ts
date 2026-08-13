@@ -1,16 +1,26 @@
 import { z } from "zod";
 import { writeToolNameSchema } from "@/lib/validations/agent-writes";
 
-export const chatImageSchema = z.object({
-  mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "image/gif"]),
+export const chatAttachmentSchema = z.object({
+  mimeType: z.enum([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+  ]),
   data: z
     .string()
     .min(1)
-    .max(7_000_000)
+    .max(16_000_000)
     .refine((v) => !v.startsWith("data:"), {
-      message: "Image data must be raw base64 without a data: URL prefix",
+      message: "Attachment data must be raw base64 without a data: URL prefix",
     }),
+  name: z.string().trim().max(240).optional(),
 });
+
+/** @deprecated use chatAttachmentSchema — kept for older clients */
+export const chatImageSchema = chatAttachmentSchema;
 
 export const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -25,7 +35,10 @@ export const confirmWriteSchema = z.object({
 export const agentChatRequestSchema = z
   .object({
     messages: z.array(chatMessageSchema).min(1).max(40),
-    images: z.array(chatImageSchema).max(6).optional(),
+    /** Images and/or PDFs (scanned log sheets, receipts, etc.) */
+    attachments: z.array(chatAttachmentSchema).max(8).optional(),
+    /** Legacy alias for attachments */
+    images: z.array(chatAttachmentSchema).max(8).optional(),
     confirmWrite: confirmWriteSchema.optional(),
   })
   .superRefine((v, ctx) => {
@@ -42,14 +55,16 @@ export const agentChatRequestSchema = z
     }
 
     const hasText = last.content.trim().length > 0;
-    const hasImages = (v.images?.length ?? 0) > 0;
-    if (!hasText && !hasImages) {
+    const attachCount =
+      (v.attachments?.length ?? 0) + (v.images?.length ?? 0);
+    if (!hasText && attachCount === 0) {
       ctx.addIssue({
         code: "custom",
-        message: "Provide a message and/or at least one image.",
+        message: "Provide a message and/or at least one image or PDF.",
         path: ["messages"],
       });
     }
   });
 
-export type ChatImageInput = z.infer<typeof chatImageSchema>;
+export type ChatAttachmentInput = z.infer<typeof chatAttachmentSchema>;
+export type ChatImageInput = ChatAttachmentInput;

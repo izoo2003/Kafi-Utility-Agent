@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
+  FileText,
   ImagePlus,
   Loader2,
   SendHorizontal,
@@ -14,50 +15,68 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   useChatSession,
+  type ChatAttachmentPreview,
   type ChatMessage,
   type PendingConfirmation,
 } from "@/components/chat/chat-session-context";
 
-type PendingImage = {
+type PendingAttachment = {
   id: string;
-  mimeType: "image/jpeg" | "image/png" | "image/webp" | "image/gif";
+  mimeType:
+    | "image/jpeg"
+    | "image/png"
+    | "image/webp"
+    | "image/gif"
+    | "application/pdf";
   data: string;
-  previewUrl: string;
+  previewUrl: string | null;
   name: string;
+  kind: "image" | "pdf";
 };
 
 const SUGGESTIONS = [
   "What's low in kitchen inventory?",
-  "Analyze these solar photos and fill specs or logs",
-  "Log 20 liters of fuel for the generator today",
+  "Add these as generator expenses (use debit)",
+  "Import maintenance — accounts & description only",
   "Give me a site status summary",
 ];
 
-const MAX_IMAGES = 6;
+const MAX_ATTACHMENTS = 8;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
 function normalizeMime(
   type: string,
-): PendingImage["mimeType"] | null {
+  fileName: string,
+): PendingAttachment["mimeType"] | null {
   if (type === "image/jpg") return "image/jpeg";
   if (
     type === "image/jpeg" ||
     type === "image/png" ||
     type === "image/webp" ||
-    type === "image/gif"
+    type === "image/gif" ||
+    type === "application/pdf"
   ) {
     return type;
+  }
+  if (!type && fileName.toLowerCase().endsWith(".pdf")) {
+    return "application/pdf";
   }
   return null;
 }
 
-async function fileToPendingImage(file: File): Promise<PendingImage> {
-  const mimeType = normalizeMime(file.type);
+async function fileToPendingAttachment(file: File): Promise<PendingAttachment> {
+  const mimeType = normalizeMime(file.type, file.name);
   if (!mimeType) {
-    throw new Error(`${file.name}: use JPG, PNG, WebP, or GIF`);
+    throw new Error(`${file.name}: use JPG, PNG, WebP, GIF, or PDF`);
   }
-  if (file.size > MAX_IMAGE_BYTES) {
-    throw new Error(`${file.name}: max 4 MB per image`);
+
+  const isPdf = mimeType === "application/pdf";
+  const maxBytes = isPdf ? MAX_PDF_BYTES : MAX_IMAGE_BYTES;
+  if (file.size > maxBytes) {
+    throw new Error(
+      `${file.name}: max ${isPdf ? "10 MB per PDF" : "4 MB per image"}`,
+    );
   }
 
   const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -74,9 +93,24 @@ async function fileToPendingImage(file: File): Promise<PendingImage> {
     id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
     mimeType,
     data,
-    previewUrl: dataUrl,
+    previewUrl: isPdf ? null : dataUrl,
     name: file.name,
+    kind: isPdf ? "pdf" : "image",
   };
+}
+
+function applyConfirmations(
+  list: PendingConfirmation[],
+  setPending: (v: PendingConfirmation | null) => void,
+  setPendingQueue: (v: PendingConfirmation[]) => void,
+) {
+  if (!list.length) {
+    setPending(null);
+    setPendingQueue([]);
+    return;
+  }
+  setPending(list[0]!);
+  setPendingQueue(list.slice(1));
 }
 
 export function ChatPanel() {
@@ -85,6 +119,8 @@ export function ChatPanel() {
     setMessages,
     pending,
     setPending,
+    pendingQueue,
+    setPendingQueue,
     toolsUsed,
     setToolsUsed,
     modelUsed,
@@ -95,60 +131,81 @@ export function ChatPanel() {
     setLoading,
   } = useChatSession();
   const [input, setInput] = useState("");
-  const [images, setImages] = useState<PendingImage[]>([]);
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, pending, images]);
+  }, [messages, loading, pending, attachments]);
 
   async function addFiles(fileList: FileList | null) {
     if (!fileList?.length) return;
     setError(null);
-    const remaining = MAX_IMAGES - images.length;
+    const remaining = MAX_ATTACHMENTS - attachments.length;
     if (remaining <= 0) {
-      setError(`You can attach up to ${MAX_IMAGES} images.`);
+      setError(`You can attach up to ${MAX_ATTACHMENTS} files.`);
       return;
     }
 
     const selected = Array.from(fileList).slice(0, remaining);
     try {
-      const next = await Promise.all(selected.map(fileToPendingImage));
-      setImages((prev) => [...prev, ...next].slice(0, MAX_IMAGES));
+      const next = await Promise.all(selected.map(fileToPendingAttachment));
+      setAttachments((prev) => [...prev, ...next].slice(0, MAX_ATTACHMENTS));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not add image");
+      setError(e instanceof Error ? e.message : "Could not add file");
     }
   }
 
   async function send(content: string) {
     const trimmed = content.trim();
     if (loading) return;
-    if (!trimmed && images.length === 0) return;
+    if (!trimmed && attachments.length === 0) return;
 
+    const pdfCount = attachments.filter((a) => a.kind === "pdf").length;
+    const imageCount = attachments.length - pdfCount;
     const displayContent =
       trimmed ||
-      `Analyze ${images.length} attached image${images.length === 1 ? "" : "s"} and update the right records.`;
+      (attachments.length
+        ? `Analyze ${attachments.length} attached file${attachments.length === 1 ? "" : "s"} (${[
+            pdfCount ? `${pdfCount} PDF${pdfCount === 1 ? "" : "s"}` : "",
+            imageCount
+              ? `${imageCount} image${imageCount === 1 ? "" : "s"}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(", ")}) and add each log/expense row to the correct section.`
+        : "");
 
-    const attached = images;
+    const attached = attachments;
+    const attachmentPreviews: ChatAttachmentPreview[] = attached.map((a) =>
+      a.kind === "pdf"
+        ? { kind: "pdf", name: a.name }
+        : { kind: "image", name: a.name, url: a.previewUrl ?? undefined },
+    );
+
     const nextMessages: ChatMessage[] = [
       ...messages,
       {
         role: "user",
         content: displayContent,
-        imagePreviews: attached.map((i) => i.previewUrl),
+        attachmentPreviews,
+        imagePreviews: attached
+          .filter((a) => a.previewUrl)
+          .map((a) => a.previewUrl!),
       },
     ];
     setMessages(nextMessages);
     setInput("");
-    setImages([]);
+    setAttachments([]);
     setError(null);
     setLoading(true);
     setToolsUsed([]);
     setModelUsed(null);
     setKeyLabel(null);
     setPending(null);
+    setPendingQueue([]);
 
     try {
       const res = await fetch("/api/agent", {
@@ -159,7 +216,11 @@ export function ChatPanel() {
             role,
             content: c,
           })),
-          images: attached.map(({ mimeType, data }) => ({ mimeType, data })),
+          attachments: attached.map(({ mimeType, data, name }) => ({
+            mimeType,
+            data,
+            name,
+          })),
         }),
       });
       const json = (await res.json()) as {
@@ -170,6 +231,7 @@ export function ChatPanel() {
           model?: string;
           keyLabel?: string;
           pendingConfirmation?: PendingConfirmation | null;
+          pendingConfirmations?: PendingConfirmation[];
         };
       };
 
@@ -181,7 +243,14 @@ export function ChatPanel() {
       setToolsUsed(json.data?.toolsUsed ?? []);
       setModelUsed(json.data?.model ?? null);
       setKeyLabel(json.data?.keyLabel ?? null);
-      setPending(json.data?.pendingConfirmation ?? null);
+
+      const queue =
+        json.data?.pendingConfirmations?.length
+          ? json.data.pendingConfirmations
+          : json.data?.pendingConfirmation
+            ? [json.data.pendingConfirmation]
+            : [];
+      applyConfirmations(queue, setPending, setPendingQueue);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Chat failed");
     } finally {
@@ -192,9 +261,15 @@ export function ChatPanel() {
   async function confirmPending() {
     if (!pending || loading) return;
 
+    const current = pending;
+    const remaining = pendingQueue;
+
     const nextMessages: ChatMessage[] = [
       ...messages,
-      { role: "user", content: `Confirm: ${pending.summary}` },
+      {
+        role: "user",
+        content: `Confirm: ${current.summary}`,
+      },
     ];
     setMessages(nextMessages);
     setError(null);
@@ -211,8 +286,8 @@ export function ChatPanel() {
             content,
           })),
           confirmWrite: {
-            tool: pending.tool,
-            args: pending.args,
+            tool: current.tool,
+            args: current.args,
           },
         }),
       });
@@ -228,9 +303,19 @@ export function ChatPanel() {
         throw new Error(json.error ?? `Request failed (${res.status})`);
       }
 
-      setMessages((prev) => [...prev, json.data!.message]);
+      const left = remaining.length;
+      const baseReply = json.data!.message.content;
+      const progressNote =
+        left > 0
+          ? `\n\n${left} more record${left === 1 ? "" : "s"} waiting for confirm.`
+          : "";
+
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `${baseReply}${progressNote}` },
+      ]);
       setToolsUsed(json.data?.toolsUsed ?? []);
-      setPending(null);
+      applyConfirmations(remaining, setPending, setPendingQueue);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Confirm failed");
     } finally {
@@ -240,16 +325,28 @@ export function ChatPanel() {
 
   function cancelPending() {
     if (!pending || loading) return;
+    const skipped = 1 + pendingQueue.length;
     setMessages((prev) => [
       ...prev,
       { role: "user", content: "Cancel that change." },
       {
         role: "assistant",
-        content: "Cancelled — nothing was changed.",
+        content:
+          skipped > 1
+            ? `Cancelled — nothing was changed (${skipped} pending records discarded).`
+            : "Cancelled — nothing was changed.",
       },
     ]);
     setPending(null);
+    setPendingQueue([]);
   }
+
+  const queueTotal = pending ? 1 + pendingQueue.length : 0;
+  const hasAnyPreviews = messages.some(
+    (m) =>
+      (m.attachmentPreviews?.length ?? 0) > 0 ||
+      (m.imagePreviews?.length ?? 0) > 0,
+  );
 
   return (
     <div className="flex h-[min(72dvh,820px)] min-h-[22rem] w-full flex-col overflow-hidden rounded-xl border border-[oklch(0.88_0.02_220)] bg-white/75 shadow-[0_1px_0_oklch(0.9_0.02_220)] backdrop-blur-sm sm:h-[min(75vh,820px)] sm:rounded-2xl">
@@ -260,7 +357,7 @@ export function ChatPanel() {
         <div className="min-w-0">
           <p className="font-heading text-sm font-semibold">Ops assistant</p>
           <p className="truncate text-xs text-muted-foreground">
-            History kept while you browse · clears on logout / refresh
+            Images + PDFs · history kept while you browse
           </p>
         </div>
       </div>
@@ -269,9 +366,9 @@ export function ChatPanel() {
         {messages.length === 0 ? (
           <div className="space-y-3 sm:space-y-4">
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Ask about site ops, attach solar/generator photos to extract
-              specs or logs, or request adds/edits/deletes. Changes preview
-              first — then Confirm.
+              Ask about site ops, or attach fuel/maintenance log PDFs or photos.
+              Say which section they belong to — each row is previewed, then
+              Confirm one by one.
             </p>
             <div className="grid gap-2 sm:flex sm:flex-wrap">
               {SUGGESTIONS.map((suggestion) => (
@@ -297,7 +394,29 @@ export function ChatPanel() {
                   : "mr-auto border border-[oklch(0.9_0.02_220)] bg-[oklch(0.985_0.01_220)] text-foreground",
               )}
             >
-              {message.imagePreviews?.length ? (
+              {message.attachmentPreviews?.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {message.attachmentPreviews.map((att) =>
+                    att.kind === "pdf" ? (
+                      <div
+                        key={`${att.name}-${att.kind}`}
+                        className="inline-flex max-w-[10rem] items-center gap-1.5 rounded-lg bg-black/15 px-2 py-1.5 text-xs"
+                      >
+                        <FileText className="size-3.5 shrink-0" />
+                        <span className="truncate">{att.name}</span>
+                      </div>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={att.url?.slice(0, 48) ?? att.name}
+                        src={att.url}
+                        alt={att.name}
+                        className="h-16 w-16 rounded-lg object-cover ring-1 ring-black/10"
+                      />
+                    ),
+                  )}
+                </div>
+              ) : message.imagePreviews?.length ? (
                 <div className="flex flex-wrap gap-1.5">
                   {message.imagePreviews.map((src) => (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -318,11 +437,19 @@ export function ChatPanel() {
         {pending && !loading ? (
           <div className="mr-auto max-w-[92%] space-y-3 rounded-2xl border border-[oklch(0.82_0.06_85)] bg-[oklch(0.98_0.03_95)] px-3.5 py-3 sm:max-w-[85%]">
             <p className="text-sm font-medium text-foreground">
-              Confirm this change?
+              {queueTotal > 1
+                ? `Confirm record 1 of ${queueTotal}?`
+                : "Confirm this change?"}
             </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {pending.summary}
             </p>
+            {queueTotal > 1 ? (
+              <p className="text-xs text-muted-foreground">
+                {pendingQueue.length} more after this. Cancel discards all
+                remaining.
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -352,8 +479,8 @@ export function ChatPanel() {
             <Loader2 className="size-4 animate-spin" />
             {pending
               ? "Applying change…"
-              : images.length || messages.some((m) => m.imagePreviews?.length)
-                ? "Analyzing…"
+              : attachments.length || hasAnyPreviews
+                ? "Reading logs / attachments…"
                 : "Checking site records…"}
           </div>
         ) : null}
@@ -382,22 +509,29 @@ export function ChatPanel() {
         </div>
       )}
 
-      {images.length > 0 ? (
+      {attachments.length > 0 ? (
         <div className="flex flex-wrap gap-2 border-t border-[oklch(0.92_0.015_220)] px-3 py-2">
-          {images.map((img) => (
-            <div key={img.id} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={img.previewUrl}
-                alt={img.name}
-                className="h-14 w-14 rounded-lg object-cover ring-1 ring-black/10"
-              />
+          {attachments.map((file) => (
+            <div key={file.id} className="relative">
+              {file.kind === "pdf" ? (
+                <div className="flex h-14 max-w-[9rem] items-center gap-1.5 rounded-lg bg-[oklch(0.96_0.02_220)] px-2 ring-1 ring-black/10">
+                  <FileText className="size-4 shrink-0 text-[oklch(0.4_0.08_195)]" />
+                  <span className="truncate text-xs">{file.name}</span>
+                </div>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={file.previewUrl!}
+                  alt={file.name}
+                  className="h-14 w-14 rounded-lg object-cover ring-1 ring-black/10"
+                />
+              )}
               <button
                 type="button"
-                aria-label={`Remove ${img.name}`}
+                aria-label={`Remove ${file.name}`}
                 className="absolute -top-1.5 -right-1.5 inline-flex size-5 items-center justify-center rounded-full bg-foreground text-background"
                 onClick={() =>
-                  setImages((prev) => prev.filter((p) => p.id !== img.id))
+                  setAttachments((prev) => prev.filter((p) => p.id !== file.id))
                 }
               >
                 <X className="size-3" />
@@ -417,7 +551,7 @@ export function ChatPanel() {
         <input
           ref={fileRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,.pdf"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -428,18 +562,18 @@ export function ChatPanel() {
         <Button
           type="button"
           variant="outline"
-          disabled={loading || images.length >= MAX_IMAGES}
+          disabled={loading || attachments.length >= MAX_ATTACHMENTS}
           className="h-11 shrink-0 px-3"
           onClick={() => fileRef.current?.click()}
-          title="Attach images"
+          title="Attach images or PDFs"
         >
           <ImagePlus className="size-4" />
-          <span className="sr-only">Attach images</span>
+          <span className="sr-only">Attach images or PDFs</span>
         </Button>
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask, or attach photos to extract records…"
+          placeholder="e.g. Add these as generator fuel logs…"
           rows={2}
           className="min-h-[48px] flex-1 resize-none text-base sm:min-h-[56px]"
           onKeyDown={(e) => {
@@ -449,8 +583,11 @@ export function ChatPanel() {
             }
           }}
           onPaste={(e) => {
-            const files = Array.from(e.clipboardData.files).filter((f) =>
-              f.type.startsWith("image/"),
+            const files = Array.from(e.clipboardData.files).filter(
+              (f) =>
+                f.type.startsWith("image/") ||
+                f.type === "application/pdf" ||
+                f.name.toLowerCase().endsWith(".pdf"),
             );
             if (files.length) {
               e.preventDefault();
@@ -462,7 +599,7 @@ export function ChatPanel() {
         />
         <Button
           type="submit"
-          disabled={loading || (!input.trim() && images.length === 0)}
+          disabled={loading || (!input.trim() && attachments.length === 0)}
           className="h-11 shrink-0 px-3"
         >
           <SendHorizontal className="size-4" />

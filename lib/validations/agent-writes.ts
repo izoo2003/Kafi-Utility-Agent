@@ -8,6 +8,8 @@ import {
   itEquipmentUpdateSchema,
 } from "@/lib/validations/it-equipment";
 import {
+  generatorExpenseInsertSchema,
+  generatorExpenseUpdateSchema,
   generatorFuelLogInsertSchema,
   generatorFuelLogUpdateSchema,
   generatorMaintenanceInsertSchema,
@@ -37,6 +39,9 @@ export const WRITE_TOOL_NAMES = [
   "generator_fuel_log_create",
   "generator_fuel_log_update",
   "generator_fuel_log_delete",
+  "generator_expense_create",
+  "generator_expense_update",
+  "generator_expense_delete",
   "solar_specs_create",
   "solar_specs_update",
   "solar_specs_delete",
@@ -78,6 +83,10 @@ export const generatorMaintenanceUpdateSchemaAgent =
 export const generatorFuelCreateSchema = generatorFuelLogInsertSchema;
 export const generatorFuelUpdateSchemaAgent =
   generatorFuelLogUpdateSchema.required({ id: true });
+
+export const generatorExpenseCreateSchema = generatorExpenseInsertSchema;
+export const generatorExpenseUpdateSchemaAgent =
+  generatorExpenseUpdateSchema.required({ id: true });
 
 /** Chat cannot set/upload spec files — dashboard only */
 export const solarSpecsCreateSchema = solarSpecsInsertSchema.omit({

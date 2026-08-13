@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  GeneratorExpense,
+  GeneratorExpenseInsert,
+  GeneratorExpenseUpdate,
   GeneratorFuelLog,
   GeneratorFuelLogInsert,
   GeneratorFuelLogUpdate,
@@ -10,6 +13,7 @@ import type {
 
 const MAINTENANCE = "generator_maintenance" as const;
 const FUEL = "generator_fuel_log" as const;
+const EXPENSES = "generator_expenses" as const;
 
 export async function listGeneratorMaintenance(supabase: SupabaseClient) {
   return supabase
@@ -74,4 +78,39 @@ export async function deleteGeneratorFuelLog(
   id: string,
 ) {
   return supabase.from(FUEL).delete().eq("id", id);
+}
+
+export async function listGeneratorExpenses(supabase: SupabaseClient) {
+  return supabase
+    .from(EXPENSES)
+    .select("*")
+    .order("expense_date", { ascending: false })
+    .returns<GeneratorExpense[]>();
+}
+
+export async function createGeneratorExpense(
+  supabase: SupabaseClient,
+  input: GeneratorExpenseInsert,
+) {
+  return supabase.from(EXPENSES).insert(input).select("*").single();
+}
+
+export async function updateGeneratorExpense(
+  supabase: SupabaseClient,
+  id: string,
+  input: GeneratorExpenseUpdate,
+) {
+  return supabase
+    .from(EXPENSES)
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .single();
+}
+
+export async function deleteGeneratorExpense(
+  supabase: SupabaseClient,
+  id: string,
+) {
+  return supabase.from(EXPENSES).delete().eq("id", id);
 }

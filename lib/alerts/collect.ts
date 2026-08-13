@@ -96,25 +96,59 @@ export async function collectOpsAlerts(
     });
   }
 
-  // One alert per upcoming/overdue service record within window
-  for (const row of (maintenance.data ?? []) as GeneratorMaintenance[]) {
-    if (!row.next_service_due) continue;
-    if (row.next_service_due > serviceHorizon) continue;
+  // Generator monthly checkups: pending not_done rows, plus next due from latest done
+  {
+    const rows = (maintenance.data ?? []) as GeneratorMaintenance[];
+    const notDone = rows.filter(
+      (r) => r.checkup_status === "not_done" && (r.next_service_due || r.service_date),
+    );
+    const latestDone = [...rows]
+      .filter((r) => r.checkup_status === "done")
+      .sort((a, b) => b.service_date.localeCompare(a.service_date))[0];
 
-    const remaining = daysUntil(row.next_service_due);
-    const overdue = row.next_service_due < today;
-    alerts.push({
-      id: `generator-service-${row.id}`,
-      domain: "generator",
-      severity: overdue ? "critical" : "warning",
-      title: overdue
-        ? "Generator service overdue"
-        : "Generator service due soon",
-      detail: overdue
-        ? `${row.service_type ?? "Service"} was due on ${row.next_service_due}${row.vendor ? ` (${row.vendor})` : ""}.`
-        : `${row.service_type ?? "Service"} due on ${row.next_service_due} (${remaining} day${remaining === 1 ? "" : "s"})${row.vendor ? ` — ${row.vendor}` : ""}.`,
-      href: "/dashboard/generator",
-    });
+    for (const row of notDone) {
+      const due = row.next_service_due ?? row.service_date;
+      if (due > serviceHorizon) continue;
+      const remaining = daysUntil(due);
+      const overdue = due < today;
+      alerts.push({
+        id: `generator-service-${row.id}`,
+        domain: "generator",
+        severity: overdue ? "critical" : "warning",
+        title: overdue
+          ? "Generator checkup not done (overdue)"
+          : "Generator checkup not done",
+        detail: overdue
+          ? `${row.service_type ?? "Monthly checkup"} was due on ${due} and is still marked not done.`
+          : `${row.service_type ?? "Monthly checkup"} due ${due} (${remaining} day${remaining === 1 ? "" : "s"}) — status: not done.`,
+        href: "/dashboard/generator",
+      });
+    }
+
+    if (
+      latestDone?.next_service_due &&
+      latestDone.next_service_due <= serviceHorizon &&
+      !notDone.some(
+        (r) =>
+          (r.next_service_due ?? r.service_date) === latestDone.next_service_due,
+      )
+    ) {
+      const due = latestDone.next_service_due;
+      const remaining = daysUntil(due);
+      const overdue = due < today;
+      alerts.push({
+        id: `generator-next-due-${latestDone.id}`,
+        domain: "generator",
+        severity: overdue ? "critical" : "warning",
+        title: overdue
+          ? "Generator monthly checkup overdue"
+          : "Generator monthly checkup due soon",
+        detail: overdue
+          ? `Next checkup was due on ${due} (last done ${latestDone.service_date}). Mark done when completed.`
+          : `Next checkup due ${due} (${remaining} day${remaining === 1 ? "" : "s"}) — last done ${latestDone.service_date}.`,
+        href: "/dashboard/generator",
+      });
+    }
   }
 
   // Live SEMS+ baselines (SOC, daytime PV, stale sync, sync errors)

@@ -12,9 +12,11 @@ import {
   listItEquipment,
 } from "@/lib/supabase/it-equipment";
 import {
+  listGeneratorExpenses,
   listGeneratorFuelLog,
   listGeneratorMaintenance,
 } from "@/lib/supabase/generator";
+import { nextDueFromMaintenanceRows } from "@/lib/generator/maintenance";
 import { evaluateSnapshotAlerts } from "@/lib/sems/alert-rules";
 import { isSemsConfigured } from "@/lib/sems/config";
 import {
@@ -134,7 +136,17 @@ export async function executeAgentTool(
       const limit = clampLimit(input.limit);
       const { data, error } = await listGeneratorMaintenance(supabase);
       if (error) throw new Error(error.message);
-      return (data ?? []).slice(0, limit);
+      const rows = data ?? [];
+      const schedule = nextDueFromMaintenanceRows(rows);
+      return {
+        schedule: {
+          next_maintenance_due: schedule.nextDue,
+          last_maintenance_done: schedule.lastDoneDate,
+          has_pending_not_done: schedule.pendingNotDone,
+          cadence: "Monthly checkup (about every 1 month)",
+        },
+        records: rows.slice(0, limit),
+      };
     }
 
     case "generator_fuel_log_list": {
@@ -142,6 +154,23 @@ export async function executeAgentTool(
       const { data, error } = await listGeneratorFuelLog(supabase);
       if (error) throw new Error(error.message);
       return (data ?? []).slice(0, limit);
+    }
+
+    case "generator_expense_list": {
+      const limit = clampLimit(input.limit, 50);
+      const { data, error } = await listGeneratorExpenses(supabase);
+      if (error) throw new Error(error.message);
+      const rows = data ?? [];
+      const totalDebit = rows.reduce(
+        (sum, r) => sum + (Number(r.debit) || 0),
+        0,
+      );
+      return {
+        total_expense: totalDebit,
+        total_debit: totalDebit,
+        currency_note: "Sum of debit column",
+        records: rows.slice(0, limit),
+      };
     }
 
     case "solar_specs_list": {

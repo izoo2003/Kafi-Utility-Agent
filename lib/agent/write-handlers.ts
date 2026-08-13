@@ -14,13 +14,17 @@ import {
   updateItEquipment,
 } from "@/lib/supabase/it-equipment";
 import {
+  createGeneratorExpense,
   createGeneratorFuelLog,
   createGeneratorMaintenance,
+  deleteGeneratorExpense,
   deleteGeneratorFuelLog,
   deleteGeneratorMaintenance,
+  updateGeneratorExpense,
   updateGeneratorFuelLog,
   updateGeneratorMaintenance,
 } from "@/lib/supabase/generator";
+import { withDefaultNextServiceDue } from "@/lib/generator/maintenance";
 import {
   createSolarMonitoringLog,
   createSolarSpecs,
@@ -43,6 +47,8 @@ import type {
   UtilityAccount,
 } from "@/lib/types/database";
 import {
+  generatorExpenseCreateSchema,
+  generatorExpenseUpdateSchemaAgent,
   generatorFuelCreateSchema,
   generatorFuelUpdateSchemaAgent,
   generatorMaintenanceCreateSchema,
@@ -116,6 +122,14 @@ async function getGeneratorMaintenance(
 async function getGeneratorFuelLog(supabase: SupabaseClient, id: string) {
   return supabase
     .from("generator_fuel_log")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+}
+
+async function getGeneratorExpense(supabase: SupabaseClient, id: string) {
+  return supabase
+    .from("generator_expenses")
     .select("*")
     .eq("id", id)
     .maybeSingle();
@@ -296,8 +310,11 @@ export async function executeWriteTool(
     case "generator_maintenance_create": {
       const parsed = generatorMaintenanceCreateSchema.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
-      const payload = parsed.data;
-      const summary = `Create generator maintenance on ${payload.service_date}${payload.service_type ? ` (${payload.service_type})` : ""}${payload.next_service_due ? `, next due ${payload.next_service_due}` : ""}.`;
+      const payload = withDefaultNextServiceDue({
+        ...parsed.data,
+        checkup_status: parsed.data.checkup_status ?? "done",
+      });
+      const summary = `Create generator maintenance on ${payload.service_date}${payload.service_type ? ` (${payload.service_type})` : ""}, status ${payload.checkup_status}${payload.next_service_due ? `, next due ${payload.next_service_due}` : " (next due +1 month)"}.`;
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
@@ -401,6 +418,62 @@ export async function executeWriteTool(
         return needsConfirmation(name, summary, { id });
       }
       const { error } = await deleteGeneratorFuelLog(supabase, id);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: id };
+    }
+
+    case "generator_expense_create": {
+      const parsed = generatorExpenseCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const payload = parsed.data;
+      const summary = `Create generator expense on ${payload.expense_date}${payload.account ? ` — ${payload.account}` : ""}${payload.description ? `: ${payload.description}` : ""}, debit ${payload.debit}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { ...payload });
+      }
+      const { data, error } = await createGeneratorExpense(
+        supabase,
+        withUpdatedBy({ ...payload }, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "generator_expense_update": {
+      const parsed = generatorExpenseUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, ...fields } = parsed.data;
+      const patch = stripUndefined(fields as Record<string, unknown>);
+      if (Object.keys(patch).length === 0) {
+        return { error: "Provide at least one field to update" };
+      }
+      const existing = await getGeneratorExpense(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Expense record not found" };
+      const summary = `Update generator expense ${id} (${existing.data.expense_date}): set ${summarizeFields(patch)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id, ...patch });
+      }
+      const { data, error } = await updateGeneratorExpense(
+        supabase,
+        id,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "generator_expense_delete": {
+      const parsed = idOnlySchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id } = parsed.data;
+      const existing = await getGeneratorExpense(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Expense record not found" };
+      const summary = `DELETE generator expense on ${existing.data.expense_date} (debit ${existing.data.debit}). This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id });
+      }
+      const { error } = await deleteGeneratorExpense(supabase, id);
       if (error) throw new Error(error.message);
       return { status: "ok", summary, deleted_id: id };
     }

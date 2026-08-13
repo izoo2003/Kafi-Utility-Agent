@@ -45,6 +45,8 @@ export type ItEquipment = AuditColumns & {
   notes: string | null;
 };
 
+export type GeneratorCheckupStatus = "done" | "not_done";
+
 export type GeneratorMaintenance = AuditColumns & {
   service_date: IsoDate;
   next_service_due: IsoDate | null;
@@ -52,6 +54,8 @@ export type GeneratorMaintenance = AuditColumns & {
   vendor: string | null;
   cost: number | null;
   notes: string | null;
+  /** Monthly checkup completed (done) or still pending (not_done). */
+  checkup_status: GeneratorCheckupStatus;
 };
 
 export type GeneratorFuelLog = AuditColumns & {
@@ -60,6 +64,16 @@ export type GeneratorFuelLog = AuditColumns & {
   running_hours: number | null;
   fuel_level_pct: number | null;
   cost: number | null;
+  notes: string | null;
+};
+
+/** Ledger-style generator expenses (debit totaled for total expense). */
+export type GeneratorExpense = AuditColumns & {
+  expense_date: IsoDate;
+  account: string | null;
+  description: string | null;
+  debit: number;
+  credit: number | null;
   notes: string | null;
 };
 
@@ -161,6 +175,7 @@ export type Database = {
       it_equipment: { Row: ItEquipment; Insert: ItEquipmentInsert; Update: ItEquipmentUpdate };
       generator_maintenance: { Row: GeneratorMaintenance; Insert: GeneratorMaintenanceInsert; Update: GeneratorMaintenanceUpdate };
       generator_fuel_log: { Row: GeneratorFuelLog; Insert: GeneratorFuelLogInsert; Update: GeneratorFuelLogUpdate };
+      generator_expenses: { Row: GeneratorExpense; Insert: GeneratorExpenseInsert; Update: GeneratorExpenseUpdate };
       solar_specs: { Row: SolarSpecs; Insert: SolarSpecsInsert; Update: SolarSpecsUpdate };
       solar_monitoring_log: { Row: SolarMonitoringLog; Insert: SolarMonitoringLogInsert; Update: SolarMonitoringLogUpdate };
       solar_live_snapshot: {
@@ -200,6 +215,11 @@ export type GeneratorFuelLogInsert = Partial<OmitAuditOnWrite<GeneratorFuelLog>>
   log_date: IsoDate;
 };
 export type GeneratorFuelLogUpdate = Partial<OmitAuditOnWrite<GeneratorFuelLog>>;
+
+export type GeneratorExpenseInsert = Partial<OmitAuditOnWrite<GeneratorExpense>> & {
+  expense_date: IsoDate;
+};
+export type GeneratorExpenseUpdate = Partial<OmitAuditOnWrite<GeneratorExpense>>;
 
 export type SolarSpecsInsert = Partial<OmitAuditOnWrite<SolarSpecs>>;
 export type SolarSpecsUpdate = Partial<OmitAuditOnWrite<SolarSpecs>>;

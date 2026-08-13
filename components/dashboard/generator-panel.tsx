@@ -3,13 +3,21 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
+  GeneratorCheckupStatus,
+  GeneratorExpense,
   GeneratorFuelLog,
   GeneratorMaintenance,
 } from "@/lib/types/database";
+import {
+  defaultNextServiceDue,
+  nextDueFromMaintenanceRows,
+} from "@/lib/generator/maintenance";
+import { formatDate } from "@/lib/format/datetime";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
+import { GeneratorExpensesSection } from "@/components/dashboard/generator-expenses-section";
 import {
   CellText,
   TableActions,
@@ -34,6 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 type MaintForm = {
   service_date: string;
@@ -42,6 +51,7 @@ type MaintForm = {
   vendor: string;
   cost: string;
   notes: string;
+  checkup_status: GeneratorCheckupStatus;
 };
 
 type FuelForm = {
@@ -56,10 +66,11 @@ type FuelForm = {
 const emptyMaint = (): MaintForm => ({
   service_date: "",
   next_service_due: "",
-  service_type: "",
+  service_type: "Monthly checkup",
   vendor: "",
   cost: "",
   notes: "",
+  checkup_status: "done",
 });
 
 const emptyFuel = (): FuelForm => ({
@@ -71,12 +82,29 @@ const emptyFuel = (): FuelForm => ({
   notes: "",
 });
 
+function daysUntilLabel(iso: string | null): string | null {
+  if (!iso) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${iso}T00:00:00`);
+  const days = Math.round(
+    (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (days === 0) return "due today";
+  if (days === 1) return "due tomorrow";
+  if (days === -1) return "1 day overdue";
+  if (days < 0) return `${Math.abs(days)} days overdue`;
+  return `in ${days} days`;
+}
+
 export function GeneratorPanel({
   initialMaintenance,
   initialFuel,
+  initialExpenses,
 }: {
   initialMaintenance: GeneratorMaintenance[];
   initialFuel: GeneratorFuelLog[];
+  initialExpenses: GeneratorExpense[];
 }) {
   const router = useRouter();
   const [maintenance, setMaintenance] = useState(initialMaintenance);
@@ -91,6 +119,7 @@ export function GeneratorPanel({
   const [fuelForm, setFuelForm] = useState<FuelForm>(emptyFuel);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
 
   const maintSorted = useMemo(
     () =>
@@ -104,17 +133,29 @@ export function GeneratorPanel({
     [fuel],
   );
 
+  const schedule = useMemo(
+    () => nextDueFromMaintenanceRows(maintenance),
+    [maintenance],
+  );
+  const nextDueHint = daysUntilLabel(schedule.nextDue);
+
   async function saveMaint() {
     setSaving(true);
     setError(null);
     try {
+      const nextDue =
+        maintForm.next_service_due ||
+        (maintForm.service_date
+          ? defaultNextServiceDue(maintForm.service_date)
+          : null);
       const payload = {
         service_date: maintForm.service_date,
-        next_service_due: maintForm.next_service_due || null,
+        next_service_due: nextDue,
         service_type: maintForm.service_type,
         vendor: maintForm.vendor,
         cost: maintForm.cost === "" ? null : Number(maintForm.cost),
         notes: maintForm.notes,
+        checkup_status: maintForm.checkup_status,
       };
       if (editingMaint) {
         const data = await apiFetch<GeneratorMaintenance>(
@@ -137,6 +178,30 @@ export function GeneratorPanel({
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function setCheckupStatus(
+    row: GeneratorMaintenance,
+    checkup_status: GeneratorCheckupStatus,
+  ) {
+    if (row.checkup_status === checkup_status) return;
+    setStatusBusyId(row.id);
+    setError(null);
+    try {
+      const data = await apiFetch<GeneratorMaintenance>(
+        `/api/generator/maintenance/${row.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ checkup_status }),
+        },
+      );
+      setMaintenance((prev) => prev.map((i) => (i.id === data.id ? data : i)));
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not update status");
+    } finally {
+      setStatusBusyId(null);
     }
   }
 
@@ -185,7 +250,7 @@ export function GeneratorPanel({
     <div className="space-y-10">
       <PageHeader
         title="Generator"
-        description="Maintenance schedule and fuel log."
+        description="Monthly checkups, expenses (debit total), and fuel log. Dates: DD/MM/YYYY."
         icon="generator"
         accent="orange"
       />
@@ -207,23 +272,61 @@ export function GeneratorPanel({
             </Button>
           </div>
         </div>
+
+        <div className="rounded-xl border border-[oklch(0.88_0.03_55)] bg-[oklch(0.985_0.02_80)] px-4 py-3 sm:px-5">
+          <p className="text-sm font-medium text-foreground">
+            Next maintenance due:{" "}
+            {schedule.nextDue ? (
+              <>
+                {formatDate(schedule.nextDue)}
+                {nextDueHint ? (
+                  <span className="font-normal text-muted-foreground">
+                    {" "}
+                    ({nextDueHint})
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              <span className="font-normal text-muted-foreground">
+                not scheduled yet
+              </span>
+            )}
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Last done:{" "}
+            {schedule.lastDoneDate ? formatDate(schedule.lastDoneDate) : "—"}
+            {" · "}
+            Cadence: about one checkup per month
+            {schedule.pendingNotDone
+              ? " · At least one checkup is still marked not done"
+              : ""}
+          </p>
+        </div>
+
+        {error && !maintOpen && !fuelOpen ? (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        ) : null}
+
         <TableShell>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[14%]">Service date</TableHead>
-                <TableHead className="w-[14%]">Next due</TableHead>
-                <TableHead className="w-[18%]">Type</TableHead>
-                <TableHead className="w-[18%]">Vendor</TableHead>
-                <TableHead className="w-[12%]">Cost</TableHead>
-                <TableHead className="w-[24%] text-right">Actions</TableHead>
+                <TableHead className="w-[12%]">Service date</TableHead>
+                <TableHead className="w-[12%]">Next due</TableHead>
+                <TableHead className="w-[16%]">Status</TableHead>
+                <TableHead className="w-[14%]">Type</TableHead>
+                <TableHead className="w-[14%]">Vendor</TableHead>
+                <TableHead className="w-[10%]">Cost</TableHead>
+                <TableHead className="w-[22%] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {maintSorted.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="max-w-none py-8 text-center text-muted-foreground"
                   >
                     No maintenance records yet.
@@ -233,10 +336,44 @@ export function GeneratorPanel({
                 maintSorted.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
-                      <CellText>{row.service_date}</CellText>
+                      <CellText>{formatDate(row.service_date)}</CellText>
                     </TableCell>
                     <TableCell>
-                      <CellText>{row.next_service_due ?? "—"}</CellText>
+                      <CellText>
+                        {row.next_service_due
+                          ? formatDate(row.next_service_due)
+                          : "—"}
+                      </CellText>
+                    </TableCell>
+                    <TableCell className="max-w-none">
+                      <div className="inline-flex rounded-lg border border-[oklch(0.88_0.02_220)] p-0.5">
+                        <button
+                          type="button"
+                          disabled={statusBusyId === row.id}
+                          onClick={() => void setCheckupStatus(row, "done")}
+                          className={cn(
+                            "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                            row.checkup_status === "done"
+                              ? "bg-[oklch(0.45_0.1_145)] text-white"
+                              : "text-muted-foreground hover:bg-[oklch(0.96_0.01_220)]",
+                          )}
+                        >
+                          Done
+                        </button>
+                        <button
+                          type="button"
+                          disabled={statusBusyId === row.id}
+                          onClick={() => void setCheckupStatus(row, "not_done")}
+                          className={cn(
+                            "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                            row.checkup_status === "not_done"
+                              ? "bg-[oklch(0.55_0.12_55)] text-white"
+                              : "text-muted-foreground hover:bg-[oklch(0.96_0.01_220)]",
+                          )}
+                        >
+                          Not done
+                        </button>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <CellText>{row.service_type ?? "—"}</CellText>
@@ -261,6 +398,7 @@ export function GeneratorPanel({
                               vendor: row.vendor ?? "",
                               cost: row.cost == null ? "" : String(row.cost),
                               notes: row.notes ?? "",
+                              checkup_status: row.checkup_status ?? "done",
                             });
                             setError(null);
                             setMaintOpen(true);
@@ -289,6 +427,8 @@ export function GeneratorPanel({
           </Table>
         </TableShell>
       </section>
+
+      <GeneratorExpensesSection initialExpenses={initialExpenses} />
 
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -333,7 +473,7 @@ export function GeneratorPanel({
                 fuelSorted.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
-                      <CellText>{row.log_date}</CellText>
+                      <CellText>{formatDate(row.log_date)}</CellText>
                     </TableCell>
                     <TableCell>
                       <CellText>{row.liters_added ?? "—"}</CellText>
@@ -411,9 +551,17 @@ export function GeneratorPanel({
               <Input
                 type="date"
                 value={maintForm.service_date}
-                onChange={(e) =>
-                  setMaintForm((p) => ({ ...p, service_date: e.target.value }))
-                }
+                onChange={(e) => {
+                  const service_date = e.target.value;
+                  setMaintForm((p) => ({
+                    ...p,
+                    service_date,
+                    next_service_due:
+                      p.next_service_due || !service_date
+                        ? p.next_service_due
+                        : defaultNextServiceDue(service_date),
+                  }));
+                }}
               />
             </div>
             <div className="space-y-2">
@@ -428,6 +576,42 @@ export function GeneratorPanel({
                   }))
                 }
               />
+              <p className="text-xs text-muted-foreground">
+                Defaults to one month after service date if left blank.
+              </p>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Checkup status</Label>
+              <div className="inline-flex rounded-lg border border-[oklch(0.88_0.02_220)] p-0.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMaintForm((p) => ({ ...p, checkup_status: "done" }))
+                  }
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    maintForm.checkup_status === "done"
+                      ? "bg-[oklch(0.45_0.1_145)] text-white"
+                      : "text-muted-foreground hover:bg-[oklch(0.96_0.01_220)]",
+                  )}
+                >
+                  Done
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMaintForm((p) => ({ ...p, checkup_status: "not_done" }))
+                  }
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    maintForm.checkup_status === "not_done"
+                      ? "bg-[oklch(0.55_0.12_55)] text-white"
+                      : "text-muted-foreground hover:bg-[oklch(0.96_0.01_220)]",
+                  )}
+                >
+                  Not done
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Service type</Label>

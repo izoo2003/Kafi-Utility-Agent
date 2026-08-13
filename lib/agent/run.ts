@@ -19,14 +19,14 @@ import {
   markGeminiKeyExhausted,
   markGeminiKeySuccess,
 } from "@/lib/agent/models";
-import type { ChatImageInput } from "@/lib/validations/agent";
+import type { ChatAttachmentInput } from "@/lib/validations/agent";
 
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
 };
 
-const MAX_TOOL_ROUNDS = 6;
+const MAX_TOOL_ROUNDS = 10;
 
 function toGeminiHistory(messages: ChatMessage[]): Content[] {
   const prior = messages.slice(0, -1);
@@ -38,25 +38,25 @@ function toGeminiHistory(messages: ChatMessage[]): Content[] {
 
 function buildLatestUserParts(
   text: string,
-  images: ChatImageInput[] | undefined,
+  attachments: ChatAttachmentInput[] | undefined,
 ): string | Part[] {
   const trimmed = text.trim();
   const defaultText =
     trimmed ||
-    (images?.length
-      ? "Analyze the attached image(s). Extract any facility ops data and propose the correct create/update tools (especially solar specs vs monitoring logs). Use confirmed=false first."
+    (attachments?.length
+      ? "Analyze every attached image/PDF page. Extract each log/expense/spec row separately and call the matching create tools with confirmed=false (one call per row). Prefer generator fuel vs maintenance vs solar based on the document and my prompt."
       : "");
 
-  if (!images?.length) {
+  if (!attachments?.length) {
     return defaultText;
   }
 
   const parts: Part[] = [{ text: defaultText }];
-  for (const image of images) {
+  for (const file of attachments) {
     parts.push({
       inlineData: {
-        mimeType: image.mimeType,
-        data: image.data,
+        mimeType: file.mimeType,
+        data: file.data,
       },
     });
   }
@@ -73,7 +73,7 @@ async function runWithModel(
   reply: string;
   toolsUsed: string[];
   model: string;
-  pendingConfirmation: PendingConfirmation | null;
+  pendingConfirmations: PendingConfirmation[];
 }> {
   const model = genAI.getGenerativeModel({
     model: modelName,
@@ -86,7 +86,7 @@ async function runWithModel(
   });
 
   const toolsUsed: string[] = [];
-  let pendingConfirmation: PendingConfirmation | null = null;
+  const pendingConfirmations: PendingConfirmation[] = [];
   let result = await chat.sendMessage(latestParts);
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
@@ -98,7 +98,7 @@ async function runWithModel(
         reply: text || "I couldn’t produce a response. Try asking again.",
         toolsUsed,
         model: modelName,
-        pendingConfirmation,
+        pendingConfirmations,
       };
     }
 
@@ -113,8 +113,8 @@ async function runWithModel(
           (call.args ?? {}) as Record<string, unknown>,
         );
         const pending = extractPendingConfirmation(toolResult);
-        if (pending && !pendingConfirmation) {
-          pendingConfirmation = pending;
+        if (pending) {
+          pendingConfirmations.push(pending);
         }
         responseParts.push({
           functionResponse: {
@@ -147,7 +147,7 @@ async function runWithModel(
       "I hit the tool-call limit while looking that up. Ask a narrower question, or try again.",
     toolsUsed,
     model: modelName,
-    pendingConfirmation,
+    pendingConfirmations,
   };
 }
 
@@ -155,13 +155,14 @@ export async function runFacilityOpsAgent(
   supabase: SupabaseClient,
   user: User,
   messages: ChatMessage[],
-  images?: ChatImageInput[],
+  attachments?: ChatAttachmentInput[],
 ): Promise<{
   reply: string;
   toolsUsed: string[];
   model?: string;
   keyLabel?: string;
   pendingConfirmation: PendingConfirmation | null;
+  pendingConfirmations: PendingConfirmation[];
 }> {
   const apiKeys = getOrderedGeminiApiKeys();
   if (apiKeys.length === 0) {
@@ -178,7 +179,7 @@ export async function runFacilityOpsAgent(
   const candidates = getGeminiModelCandidates();
   const failures: string[] = [];
   const ctx = { supabase, user };
-  const latestParts = buildLatestUserParts(latest.content, images);
+  const latestParts = buildLatestUserParts(latest.content, attachments);
 
   for (const { key, label, index } of apiKeys) {
     const genAI = new GoogleGenerativeAI(key);
@@ -198,6 +199,7 @@ export async function runFacilityOpsAgent(
         return {
           ...result,
           keyLabel: label,
+          pendingConfirmation: result.pendingConfirmations[0] ?? null,
         };
       } catch (error) {
         const detail =

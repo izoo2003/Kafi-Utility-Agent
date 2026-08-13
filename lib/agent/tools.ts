@@ -79,7 +79,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "generator_maintenance_list",
     description:
-      "List generator maintenance records, newest service dates first.",
+      "List generator maintenance records (newest first) plus schedule summary: next_maintenance_due, last_maintenance_done, and pending not_done status. Cadence is monthly (~1 month).",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -99,6 +99,20 @@ const agentReadTools: FunctionDeclaration[] = [
         limit: {
           type: SchemaType.NUMBER,
           description: "Max rows to return (default 20)",
+        },
+      },
+    },
+  },
+  {
+    name: "generator_expense_list",
+    description:
+      "List generator expense ledger rows and total_debit (sum of debit = total expense). Newest dates first.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        limit: {
+          type: SchemaType.NUMBER,
+          description: "Max rows to return (default 50)",
         },
       },
     },

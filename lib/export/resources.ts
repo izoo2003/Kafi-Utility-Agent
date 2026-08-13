@@ -3,6 +3,7 @@ import type { CsvColumn } from "@/lib/export/csv";
 import { listKitchenInventory } from "@/lib/supabase/kitchen-inventory";
 import { listItEquipment } from "@/lib/supabase/it-equipment";
 import {
+  listGeneratorExpenses,
   listGeneratorFuelLog,
   listGeneratorMaintenance,
 } from "@/lib/supabase/generator";
@@ -12,6 +13,7 @@ import {
 } from "@/lib/supabase/solar";
 import { listUtilityAccounts } from "@/lib/supabase/utilities";
 import type {
+  GeneratorExpense,
   GeneratorFuelLog,
   GeneratorMaintenance,
   ItEquipment,
@@ -26,6 +28,7 @@ export const EXPORT_RESOURCES = [
   "it-equipment",
   "generator-maintenance",
   "generator-fuel",
+  "generator-expenses",
   "solar-specs",
   "solar-monitoring",
   "utilities",
@@ -112,9 +115,28 @@ export async function loadExportBundle(
         columns: cols<GeneratorMaintenance>([
           { key: "service_date", header: "Service date", value: (r) => r.service_date },
           { key: "next_service_due", header: "Next due", value: (r) => r.next_service_due },
+          { key: "checkup_status", header: "Status", value: (r) => r.checkup_status },
           { key: "service_type", header: "Type", value: (r) => r.service_type },
           { key: "vendor", header: "Vendor", value: (r) => r.vendor },
           { key: "cost", header: "Cost", value: (r) => r.cost },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(data),
+      };
+    }
+    case "generator-expenses": {
+      const { data, error } = await listGeneratorExpenses(supabase);
+      if (error) throw new Error(error.message);
+      return {
+        title: "Generator expenses",
+        filename: "generator-expenses",
+        columns: cols<GeneratorExpense>([
+          { key: "expense_date", header: "Date", value: (r) => r.expense_date },
+          { key: "account", header: "Account", value: (r) => r.account },
+          { key: "description", header: "Description", value: (r) => r.description },
+          { key: "debit", header: "Debit", value: (r) => r.debit },
+          { key: "credit", header: "Credit", value: (r) => r.credit },
           { key: "notes", header: "Notes", value: (r) => r.notes },
           { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
         ]),
