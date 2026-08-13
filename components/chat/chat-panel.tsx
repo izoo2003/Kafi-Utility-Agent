@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
+  CheckCheck,
   FileText,
   ImagePlus,
   Loader2,
@@ -68,6 +69,7 @@ export function ChatPanel() {
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<ChatPendingAttachment[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [batchConfirming, setBatchConfirming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const importStartedRef = useRef(false);
@@ -274,6 +276,76 @@ export function ChatPanel() {
     }
   }
 
+  async function confirmAllPending() {
+    if (!pending || loading) return;
+    const batch = [pending, ...pendingQueue];
+    if (batch.length < 2) {
+      await confirmPending();
+      return;
+    }
+
+    const nextMessages: ChatMessage[] = [
+      ...messages,
+      {
+        role: "user",
+        content: `Confirm all ${batch.length} pending records.`,
+      },
+    ];
+    setMessages(nextMessages);
+    setError(null);
+    setLoading(true);
+    setBatchConfirming(true);
+    setToolsUsed([]);
+    setPending(null);
+    setPendingQueue([]);
+
+    try {
+      const res = await fetch("/api/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMessages.map(({ role, content }) => ({
+            role,
+            content,
+          })),
+          confirmWrites: batch.map(({ tool, args }) => ({ tool, args })),
+        }),
+      });
+      const json = (await res.json()) as {
+        error?: string;
+        data?: {
+          message: ChatMessage;
+          toolsUsed?: string[];
+          confirmedCount?: number;
+        };
+      };
+
+      if (!res.ok && !json.data?.message) {
+        throw new Error(json.error ?? `Request failed (${res.status})`);
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            json.data?.message.content ??
+            json.error ??
+            "Batch confirm finished.",
+        },
+      ]);
+      setToolsUsed(json.data?.toolsUsed ?? []);
+      if (!res.ok) {
+        setError(json.error ?? "Some records failed to confirm");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Confirm all failed");
+    } finally {
+      setBatchConfirming(false);
+      setLoading(false);
+    }
+  }
+
   function cancelPending() {
     if (!pending || loading) return;
     const skipped = 1 + pendingQueue.length;
@@ -318,8 +390,8 @@ export function ChatPanel() {
           <div className="space-y-3 sm:space-y-4">
             <p className="text-sm leading-relaxed text-muted-foreground">
               Ask about site ops, or attach fuel/maintenance log PDFs or photos.
-              Say which section they belong to — each row is previewed, then
-              Confirm one by one.
+              Say which section they belong to — each row is previewed; Confirm
+              one by one or use Confirm all.
             </p>
             <div className="grid gap-2 sm:flex sm:flex-wrap">
               {SUGGESTIONS.map((suggestion) => (
@@ -397,7 +469,8 @@ export function ChatPanel() {
             </p>
             {queueTotal > 1 ? (
               <p className="text-xs text-muted-foreground">
-                {pendingQueue.length} more after this. Cancel discards all
+                {pendingQueue.length} more after this. Use Confirm all to save
+                every pending record in one click. Cancel discards all
                 remaining.
               </p>
             ) : null}
@@ -411,6 +484,17 @@ export function ChatPanel() {
                 <Check className="size-3.5" />
                 Confirm
               </Button>
+              {queueTotal > 1 ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void confirmAllPending()}
+                  className="gap-1.5"
+                >
+                  <CheckCheck className="size-3.5" />
+                  Confirm all ({queueTotal})
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 size="sm"
@@ -428,11 +512,13 @@ export function ChatPanel() {
         {loading ? (
           <div className="mr-auto inline-flex items-center gap-2 rounded-2xl border border-[oklch(0.9_0.02_220)] bg-[oklch(0.985_0.01_220)] px-3.5 py-2.5 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
-            {pending
-              ? "Applying change…"
-              : attachments.length || hasAnyPreviews
-                ? "Reading logs / attachments…"
-                : "Checking site records…"}
+            {batchConfirming
+              ? "Applying all records…"
+              : pending
+                ? "Applying change…"
+                : attachments.length || hasAnyPreviews
+                  ? "Reading logs / attachments…"
+                  : "Checking site records…"}
           </div>
         ) : null}
 

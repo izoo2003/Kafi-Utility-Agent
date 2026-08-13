@@ -15,21 +15,61 @@ export async function POST(request: Request) {
   if (parsed.error) return parsed.error;
 
   try {
-    if (parsed.data.confirmWrite) {
-      const { reply, toolsUsed } = await confirmAgentWrite(
-        supabase,
-        user,
-        parsed.data.confirmWrite.tool,
-        parsed.data.confirmWrite.args,
-      );
-      return NextResponse.json({
-        data: {
-          message: { role: "assistant" as const, content: reply },
-          toolsUsed,
-          pendingConfirmation: null,
-          pendingConfirmations: [],
+    const batch =
+      parsed.data.confirmWrites?.length
+        ? parsed.data.confirmWrites
+        : parsed.data.confirmWrite
+          ? [parsed.data.confirmWrite]
+          : null;
+
+    if (batch) {
+      const toolsUsed: string[] = [];
+      const replies: string[] = [];
+      let failedAt: number | null = null;
+      let failMessage: string | null = null;
+
+      for (let i = 0; i < batch.length; i++) {
+        const item = batch[i]!;
+        try {
+          const { reply, toolsUsed: used } = await confirmAgentWrite(
+            supabase,
+            user,
+            item.tool,
+            item.args,
+          );
+          toolsUsed.push(...used);
+          replies.push(reply);
+        } catch (error) {
+          failedAt = i;
+          failMessage =
+            error instanceof Error ? error.message : "Confirm failed";
+          break;
+        }
+      }
+
+      const okCount = replies.length;
+      const total = batch.length;
+      const summary =
+        failedAt == null
+          ? total === 1
+            ? replies[0]!
+            : `Confirmed all ${total} records.`
+          : okCount === 0
+            ? `Confirm failed: ${failMessage}`
+            : `Confirmed ${okCount} of ${total} records, then failed: ${failMessage}`;
+
+      return NextResponse.json(
+        {
+          data: {
+            message: { role: "assistant" as const, content: summary },
+            toolsUsed,
+            confirmedCount: okCount,
+            pendingConfirmation: null,
+            pendingConfirmations: [],
+          },
         },
-      });
+        { status: failedAt === 0 ? 500 : 200 },
+      );
     }
 
     const attachments = [
