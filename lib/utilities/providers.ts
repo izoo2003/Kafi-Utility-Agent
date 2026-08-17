@@ -49,13 +49,6 @@ export const K_ELECTRIC_SITES: readonly SiteUtilityProvider[] = [
 
 const OTHER_PROVIDERS: readonly SiteUtilityProvider[] = [
   {
-    key: "ptcl",
-    label: "PTCL",
-    utility_type: "internet",
-    billing_cycle: "monthly",
-    menuKey: "ptcl",
-  },
-  {
     key: "ssgc-clifton-office",
     label: "SSGC (Gas) — Clifton Office",
     siteLabel: "Clifton Office",
@@ -107,7 +100,6 @@ export const SITE_UTILITY_PROVIDERS: readonly SiteUtilityProvider[] = [
 /** Top dropdown options (K-Electric is one menu item covering four sites). */
 export const UTILITY_MENU_OPTIONS = [
   { key: "k-electric", label: "K-Electric" },
-  { key: "ptcl", label: "PTCL" },
   { key: "ssgc", label: "SSGC (Gas)" },
   { key: "kwsb", label: "KWSB (Water Board)" },
   { key: "jazz", label: "Jazz monthly bill" },
@@ -118,6 +110,13 @@ export type SiteUtilityProviderKey = (typeof SITE_UTILITY_PROVIDERS)[number]["ke
 
 export function providerByKey(key: string) {
   return SITE_UTILITY_PROVIDERS.find((p) => p.key === key) ?? null;
+}
+
+/** True when provider label is one of the current dashboard utility sections. */
+export function isActiveSiteUtilityProvider(label: string | null | undefined) {
+  if (!label) return false;
+  const t = label.trim().toLowerCase();
+  return SITE_UTILITY_PROVIDERS.some((p) => p.label.toLowerCase() === t);
 }
 
 export function providersForMenu(menuKey: string): SiteUtilityProvider[] {
@@ -138,10 +137,11 @@ export function providerByLabel(label: string | null | undefined) {
   );
   if (bySite) return bySite;
 
-  // Legacy single-provider rows — do not map to a specific site/person.
+  // Legacy / removed single-provider rows — do not map to a site/person.
   if (
     t === "k-electric" ||
     t === "kelectric" ||
+    t === "ptcl" ||
     t === "ssgc" ||
     t === "ssgc (gas)" ||
     t === "kwsb" ||

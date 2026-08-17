@@ -32,7 +32,7 @@ import {
   latestPayment,
   nextDueFromLastPaid,
 } from "@/lib/utilities/billing";
-import { providerByLabel } from "@/lib/utilities/providers";
+import { providerByLabel, isActiveSiteUtilityProvider } from "@/lib/utilities/providers";
 import type { ItEquipment, KitchenInventory } from "@/lib/types/database";
 import type { WriteToolName } from "@/lib/validations/agent-writes";
 
@@ -250,6 +250,7 @@ export async function executeAgentTool(
       if (typeof input.utility_type === "string") {
         rows = rows.filter((r) => r.utility_type === input.utility_type);
       }
+      rows = rows.filter((r) => isActiveSiteUtilityProvider(r.provider));
       const byAccount = new Map<string, typeof payments.data>();
       for (const p of payments.data ?? []) {
         const list = byAccount.get(p.utility_account_id) ?? [];

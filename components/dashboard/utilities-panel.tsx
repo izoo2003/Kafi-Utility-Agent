@@ -176,7 +176,7 @@ function accountForProvider(
     );
   }
 
-  // Unique non-electricity types only (PTCL/Jazz share internet — no type fallback)
+  // Unique non-electricity types only (Jazz is internet — no type fallback)
   const sameMenu = providersForMenu(provider.menuKey);
   if (sameMenu.length === 1 && provider.utility_type !== "internet") {
     const byType = items.filter(

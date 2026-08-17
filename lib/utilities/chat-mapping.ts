@@ -32,7 +32,7 @@ Issuer → section mapping (use address / account / customer name on the PDF):
 4) Jazz mobile:
    - Filename/user says KP, or name KHALID MEHMOOD PARACHA, mobile 03008206633, customer 72373646 → "Jazz monthly bill — Khalid Paracha"
    - Filename/user says SKP, or name SADIA KHALID PARACHA, mobile 03218206633, customer 163401563 → "Jazz monthly bill — Sadia Paracha"
-5) PTCL → "PTCL" (single section)
+Do not create or log PTCL (removed from Utilities).
 
 If multiple PDFs are attached in one message, propose one utility_payment_create per bill (one Confirm each), each mapped independently.
 Match provider string EXACTLY to utility_accounts_list.provider (including the em dash "—").

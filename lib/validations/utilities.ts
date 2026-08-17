@@ -14,7 +14,6 @@ export const utilityTypeSchema = z.enum([
 
 export const siteUtilityProviderKeySchema = z.enum([
   "k-electric",
-  "ptcl",
   "ssgc",
   "kwsb",
   "jazz",

@@ -20,6 +20,7 @@ import {
   latestPayment,
   nextDueFromLastPaid,
 } from "@/lib/utilities/billing";
+import { isActiveSiteUtilityProvider } from "@/lib/utilities/providers";
 import {
   OIL_CHANGE_INTERVAL_HOURS,
   hoursRunSinceOilChange,
@@ -260,6 +261,7 @@ export async function collectOpsAlerts(
     }
 
     for (const account of accounts) {
+      if (!isActiveSiteUtilityProvider(account.provider)) continue;
       const label = account.provider?.trim() || account.utility_type;
       const last = latestPayment(paymentsByAccount.get(account.id) ?? []);
       if (!last) continue;
