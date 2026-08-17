@@ -41,10 +41,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  SITE_UTILITY_PROVIDERS,
+  UTILITY_MENU_OPTIONS,
   providerByKey,
   providerByLabel,
-  type SiteUtilityProviderKey,
+  providersForMenu,
+  type SiteUtilityProvider,
+  type UtilityMenuKey,
 } from "@/lib/utilities/providers";
 import {
   billStatus,
@@ -63,7 +65,11 @@ type AccountForm = {
 type PayForm = {
   paid_on: string;
   amount: string;
+  units_kwh: string;
+  bill_period: string;
+  invoice_number: string;
   notes: string;
+  file: File | null;
 };
 
 const emptyAccount = (): AccountForm => ({
@@ -76,8 +82,17 @@ const emptyAccount = (): AccountForm => ({
 const emptyPay = (): PayForm => ({
   paid_on: "",
   amount: "",
+  units_kwh: "",
+  bill_period: "",
+  invoice_number: "",
   notes: "",
+  file: null,
 });
+
+function fileNameFromPath(path: string) {
+  const part = path.split("/").pop() ?? path;
+  return part.replace(/^\d+-/, "");
+}
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -88,6 +103,17 @@ function formatMoney(n: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
+}
+
+function formatUnits(
+  units: number | null | undefined,
+  utilityType: string | undefined,
+) {
+  if (units == null) return "—";
+  const n = Number(units);
+  if (utilityType === "gas") return `${n} CM`;
+  if (utilityType === "electricity") return `${n} kWh`;
+  return String(n);
 }
 
 function statusBadge(
@@ -122,67 +148,67 @@ function statusBadge(
   }
 }
 
-/** Prefer exact provider label match; if duplicates, newest account. */
+/** Exact provider label match only — never collapse all electricity into one row. */
 function accountForProvider(
   items: UtilityAccount[],
-  key: SiteUtilityProviderKey,
+  provider: SiteUtilityProvider,
 ): UtilityAccount | null {
-  const provider = providerByKey(key);
-  if (!provider) return null;
   const matches = items.filter((item) => {
     const byLabel = providerByLabel(item.provider);
-    return byLabel?.key === key;
+    return byLabel?.key === provider.key;
   });
-  if (!matches.length) {
-    // Fallback: type-only for unique types (not internet — PTCL + Jazz share it)
-    if (provider.utility_type !== "internet") {
-      const byType = items.filter(
-        (i) => i.utility_type === provider.utility_type,
-      );
-      return (
-        [...byType].sort((a, b) =>
-          b.updated_at.localeCompare(a.updated_at),
-        )[0] ?? null
-      );
-    }
-    return null;
+  if (matches.length) {
+    return (
+      [...matches].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ??
+      null
+    );
   }
-  return (
-    [...matches].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ??
-    null
+
+  // Exact label fallback (seeded rows)
+  const byExact = items.filter(
+    (i) =>
+      i.provider?.trim().toLowerCase() === provider.label.toLowerCase(),
   );
+  if (byExact.length) {
+    return (
+      [...byExact].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ??
+      null
+    );
+  }
+
+  // Unique non-electricity types only (PTCL/Jazz share internet — no type fallback)
+  const sameMenu = providersForMenu(provider.menuKey);
+  if (sameMenu.length === 1 && provider.utility_type !== "internet") {
+    const byType = items.filter(
+      (i) => i.utility_type === provider.utility_type,
+    );
+    return (
+      [...byType].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ??
+      null
+    );
+  }
+
+  return null;
 }
 
-export function UtilitiesPanel({
-  initialItems,
-  initialPayments,
+function SiteBillSection({
+  provider,
+  account,
+  payments,
+  ensuringKey,
+  onLogPayment,
+  onEdit,
+  onDeletePayment,
 }: {
-  initialItems: UtilityAccount[];
-  initialPayments: UtilityPaymentLog[];
+  provider: SiteUtilityProvider;
+  account: UtilityAccount | null;
+  payments: UtilityPaymentLog[];
+  ensuringKey: string | null;
+  onLogPayment: () => void;
+  onEdit: () => void;
+  onDeletePayment: (id: string) => Promise<void>;
 }) {
-  const router = useRouter();
-  const [items, setItems] = useState(initialItems);
-  const [payments, setPayments] = useState(initialPayments);
-  const [selectedKey, setSelectedKey] = useState<SiteUtilityProviderKey>(
-    SITE_UTILITY_PROVIDERS[0]!.key,
-  );
-
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [accountForm, setAccountForm] = useState<AccountForm>(emptyAccount);
-
-  const [payOpen, setPayOpen] = useState(false);
-  const [payForm, setPayForm] = useState<PayForm>(emptyPay);
-
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [ensuring, setEnsuring] = useState(false);
-
-  const selectedProvider = providerByKey(selectedKey)!;
-  const account = useMemo(
-    () => accountForProvider(items, selectedKey),
-    [items, selectedKey],
-  );
-
+  const title = provider.siteLabel ?? provider.label;
   const accountPayments = useMemo(() => {
     if (!account) return [];
     return sortNewestFirst(
@@ -191,168 +217,14 @@ export function UtilitiesPanel({
   }, [payments, account]);
 
   const { page, setPage, pageRows, total } = usePagedRows(accountPayments);
-
   const last = latestPayment(accountPayments);
   const nextDue = last ? nextDueFromLastPaid(last.paid_on) : null;
   const status = billStatus(nextDue, todayIso());
   const badge = statusBadge(status);
-
-  async function ensureSelectedAccount(): Promise<UtilityAccount | null> {
-    if (account) return account;
-    setEnsuring(true);
-    setError(null);
-    try {
-      const data = await apiFetch<UtilityAccount>("/api/utilities", {
-        method: "POST",
-        body: JSON.stringify({
-          utility_type: selectedProvider.utility_type,
-          provider: selectedProvider.label,
-          billing_cycle: selectedProvider.billing_cycle,
-          notes: `Site ${selectedProvider.label} bill. Next due = last paid + 1 month.`,
-        }),
-      });
-      setItems((prev) => upsertById(prev, data));
-      return data;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create account");
-      return null;
-    } finally {
-      setEnsuring(false);
-    }
-  }
-
-  function openEdit() {
-    if (!account) return;
-    setAccountForm({
-      account_number: account.account_number ?? "",
-      monthly_avg_cost:
-        account.monthly_avg_cost == null ? "" : String(account.monthly_avg_cost),
-      contact_person: account.contact_person ?? "",
-      notes: account.notes ?? "",
-    });
-    setError(null);
-    setAccountOpen(true);
-  }
-
-  async function openPay() {
-    const acct = await ensureSelectedAccount();
-    if (!acct) return;
-    setPayForm({
-      paid_on: todayIso(),
-      amount:
-        acct.monthly_avg_cost == null ? "" : String(acct.monthly_avg_cost),
-      notes: "",
-    });
-    setError(null);
-    setPayOpen(true);
-  }
-
-  async function saveAccount() {
-    if (!account) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const payload = {
-        utility_type: account.utility_type as UtilityType,
-        provider: selectedProvider.label,
-        billing_cycle: selectedProvider.billing_cycle,
-        account_number: accountForm.account_number,
-        monthly_avg_cost:
-          accountForm.monthly_avg_cost === ""
-            ? null
-            : Number(accountForm.monthly_avg_cost),
-        contact_person: accountForm.contact_person,
-        notes: accountForm.notes,
-      };
-      const data = await apiFetch<UtilityAccount>(
-        `/api/utilities/${account.id}`,
-        { method: "PATCH", body: JSON.stringify(payload) },
-      );
-      setItems((prev) => prev.map((i) => (i.id === data.id ? data : i)));
-      setAccountOpen(false);
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function savePayment() {
-    const acct = account ?? (await ensureSelectedAccount());
-    if (!acct || !payForm.paid_on) {
-      setError("Paid date is required.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const data = await apiFetch<UtilityPaymentLog>("/api/utilities/payments", {
-        method: "POST",
-        body: JSON.stringify({
-          utility_account_id: acct.id,
-          paid_on: payForm.paid_on,
-          amount: payForm.amount === "" ? null : Number(payForm.amount),
-          notes: payForm.notes,
-        }),
-      });
-      setPayments((prev) => [data, ...prev]);
-      if (payForm.amount !== "") {
-        setItems((prev) =>
-          prev.map((a) =>
-            a.id === acct.id
-              ? { ...a, monthly_avg_cost: Number(payForm.amount) }
-              : a,
-          ),
-        );
-      }
-      setPayOpen(false);
-      setPage(1);
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not log payment");
-    } finally {
-      setSaving(false);
-    }
-  }
+  const busy = ensuringKey === provider.key;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <PageHeader
-          title="Internet & utilities"
-          description="Pick a utility from the dropdown, then log payments. Next due is one month after last paid. Dates: DD/MM/YYYY."
-          icon="utilities"
-          accent="slate"
-        />
-        <div className="flex shrink-0 flex-col items-stretch gap-2 self-start sm:items-end">
-          <ExportButtons resource="utilities" />
-        </div>
-      </div>
-
-      <div className="space-y-2 rounded-xl border border-[oklch(0.88_0.02_220)] bg-[oklch(0.985_0.01_220)] px-4 py-4 sm:px-5">
-        <Label htmlFor="utility-select">Utility</Label>
-        <select
-          id="utility-select"
-          className="flex h-10 w-full max-w-md rounded-lg border border-input bg-white px-3 text-sm"
-          value={selectedKey}
-          onChange={(e) => {
-            setSelectedKey(e.target.value as SiteUtilityProviderKey);
-            setPage(1);
-            setError(null);
-          }}
-        >
-          {SITE_UTILITY_PROVIDERS.map((p) => (
-            <option key={p.key} value={p.key}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-        <p className="text-xs text-muted-foreground">
-          Showing one utility at a time — K-Electric, PTCL, SSGC, KWSB, or Jazz.
-        </p>
-      </div>
-
+    <section className="space-y-4">
       <div
         className={cn(
           "space-y-3 rounded-xl border px-4 py-4 sm:px-5",
@@ -364,8 +236,8 @@ export function UtilitiesPanel({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-medium">{selectedProvider.label}</h2>
-              <Badge variant="secondary">{selectedProvider.utility_type}</Badge>
+              <h2 className="text-lg font-medium">{title}</h2>
+              <Badge variant="secondary">{provider.utility_type}</Badge>
               <span
                 className={cn(
                   "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
@@ -375,6 +247,23 @@ export function UtilitiesPanel({
                 {badge.label}
               </span>
             </div>
+            {provider.menuKey === "k-electric" ? (
+              <p className="text-sm text-muted-foreground">
+                K-Electric bill records for this location.
+              </p>
+            ) : provider.menuKey === "ssgc" ? (
+              <p className="text-sm text-muted-foreground">
+                SSGC gas bill records for this location.
+              </p>
+            ) : provider.menuKey === "kwsb" ? (
+              <p className="text-sm text-muted-foreground">
+                KWSB water board bill records for this location.
+              </p>
+            ) : provider.menuKey === "jazz" ? (
+              <p className="text-sm text-muted-foreground">
+                Jazz mobile bill records for this person.
+              </p>
+            ) : null}
             {account?.account_number ? (
               <p className="text-sm text-muted-foreground">
                 Account #{account.account_number}
@@ -388,21 +277,18 @@ export function UtilitiesPanel({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={() => void openPay()}
-              disabled={ensuring || saving}
-            >
-              {ensuring ? "Preparing…" : "Log payment"}
+            <Button onClick={onLogPayment} disabled={busy}>
+              {busy ? "Preparing…" : "Log payment"}
             </Button>
             {account ? (
-              <Button variant="outline" onClick={openEdit}>
+              <Button variant="outline" onClick={onEdit}>
                 Edit details
               </Button>
             ) : null}
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-4">
           <div>
             <p className="text-xs text-muted-foreground">Last paid</p>
             <p className="text-sm font-medium">
@@ -425,39 +311,38 @@ export function UtilitiesPanel({
                   : "—"}
             </p>
           </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Last units</p>
+            <p className="text-sm font-medium">
+              {formatUnits(last?.units_kwh, provider.utility_type)}
+            </p>
+          </div>
         </div>
       </div>
 
-      {error && !payOpen && !accountOpen ? (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <section className="space-y-3">
-        <h3 className="text-base font-medium">
-          Payment history — {selectedProvider.label}
-        </h3>
+      <div className="space-y-3">
+        <h3 className="text-base font-medium">Payment history — {title}</h3>
         <TableShell>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[25%]">Paid on</TableHead>
-                <TableHead className="w-[25%]">Next due</TableHead>
-                <TableHead className="w-[20%]">Amount</TableHead>
-                <TableHead className="w-[20%]">Notes</TableHead>
-                <TableHead className="w-[10%] text-right">Actions</TableHead>
+                <TableHead className="w-[16%]">Paid on</TableHead>
+                <TableHead className="w-[16%]">Next due</TableHead>
+                <TableHead className="w-[14%]">Units</TableHead>
+                <TableHead className="w-[16%]">Amount</TableHead>
+                <TableHead className="w-[22%]">Bill / notes</TableHead>
+                <TableHead className="w-[16%] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {!account || accountPayments.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="max-w-none py-8 text-center text-muted-foreground"
                   >
-                    No payments for {selectedProvider.label} yet. Use Log
-                    payment after each bill is paid.
+                    No payments for {title} yet. Use Log payment after each
+                    bill is paid (or upload a KE PDF in chat).
                   </TableCell>
                 </TableRow>
               ) : (
@@ -473,25 +358,37 @@ export function UtilitiesPanel({
                     </TableCell>
                     <TableCell>
                       <CellText>
+                        {formatUnits(log.units_kwh, provider.utility_type)}
+                      </CellText>
+                    </TableCell>
+                    <TableCell>
+                      <CellText>
                         {log.amount == null
                           ? "—"
                           : formatMoney(Number(log.amount))}
                       </CellText>
                     </TableCell>
                     <TableCell>
-                      <CellText>{log.notes ?? "—"}</CellText>
+                      <CellText>
+                        {[
+                          log.bill_period,
+                          log.invoice_number
+                            ? `Inv ${log.invoice_number}`
+                            : null,
+                          log.bill_file_url
+                            ? fileNameFromPath(log.bill_file_url)
+                            : null,
+                          log.notes,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
+                      </CellText>
                     </TableCell>
                     <TableCell className="max-w-none">
                       <TableActions>
                         <ConfirmDeleteButton
                           onConfirm={async () => {
-                            await apiFetch(`/api/utilities/payments/${log.id}`, {
-                              method: "DELETE",
-                            });
-                            setPayments((prev) =>
-                              prev.filter((p) => p.id !== log.id),
-                            );
-                            router.refresh();
+                            await onDeletePayment(log.id);
                           }}
                         />
                       </TableActions>
@@ -505,12 +402,282 @@ export function UtilitiesPanel({
         {account && accountPayments.length > 0 ? (
           <TablePagination total={total} page={page} onPageChange={setPage} />
         ) : null}
-      </section>
+      </div>
+    </section>
+  );
+}
+
+export function UtilitiesPanel({
+  initialItems,
+  initialPayments,
+}: {
+  initialItems: UtilityAccount[];
+  initialPayments: UtilityPaymentLog[];
+}) {
+  const router = useRouter();
+  const [items, setItems] = useState(initialItems);
+  const [payments, setPayments] = useState(initialPayments);
+  const [menuKey, setMenuKey] = useState<UtilityMenuKey>("k-electric");
+
+  const [activeProviderKey, setActiveProviderKey] = useState<string | null>(
+    null,
+  );
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [accountForm, setAccountForm] = useState<AccountForm>(emptyAccount);
+
+  const [payOpen, setPayOpen] = useState(false);
+  const [payForm, setPayForm] = useState<PayForm>(emptyPay);
+
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [ensuringKey, setEnsuringKey] = useState<string | null>(null);
+
+  const menuProviders = useMemo(
+    () => providersForMenu(menuKey),
+    [menuKey],
+  );
+  const activeProvider = activeProviderKey
+    ? providerByKey(activeProviderKey)
+    : null;
+  const activeAccount = activeProvider
+    ? accountForProvider(items, activeProvider)
+    : null;
+
+  async function ensureAccount(
+    provider: SiteUtilityProvider,
+  ): Promise<UtilityAccount | null> {
+    const existing = accountForProvider(items, provider);
+    if (existing) return existing;
+    setEnsuringKey(provider.key);
+    setError(null);
+    try {
+      const data = await apiFetch<UtilityAccount>("/api/utilities", {
+        method: "POST",
+        body: JSON.stringify({
+          utility_type: provider.utility_type,
+          provider: provider.label,
+          billing_cycle: provider.billing_cycle,
+          notes: `Site ${provider.label} bill. Next due = last paid + 1 month.`,
+        }),
+      });
+      setItems((prev) => upsertById(prev, data));
+      return data;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not create account");
+      return null;
+    } finally {
+      setEnsuringKey(null);
+    }
+  }
+
+  function openEdit(provider: SiteUtilityProvider) {
+    const account = accountForProvider(items, provider);
+    if (!account) return;
+    setActiveProviderKey(provider.key);
+    setAccountForm({
+      account_number: account.account_number ?? "",
+      monthly_avg_cost:
+        account.monthly_avg_cost == null
+          ? ""
+          : String(account.monthly_avg_cost),
+      contact_person: account.contact_person ?? "",
+      notes: account.notes ?? "",
+    });
+    setError(null);
+    setAccountOpen(true);
+  }
+
+  async function openPay(provider: SiteUtilityProvider) {
+    setActiveProviderKey(provider.key);
+    const acct = await ensureAccount(provider);
+    if (!acct) return;
+    setPayForm({
+      paid_on: todayIso(),
+      amount:
+        acct.monthly_avg_cost == null ? "" : String(acct.monthly_avg_cost),
+      units_kwh: "",
+      bill_period: "",
+      invoice_number: "",
+      notes: "",
+      file: null,
+    });
+    setError(null);
+    setPayOpen(true);
+  }
+
+  async function saveAccount() {
+    if (!activeProvider || !activeAccount) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const payload = {
+        utility_type: activeAccount.utility_type as UtilityType,
+        provider: activeProvider.label,
+        billing_cycle: activeProvider.billing_cycle,
+        account_number: accountForm.account_number,
+        monthly_avg_cost:
+          accountForm.monthly_avg_cost === ""
+            ? null
+            : Number(accountForm.monthly_avg_cost),
+        contact_person: accountForm.contact_person,
+        notes: accountForm.notes,
+      };
+      const data = await apiFetch<UtilityAccount>(
+        `/api/utilities/${activeAccount.id}`,
+        { method: "PATCH", body: JSON.stringify(payload) },
+      );
+      setItems((prev) => prev.map((i) => (i.id === data.id ? data : i)));
+      setAccountOpen(false);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function savePayment() {
+    if (!activeProvider) {
+      setError("No utility selected.");
+      return;
+    }
+    const acct =
+      accountForProvider(items, activeProvider) ??
+      (await ensureAccount(activeProvider));
+    if (!acct || !payForm.paid_on) {
+      setError("Paid date is required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const data = await apiFetch<UtilityPaymentLog>("/api/utilities/payments", {
+        method: "POST",
+        body: JSON.stringify({
+          utility_account_id: acct.id,
+          paid_on: payForm.paid_on,
+          amount: payForm.amount === "" ? null : Number(payForm.amount),
+          units_kwh:
+            payForm.units_kwh === "" ? null : Number(payForm.units_kwh),
+          bill_period: payForm.bill_period || null,
+          invoice_number: payForm.invoice_number || null,
+          notes: payForm.notes,
+        }),
+      });
+      let saved = data;
+      if (payForm.file) {
+        const formData = new FormData();
+        formData.append("file", payForm.file);
+        const res = await fetch(`/api/utilities/payments/${data.id}/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        const json = (await res.json()) as {
+          data?: UtilityPaymentLog;
+          error?: string;
+        };
+        if (!res.ok) {
+          throw new Error(json.error ?? "Bill PDF upload failed");
+        }
+        if (json.data) saved = json.data;
+      }
+      setPayments((prev) => [saved, ...prev]);
+      if (payForm.amount !== "") {
+        setItems((prev) =>
+          prev.map((a) =>
+            a.id === acct.id
+              ? { ...a, monthly_avg_cost: Number(payForm.amount) }
+              : a,
+          ),
+        );
+      }
+      setPayOpen(false);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not log payment");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const dialogTitle =
+    activeProvider?.siteLabel ?? activeProvider?.label ?? "Utility";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <PageHeader
+          title="Internet & utilities"
+          description="Pick a utility from the dropdown. K-Electric shows four locations (each with its own bill history). Next due = last paid + 1 month. Dates: DD/MM/YYYY."
+          icon="utilities"
+          accent="slate"
+        />
+        <div className="flex shrink-0 flex-col items-stretch gap-2 self-start sm:items-end">
+          <ExportButtons resource="utilities" />
+        </div>
+      </div>
+
+      <div className="space-y-2 rounded-xl border border-[oklch(0.88_0.02_220)] bg-[oklch(0.985_0.01_220)] px-4 py-4 sm:px-5">
+        <Label htmlFor="utility-select">Utility</Label>
+        <select
+          id="utility-select"
+          className="flex h-10 w-full max-w-md rounded-lg border border-input bg-white px-3 text-sm"
+          value={menuKey}
+          onChange={(e) => {
+            setMenuKey(e.target.value as UtilityMenuKey);
+            setError(null);
+          }}
+        >
+          {UTILITY_MENU_OPTIONS.map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          {menuKey === "k-electric"
+            ? "K-Electric: four sections below — 239G Mill, 234G Mill, Clifton Office, Personal House."
+            : menuKey === "ssgc"
+              ? "SSGC (Gas): two sections — Clifton Office and Personal House."
+              : menuKey === "kwsb"
+                ? "KWSB (Water Board): one section — Clifton Office only."
+                : menuKey === "jazz"
+                  ? "Jazz: two sections — Khalid Paracha and Sadia Paracha."
+                  : "Showing one utility at a time — log payments for the selected provider."}
+        </p>
+      </div>
+
+      {error && !payOpen && !accountOpen ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="space-y-10">
+        {menuProviders.map((provider) => (
+          <SiteBillSection
+            key={provider.key}
+            provider={provider}
+            account={accountForProvider(items, provider)}
+            payments={payments}
+            ensuringKey={ensuringKey}
+            onLogPayment={() => void openPay(provider)}
+            onEdit={() => openEdit(provider)}
+            onDeletePayment={async (id) => {
+              await apiFetch(`/api/utilities/payments/${id}`, {
+                method: "DELETE",
+              });
+              setPayments((prev) => prev.filter((p) => p.id !== id));
+              router.refresh();
+            }}
+          />
+        ))}
+      </div>
 
       <Dialog open={accountOpen} onOpenChange={setAccountOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit {selectedProvider.label}</DialogTitle>
+            <DialogTitle>Edit {dialogTitle}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
@@ -582,10 +749,11 @@ export function UtilitiesPanel({
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Log payment — {selectedProvider.label}</DialogTitle>
+            <DialogTitle>Log payment — {dialogTitle}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Next due will be one month after this paid date.
+            Next due will be one month after this paid date. Include units from
+            the KE bill when available.
           </p>
           <div className="grid gap-3">
             <div className="space-y-2">
@@ -598,15 +766,65 @@ export function UtilitiesPanel({
                 }
               />
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Amount (optional)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={payForm.amount}
+                  onChange={(e) =>
+                    setPayForm((p) => ({ ...p, amount: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Units (kWh or CM)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={payForm.units_kwh}
+                  onChange={(e) =>
+                    setPayForm((p) => ({ ...p, units_kwh: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Bill period (e.g. Jul-26)</Label>
+                <Input
+                  value={payForm.bill_period}
+                  onChange={(e) =>
+                    setPayForm((p) => ({ ...p, bill_period: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Invoice number</Label>
+                <Input
+                  value={payForm.invoice_number}
+                  onChange={(e) =>
+                    setPayForm((p) => ({
+                      ...p,
+                      invoice_number: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label>Amount (optional)</Label>
+              <Label>Bill PDF (optional)</Label>
               <Input
-                type="number"
-                min="0"
-                step="any"
-                value={payForm.amount}
+                type="file"
+                accept=".pdf,application/pdf,image/*"
                 onChange={(e) =>
-                  setPayForm((p) => ({ ...p, amount: e.target.value }))
+                  setPayForm((p) => ({
+                    ...p,
+                    file: e.target.files?.[0] ?? null,
+                  }))
                 }
               />
             </div>

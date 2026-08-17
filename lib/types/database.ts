@@ -163,6 +163,10 @@ export type UtilityPaymentLog = AuditColumns & {
   utility_account_id: Uuid;
   paid_on: IsoDate;
   amount: number | null;
+  units_kwh: number | null;
+  bill_period: string | null;
+  invoice_number: string | null;
+  bill_file_url: string | null;
   notes: string | null;
 };
 
@@ -284,3 +288,4 @@ export type UtilityPaymentLogUpdate = Partial<
 >;
 
 export const SOLAR_SPECS_BUCKET = "solar-specs" as const;
+export const UTILITY_BILLS_BUCKET = "utility-bills" as const;

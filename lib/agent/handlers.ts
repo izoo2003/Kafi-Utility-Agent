@@ -32,6 +32,7 @@ import {
   latestPayment,
   nextDueFromLastPaid,
 } from "@/lib/utilities/billing";
+import { providerByLabel } from "@/lib/utilities/providers";
 import type { ItEquipment, KitchenInventory } from "@/lib/types/database";
 import type { WriteToolName } from "@/lib/validations/agent-writes";
 
@@ -258,15 +259,22 @@ export async function executeAgentTool(
       return rows.map((r) => {
         const last = latestPayment(byAccount.get(r.id) ?? []);
         const nextDue = last ? nextDueFromLastPaid(last.paid_on) : null;
+        const known = providerByLabel(r.provider);
         return {
           id: r.id,
           utility_type: r.utility_type,
+          /** Exact dashboard label — must match when calling utility_payment_create */
           provider: r.provider,
+          dashboard_menu: known?.menuKey ?? null,
+          dashboard_site: known?.siteLabel ?? null,
           account_number: r.account_number,
           billing_cycle: r.billing_cycle,
           monthly_avg_cost: r.monthly_avg_cost,
           last_paid_on: last?.paid_on ?? null,
           last_paid_amount: last?.amount ?? null,
+          last_units_kwh: last?.units_kwh ?? null,
+          last_bill_period: last?.bill_period ?? null,
+          last_invoice_number: last?.invoice_number ?? null,
           next_due: nextDue,
           contact_person: r.contact_person,
           notes: r.notes,

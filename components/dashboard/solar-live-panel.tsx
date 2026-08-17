@@ -149,10 +149,10 @@ export function SolarLivePanel({
           <div className="min-w-0">
             <h2 className="font-heading text-lg font-semibold">Live power flow</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              These are the live monitored SEMS+ values (PV, load, grid, battery),
-              refreshed on Sync / cron — not a continuous websocket. Sync also
-              updates today&apos;s monitoring log under Records and auto-flags
-              baseline breaches.
+              Instantaneous power/SOC come from SEMS+ stations/flow; today&apos;s
+              kWh usually from equipment telecounting. Refreshed on Sync / cron
+              (not a websocket). Sync also updates today&apos;s monitoring log
+              under Records and auto-flags baseline breaches.
             </p>
           </div>
           <Button
@@ -172,6 +172,17 @@ export function SolarLivePanel({
         {error ? (
           <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
             {error}
+          </p>
+        ) : null}
+
+        {!error &&
+        snapshot?.generation_today_kwh != null &&
+        snapshot.pv_power_kw == null &&
+        snapshot.load_power_kw == null ? (
+          <p className="rounded-lg border border-[oklch(0.88_0.04_85)] bg-[oklch(0.98_0.02_85)] px-3 py-2 text-sm text-[oklch(0.4_0.08_70)]">
+            Today&apos;s generation synced, but live power/SOC fields were empty
+            in the last SEMS+ flow response. Press Sync now again while the
+            plant is online — or check Raw SEMS+ fields below.
           </p>
         ) : null}
 

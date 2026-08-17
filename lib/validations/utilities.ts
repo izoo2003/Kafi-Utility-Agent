@@ -48,6 +48,12 @@ export const utilityPaymentLogInsertSchema = z.object({
   amount: optionalNumber.pipe(
     z.union([z.number().nonnegative(), z.null()]),
   ),
+  units_kwh: optionalNumber.pipe(
+    z.union([z.number().nonnegative(), z.null()]),
+  ),
+  bill_period: optionalText,
+  invoice_number: optionalText,
+  bill_file_url: optionalText,
   notes: optionalText,
 });
 

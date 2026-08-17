@@ -1,56 +1,162 @@
 import type { UtilityType } from "@/lib/types/database";
 
-/** Fixed site utility bills (Karachi / Pakistan). */
-export const SITE_UTILITY_PROVIDERS = [
+export type SiteUtilityProvider = {
+  key: string;
+  label: string;
+  /** Short heading for multi-site groups (K-Electric). */
+  siteLabel?: string;
+  utility_type: UtilityType;
+  billing_cycle: string;
+  /** Menu group — K-Electric sites share "k-electric". */
+  menuKey: string;
+};
+
+/** Four K-Electric meters / locations — each has its own bill history. */
+export const K_ELECTRIC_SITES: readonly SiteUtilityProvider[] = [
   {
-    key: "k-electric",
-    label: "K-Electric",
-    utility_type: "electricity" as const satisfies UtilityType,
+    key: "ke-239g-mill",
+    label: "K-Electric — SURWAY NO 239G Mill",
+    siteLabel: "SURWAY NO 239G Mill",
+    utility_type: "electricity",
     billing_cycle: "monthly",
+    menuKey: "k-electric",
   },
   {
-    key: "ptcl",
-    label: "PTCL",
-    utility_type: "internet" as const satisfies UtilityType,
+    key: "ke-234g-mill",
+    label: "K-Electric — SURWAY NO 234G Mill",
+    siteLabel: "SURWAY NO 234G Mill",
+    utility_type: "electricity",
     billing_cycle: "monthly",
+    menuKey: "k-electric",
   },
   {
-    key: "ssgc",
-    label: "SSGC (Gas)",
-    utility_type: "gas" as const satisfies UtilityType,
+    key: "ke-clifton-office",
+    label: "K-Electric — Clifton Office",
+    siteLabel: "Clifton Office",
+    utility_type: "electricity",
     billing_cycle: "monthly",
+    menuKey: "k-electric",
   },
   {
-    key: "kwsb",
-    label: "KWSB (Water Board)",
-    utility_type: "water" as const satisfies UtilityType,
+    key: "ke-personal-house",
+    label: "K-Electric — Personal House",
+    siteLabel: "Personal House",
+    utility_type: "electricity",
     billing_cycle: "monthly",
-  },
-  {
-    key: "jazz",
-    label: "Jazz monthly bill",
-    // Stored as internet so it works even before the 'mobile' check is applied.
-    utility_type: "internet" as const satisfies UtilityType,
-    billing_cycle: "monthly",
+    menuKey: "k-electric",
   },
 ] as const;
 
-export type SiteUtilityProviderKey =
-  (typeof SITE_UTILITY_PROVIDERS)[number]["key"];
+const OTHER_PROVIDERS: readonly SiteUtilityProvider[] = [
+  {
+    key: "ptcl",
+    label: "PTCL",
+    utility_type: "internet",
+    billing_cycle: "monthly",
+    menuKey: "ptcl",
+  },
+  {
+    key: "ssgc-clifton-office",
+    label: "SSGC (Gas) — Clifton Office",
+    siteLabel: "Clifton Office",
+    utility_type: "gas",
+    billing_cycle: "monthly",
+    menuKey: "ssgc",
+  },
+  {
+    key: "ssgc-personal-house",
+    label: "SSGC (Gas) — Personal House",
+    siteLabel: "Personal House",
+    utility_type: "gas",
+    billing_cycle: "monthly",
+    menuKey: "ssgc",
+  },
+  {
+    key: "kwsb-clifton-office",
+    label: "KWSB (Water Board) — Clifton Office",
+    siteLabel: "Clifton Office",
+    utility_type: "water",
+    billing_cycle: "monthly",
+    menuKey: "kwsb",
+  },
+  {
+    key: "jazz-khalid-paracha",
+    label: "Jazz monthly bill — Khalid Paracha",
+    siteLabel: "Khalid Paracha",
+    // Stored as internet so it works even before the 'mobile' check is applied.
+    utility_type: "internet",
+    billing_cycle: "monthly",
+    menuKey: "jazz",
+  },
+  {
+    key: "jazz-sadia-paracha",
+    label: "Jazz monthly bill — Sadia Paracha",
+    siteLabel: "Sadia Paracha",
+    utility_type: "internet",
+    billing_cycle: "monthly",
+    menuKey: "jazz",
+  },
+] as const;
+
+/** All accounts to seed / match (4× K-Electric + other utilities). */
+export const SITE_UTILITY_PROVIDERS: readonly SiteUtilityProvider[] = [
+  ...K_ELECTRIC_SITES,
+  ...OTHER_PROVIDERS,
+];
+
+/** Top dropdown options (K-Electric is one menu item covering four sites). */
+export const UTILITY_MENU_OPTIONS = [
+  { key: "k-electric", label: "K-Electric" },
+  { key: "ptcl", label: "PTCL" },
+  { key: "ssgc", label: "SSGC (Gas)" },
+  { key: "kwsb", label: "KWSB (Water Board)" },
+  { key: "jazz", label: "Jazz monthly bill" },
+] as const;
+
+export type UtilityMenuKey = (typeof UTILITY_MENU_OPTIONS)[number]["key"];
+export type SiteUtilityProviderKey = (typeof SITE_UTILITY_PROVIDERS)[number]["key"];
 
 export function providerByKey(key: string) {
   return SITE_UTILITY_PROVIDERS.find((p) => p.key === key) ?? null;
 }
 
+export function providersForMenu(menuKey: string): SiteUtilityProvider[] {
+  return SITE_UTILITY_PROVIDERS.filter((p) => p.menuKey === menuKey);
+}
+
 export function providerByLabel(label: string | null | undefined) {
   if (!label) return null;
   const t = label.trim().toLowerCase();
+  const exact = SITE_UTILITY_PROVIDERS.find(
+    (p) => p.label.toLowerCase() === t || p.key === t,
+  );
+  if (exact) return exact;
+
+  // Match by site short name (e.g. "Clifton Office")
+  const bySite = SITE_UTILITY_PROVIDERS.find(
+    (p) => p.siteLabel && p.siteLabel.toLowerCase() === t,
+  );
+  if (bySite) return bySite;
+
+  // Legacy single-provider rows — do not map to a specific site/person.
+  if (
+    t === "k-electric" ||
+    t === "kelectric" ||
+    t === "ssgc" ||
+    t === "ssgc (gas)" ||
+    t === "kwsb" ||
+    t === "kwsb (water board)" ||
+    t === "jazz" ||
+    t === "jazz monthly bill"
+  ) {
+    return null;
+  }
+
   return (
     SITE_UTILITY_PROVIDERS.find(
       (p) =>
-        p.label.toLowerCase() === t ||
-        p.key === t ||
-        p.label.toLowerCase().includes(t),
+        p.label.toLowerCase().includes(t) ||
+        (p.siteLabel != null && t.includes(p.siteLabel.toLowerCase())),
     ) ?? null
   );
 }

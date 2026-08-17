@@ -750,7 +750,9 @@ export async function executeWriteTool(
       const acct = account.data as UtilityAccount;
       const label = acct.provider ?? acct.utility_type;
       const nextDue = nextDueFromLastPaid(payload.paid_on);
-      const summary = `Log ${label} payment on ${formatDate(payload.paid_on)}${payload.amount != null ? ` — amount ${payload.amount}` : ""}. Next due ${formatDate(nextDue)}.`;
+      const unitPart =
+        payload.units_kwh != null ? `, ${payload.units_kwh} units` : "";
+      const summary = `Log ${label} payment on ${formatDate(payload.paid_on)}${payload.amount != null ? ` — amount ${payload.amount}` : ""}${unitPart}. Next due ${formatDate(nextDue)}.`;
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }

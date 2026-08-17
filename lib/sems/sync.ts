@@ -106,6 +106,13 @@ export async function syncSemsLive(
             dayEnergy.consumptionTodayKwh != null
               ? "telecounting"
               : "flow",
+          _flowParsed: {
+            pSystem: flow.pSystem ?? null,
+            pConsum: flow.pConsum ?? null,
+            pGrid: flow.pGrid ?? null,
+            pBat: flow.pBat ?? null,
+            soc: flow.soc ?? null,
+          },
         },
         last_error: null,
       },

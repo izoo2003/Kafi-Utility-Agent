@@ -5,6 +5,7 @@ import type {
   UtilityAccountUpdate,
   UtilityPaymentLog,
   UtilityPaymentLogInsert,
+  UtilityPaymentLogUpdate,
 } from "@/lib/types/database";
 import { normalizeKeyPart } from "@/lib/dashboard/dedupe";
 import {
@@ -34,7 +35,7 @@ export async function getUtilityAccount(supabase: SupabaseClient, id: string) {
     .returns<UtilityAccount>();
 }
 
-/** Ensure the five fixed site providers exist (safe to call on page load). */
+/** Ensure fixed site providers exist (4× K-Electric + PTCL/SSGC/KWSB/Jazz). */
 export async function ensureSiteUtilityAccounts(supabase: SupabaseClient) {
   const { data: existing, error } = await listUtilityAccounts(supabase);
   if (error) return { error, data: null as UtilityAccount[] | null };
@@ -189,6 +190,19 @@ export async function createUtilityPaymentLog(
   }
 
   return writeOk(data, "created");
+}
+
+export async function updateUtilityPaymentLog(
+  supabase: SupabaseClient,
+  id: string,
+  input: UtilityPaymentLogUpdate,
+) {
+  return supabase
+    .from(PAYMENTS)
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .single<UtilityPaymentLog>();
 }
 
 export async function deleteUtilityPaymentLog(

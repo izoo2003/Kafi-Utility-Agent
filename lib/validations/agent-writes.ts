@@ -174,5 +174,8 @@ export const utilityUpdateSchemaAgent = utilityAccountUpdateSchema.required({
   id: true,
 });
 
-export const utilityPaymentCreateSchema = utilityPaymentLogInsertSchema;
+/** Chat cannot set/upload bill PDFs — dashboard upload or seed script */
+export const utilityPaymentCreateSchema = utilityPaymentLogInsertSchema.omit({
+  bill_file_url: true,
+});
 export const utilityPaymentDeleteSchema = idOnlySchema;

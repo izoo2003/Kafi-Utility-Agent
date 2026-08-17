@@ -441,7 +441,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
         provider: {
           type: SchemaType.STRING,
           description:
-            "Prefer: K-Electric, PTCL, SSGC (Gas), KWSB (Water Board), Jazz monthly bill",
+            "Prefer: K-Electric — SURWAY NO 239G Mill | K-Electric — SURWAY NO 234G Mill | K-Electric — Clifton Office | K-Electric — Personal House | PTCL | SSGC (Gas) — Clifton Office | SSGC (Gas) — Personal House | KWSB (Water Board) — Clifton Office | Jazz monthly bill — Khalid Paracha | Jazz monthly bill — Sadia Paracha",
         },
         account_number: { type: SchemaType.STRING },
         billing_cycle: { type: SchemaType.STRING },
@@ -494,16 +494,33 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "utility_payment_create",
     description:
-      "Log a utility bill payment. Next due becomes paid_on + 1 month. Requires confirmation.",
+      "Log a utility bill payment with the same fields as the Utilities dashboard (amount, units_kwh, bill_period, invoice_number, notes). Next due = paid_on + 1 month. ALWAYS resolve utility_account_id via utility_accounts_list using exact provider labels (e.g. Jazz monthly bill — Khalid Paracha, SSGC (Gas) — Clifton Office, K-Electric — SURWAY NO 239G Mill). Requires confirmation. Chat extracts fields from attached PDFs; PDF file archive can be uploaded on the Utilities Log payment dialog.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         utility_account_id: { type: SchemaType.STRING },
         paid_on: {
           type: SchemaType.STRING,
-          description: "DD/MM/YYYY or YYYY-MM-DD",
+          description:
+            "Due date within due date (or paid date) as DD/MM/YYYY or YYYY-MM-DD",
         },
-        amount: { type: SchemaType.NUMBER },
+        amount: {
+          type: SchemaType.NUMBER,
+          description: "Amount payable within / before due date",
+        },
+        units_kwh: {
+          type: SchemaType.NUMBER,
+          description:
+            "Units from the bill — kWh for K-Electric, cubic metres (CM) for SSGC gas; omit for Jazz/KWSB when not present",
+        },
+        bill_period: {
+          type: SchemaType.STRING,
+          description: "Billing month/cycle e.g. Jul-26 or 02/07/2026–01/08/2026",
+        },
+        invoice_number: {
+          type: SchemaType.STRING,
+          description: "KE invoice, SSGC Bill ID, KWSB Consumer ID, or Jazz Invoice No",
+        },
         notes: { type: SchemaType.STRING },
         ...confirmedProperty,
       },
