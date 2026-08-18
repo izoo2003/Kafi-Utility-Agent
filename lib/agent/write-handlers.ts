@@ -1,6 +1,7 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { withUpdatedBy } from "@/lib/api/with-user";
 import {
+  adjustKitchenInventoryQty,
   createKitchenInventoryItem,
   deleteKitchenInventoryItem,
   getKitchenInventoryItem,
@@ -71,6 +72,7 @@ import {
   itUpdateSchema,
   kitchenCreateSchema,
   kitchenUpdateSchema,
+  kitchenAdjustQtySchema,
   solarMonitoringCreateSchema,
   solarMonitoringUpdateSchemaAgent,
   solarSpecsCreateSchema,
@@ -211,6 +213,40 @@ export async function executeWriteTool(
         supabase,
         id,
         withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      const updated = data as KitchenInventory;
+      return {
+        status: "ok",
+        summary,
+        item: { ...updated, status: kitchenInventoryStatus(updated) },
+      };
+    }
+
+    case "kitchen_inventory_adjust_qty": {
+      const parsed = kitchenAdjustQtySchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, delta, notes } = parsed.data;
+      const existing = await getKitchenInventoryItem(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Kitchen item not found" };
+      const item = existing.data as KitchenInventory;
+      const before = Number(item.current_qty) || 0;
+      const after = Math.max(0, before + delta);
+      const action = delta > 0 ? "Refill" : "Use";
+      const summary = `${action} kitchen "${item.item_name}": ${before}${item.unit ? ` ${item.unit}` : ""} → ${after}${item.unit ? ` ${item.unit}` : ""} (delta ${delta > 0 ? "+" : ""}${delta}).`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, {
+          id,
+          delta,
+          ...(notes != null ? { notes } : {}),
+        });
+      }
+      const { data, error } = await adjustKitchenInventoryQty(
+        supabase,
+        id,
+        delta,
+        notes ?? null,
       );
       if (error) throw new Error(error.message);
       const updated = data as KitchenInventory;

@@ -13,7 +13,6 @@ import {
   evaluateSnapshotAlerts,
   findingsToOpsAlerts,
 } from "@/lib/sems/alert-rules";
-import { kitchenInventoryStatus } from "@/lib/supabase/kitchen-inventory";
 import type { OpsAlert } from "@/lib/alerts/types";
 import {
   billStatus,
@@ -21,6 +20,11 @@ import {
   nextDueFromLastPaid,
 } from "@/lib/utilities/billing";
 import { isActiveSiteUtilityProvider } from "@/lib/utilities/providers";
+import {
+  PROJECTED_EMPTY_CRITICAL_DAYS,
+  PROJECTED_EMPTY_WARN_DAYS,
+  assessKitchenStock,
+} from "@/lib/kitchen/consumption";
 import {
   OIL_CHANGE_INTERVAL_HOURS,
   hoursRunSinceOilChange,
@@ -88,15 +92,60 @@ export async function collectOpsAlerts(
   const serviceHorizon = addDaysIso(SERVICE_WARNING_DAYS);
 
   for (const item of (kitchen.data ?? []) as KitchenInventory[]) {
-    if (kitchenInventoryStatus(item) !== "low") continue;
-    alerts.push({
-      id: `kitchen-low-${item.id}`,
-      domain: "kitchen",
-      severity: "critical",
-      title: `Low stock: ${item.item_name}`,
-      detail: `${item.current_qty}${item.unit ? ` ${item.unit}` : ""} on hand — reorder level is ${item.reorder_level}${item.unit ? ` ${item.unit}` : ""}.`,
-      href: "/dashboard/kitchen-inventory",
-    });
+    const assessment = assessKitchenStock(item);
+    const unit = item.unit ? ` ${item.unit}` : "";
+    const qtyLabel = `${item.current_qty}${unit}`;
+    const burn =
+      assessment.daily_usage != null
+        ? ` Est. burn ~${assessment.daily_usage.toFixed(3)}${unit}/day.`
+        : "";
+    const daysLabel =
+      assessment.days_remaining != null
+        ? ` ~${assessment.days_remaining} day(s) left at current use.`
+        : "";
+
+    if (assessment.status === "out") {
+      alerts.push({
+        id: `kitchen-out-${item.id}`,
+        domain: "kitchen",
+        severity: "critical",
+        title: `Out of stock: ${item.item_name}`,
+        detail: `${item.item_name} is at 0${unit}. Restock now.${burn}`,
+        href: "/dashboard/kitchen-inventory",
+      });
+      continue;
+    }
+
+    if (assessment.status === "low") {
+      const criticalSoon =
+        assessment.days_remaining != null &&
+        assessment.days_remaining <= PROJECTED_EMPTY_CRITICAL_DAYS;
+      alerts.push({
+        id: `kitchen-low-${item.id}`,
+        domain: "kitchen",
+        severity: criticalSoon ? "critical" : "warning",
+        title: `Low stock: ${item.item_name}`,
+        detail: `${qtyLabel} on hand — reorder level is ${item.reorder_level}${unit}.${daysLabel}${burn}`,
+        href: "/dashboard/kitchen-inventory",
+      });
+      continue;
+    }
+
+    if (assessment.status === "watch") {
+      const criticalSoon =
+        assessment.days_remaining != null &&
+        assessment.days_remaining <= PROJECTED_EMPTY_CRITICAL_DAYS;
+      alerts.push({
+        id: `kitchen-watch-${item.id}`,
+        domain: "kitchen",
+        severity: criticalSoon ? "critical" : "warning",
+        title: criticalSoon
+          ? `Will run out soon: ${item.item_name}`
+          : `Stock running low: ${item.item_name}`,
+        detail: `${qtyLabel} on hand — projected empty within ${PROJECTED_EMPTY_WARN_DAYS} days (${assessment.days_remaining} left). Order before it hits zero.${burn}`,
+        href: "/dashboard/kitchen-inventory",
+      });
+    }
   }
 
   for (const item of (it.data ?? []) as ItEquipment[]) {

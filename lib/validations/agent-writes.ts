@@ -30,6 +30,7 @@ import {
 export const WRITE_TOOL_NAMES = [
   "kitchen_inventory_create",
   "kitchen_inventory_update",
+  "kitchen_inventory_adjust_qty",
   "kitchen_inventory_delete",
   "it_equipment_create",
   "it_equipment_update",
@@ -67,6 +68,11 @@ export const idOnlySchema = z.object({
 export const kitchenCreateSchema = kitchenInventoryInsertSchema;
 export const kitchenUpdateSchema = kitchenInventoryUpdateSchema.required({
   id: true,
+});
+export const kitchenAdjustQtySchema = z.object({
+  id: z.string().uuid(),
+  delta: z.number().refine((n) => n !== 0, "delta must be non-zero"),
+  notes: z.string().trim().min(1).optional().nullable(),
 });
 
 export const itCreateSchema = itEquipmentInsertSchema;

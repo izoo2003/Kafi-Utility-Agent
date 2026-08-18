@@ -1,14 +1,20 @@
+/** Site timezone for display (Pakistan). Fixed locale avoids SSR/client hydration mismatches. */
+const SITE_TIME_ZONE = "Asia/Karachi";
+const SITE_LOCALE = "en-GB";
+
 /** Short local datetime for tables / history. */
 export function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(SITE_LOCALE, {
+    timeZone: SITE_TIME_ZONE,
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 

@@ -72,6 +72,28 @@ export const agentWriteTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "kitchen_inventory_adjust_qty",
+    description:
+      "Add or remove stock on a kitchen item by delta (preferred for refills). Example: refilled 2 packs of tea → delta=+2. Used 1 soap → delta=-1. Looks up by id from kitchen_inventory_list. Sets last_restocked_at when delta>0. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        delta: {
+          type: SchemaType.NUMBER,
+          description:
+            "Positive to refill/add stock, negative to record manual use. Non-zero.",
+        },
+        notes: {
+          type: SchemaType.STRING,
+          description: "Optional note e.g. 'Refilled 2 cartons Olpers'",
+        },
+        ...confirmedProperty,
+      },
+      required: ["id", "delta"],
+    },
+  },
+  {
     name: "kitchen_inventory_delete",
     description: "Delete a kitchen inventory item. Requires confirmation.",
     parameters: {

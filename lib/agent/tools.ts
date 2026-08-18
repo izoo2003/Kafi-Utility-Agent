@@ -8,7 +8,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "ops_alerts_list",
     description:
-      "List current site alerts: kitchen low stock, IT warranty expiry, generator service due, solar alert flags. Use for status summaries.",
+      "List current site alerts: kitchen out/low/projected-empty stock, IT warranty expiry, generator service due, solar alert flags, utility bills. Use for status summaries.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {},
@@ -17,14 +17,14 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "kitchen_inventory_list",
     description:
-      "List all kitchen inventory items with quantities, reorder levels, and derived low/ok status.",
+      "List kitchen inventory with qty, reorder level, status (out|low|watch|ok), daily_usage_estimate, and days_remaining_estimate. Use before refill adjustments.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         low_only: {
           type: SchemaType.BOOLEAN,
           description:
-            "If true, only return items at or below reorder level.",
+            "If true, only return out, low, or watch (projected empty soon) items.",
         },
       },
     },

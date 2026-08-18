@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizeCron } from "@/lib/api/authorize-cron";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { applyDailyKitchenConsumption } from "@/lib/kitchen/apply-daily-consumption";
 import { runAlertDigest } from "@/lib/notifications/run-alert-digest";
 import { syncSemsLive } from "@/lib/sems/sync";
 
@@ -14,12 +15,13 @@ async function handle(request: Request) {
 
   try {
     const supabase = createAdminClient();
-    // Hobby plan allows one daily cron — refresh SEMS before digesting alerts.
+    // Hobby plan allows one daily cron — kitchen burn, SEMS, then digest.
+    const kitchen = await applyDailyKitchenConsumption(supabase);
     const solar = await syncSemsLive(supabase);
     const result = await runAlertDigest(supabase, { force });
     return NextResponse.json({
       ok: true,
-      data: { solar, alerts: result },
+      data: { kitchen, solar, alerts: result },
     });
   } catch (error) {
     const message =

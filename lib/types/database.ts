@@ -24,11 +24,13 @@ export type KitchenInventory = AuditColumns & {
   supplier: string | null;
   cost_per_unit: number | null;
   last_restocked_at: IsoDate | null;
+  /** Last site date auto daily consumption was applied. */
+  last_auto_decrement_on: IsoDate | null;
   notes: string | null;
 };
 
 /** Derived — not stored in DB */
-export type KitchenInventoryStatus = "low" | "ok";
+export type KitchenInventoryStatus = "out" | "low" | "watch" | "ok";
 
 export type ItEquipmentStatus = "active" | "in_repair" | "retired";
 

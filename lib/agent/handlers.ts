@@ -4,7 +4,7 @@ import { isWriteTool } from "@/lib/agent/tools";
 import { executeWriteTool } from "@/lib/agent/write-handlers";
 import {
   getKitchenInventoryItem,
-  kitchenInventoryStatus,
+  kitchenInventoryAssessment,
   listKitchenInventory,
 } from "@/lib/supabase/kitchen-inventory";
 import {
@@ -98,12 +98,21 @@ export async function executeAgentTool(
     case "kitchen_inventory_list": {
       const { data, error } = await listKitchenInventory(supabase);
       if (error) throw new Error(error.message);
-      const rows = ((data ?? []) as KitchenInventory[]).map((item) => ({
-        ...item,
-        status: kitchenInventoryStatus(item),
-      }));
+      const rows = ((data ?? []) as KitchenInventory[]).map((item) => {
+        const a = kitchenInventoryAssessment(item);
+        return {
+          ...item,
+          status: a.status,
+          daily_usage_estimate: a.daily_usage,
+          days_remaining_estimate: a.days_remaining,
+          consumable: a.consumable,
+          consumption_note: a.profile?.note ?? null,
+        };
+      });
       if (input.low_only === true) {
-        return rows.filter((r) => r.status === "low");
+        return rows.filter(
+          (r) => r.status === "low" || r.status === "out" || r.status === "watch",
+        );
       }
       return rows;
     }
@@ -114,7 +123,15 @@ export async function executeAgentTool(
       if (error) throw new Error(error.message);
       if (!data) return { error: "Not found" };
       const item = data as KitchenInventory;
-      return { ...item, status: kitchenInventoryStatus(item) };
+      const a = kitchenInventoryAssessment(item);
+      return {
+        ...item,
+        status: a.status,
+        daily_usage_estimate: a.daily_usage,
+        days_remaining_estimate: a.days_remaining,
+        consumable: a.consumable,
+        consumption_note: a.profile?.note ?? null,
+      };
     }
 
     case "it_equipment_list": {

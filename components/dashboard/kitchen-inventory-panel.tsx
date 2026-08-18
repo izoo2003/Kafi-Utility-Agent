@@ -170,7 +170,7 @@ export function KitchenInventoryPanel({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title="Kitchen inventory"
-          description="Track stock levels and reorder thresholds."
+          description="Track stock, auto daily use for consumables, and reorder thresholds."
           icon="kitchen"
           accent="amber"
         />
@@ -208,6 +208,12 @@ export function KitchenInventoryPanel({
               pageRows.map((item) => {
                 const status = kitchenInventoryStatus(item);
                 const qtyLabel = `${item.current_qty}${item.unit ? ` ${item.unit}` : ""}`;
+                const badgeVariant =
+                  status === "out" || status === "low"
+                    ? "destructive"
+                    : status === "watch"
+                      ? "outline"
+                      : "secondary";
                 return (
                   <TableRow key={item.id}>
                     <TableCell>
@@ -225,11 +231,7 @@ export function KitchenInventoryPanel({
                       <CellText>{item.reorder_level}</CellText>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={status === "low" ? "destructive" : "secondary"}
-                      >
-                        {status}
-                      </Badge>
+                      <Badge variant={badgeVariant}>{status}</Badge>
                     </TableCell>
                     <TableCell>
                       <CellText>{item.supplier ?? "—"}</CellText>

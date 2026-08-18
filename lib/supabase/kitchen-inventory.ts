@@ -3,19 +3,27 @@ import type {
   KitchenInventory,
   KitchenInventoryInsert,
   KitchenInventoryUpdate,
+  KitchenInventoryStatus,
 } from "@/lib/types/database";
 import {
   incomingShouldOverwrite,
   normalizeKeyPart,
 } from "@/lib/dashboard/dedupe";
+import { assessKitchenStock } from "@/lib/kitchen/consumption";
 import { writeErr, writeOk, type DomainWriteResult } from "@/lib/supabase/write-result";
 
 const TABLE = "kitchen_inventory" as const;
 
 export function kitchenInventoryStatus(
-  item: Pick<KitchenInventory, "current_qty" | "reorder_level">,
-): "low" | "ok" {
-  return item.current_qty <= item.reorder_level ? "low" : "ok";
+  item: Pick<KitchenInventory, "item_name" | "current_qty" | "reorder_level">,
+): KitchenInventoryStatus {
+  return assessKitchenStock(item).status;
+}
+
+export function kitchenInventoryAssessment(
+  item: Pick<KitchenInventory, "item_name" | "current_qty" | "reorder_level">,
+) {
+  return assessKitchenStock(item);
 }
 
 export async function listKitchenInventory(supabase: SupabaseClient) {
@@ -94,6 +102,48 @@ export async function updateKitchenInventoryItem(
   input: KitchenInventoryUpdate,
 ) {
   return supabase.from(TABLE).update(input).eq("id", id).select("*").single();
+}
+
+export async function adjustKitchenInventoryQty(
+  supabase: SupabaseClient,
+  id: string,
+  delta: number,
+  notes?: string | null,
+) {
+  const existing = await getKitchenInventoryItem(supabase, id);
+  if (existing.error) return { data: null, error: existing.error };
+  if (!existing.data) {
+    return {
+      data: null,
+      error: { message: "Kitchen item not found" } as { message: string },
+    };
+  }
+  const item = existing.data;
+  const before = Number(item.current_qty) || 0;
+  const after = Math.round(Math.max(0, before + delta) * 1000) / 1000;
+  const patch: KitchenInventoryUpdate = {
+    current_qty: after,
+  };
+  if (delta > 0) {
+    patch.last_restocked_at = new Date().toISOString().slice(0, 10);
+  }
+  if (notes) {
+    patch.notes = notes;
+  }
+  const updated = await updateKitchenInventoryItem(supabase, id, patch);
+  if (updated.error) return updated;
+
+  await supabase.from("kitchen_consumption_log").insert({
+    kitchen_item_id: id,
+    applied_on: new Date().toISOString().slice(0, 10),
+    qty_before: before,
+    qty_after: after,
+    qty_delta: Math.round((after - before) * 1000) / 1000,
+    reason: delta >= 0 ? "manual_refill" : "manual_use",
+    notes: notes ?? null,
+  });
+
+  return updated;
 }
 
 export async function deleteKitchenInventoryItem(
