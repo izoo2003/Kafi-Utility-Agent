@@ -42,8 +42,7 @@ export async function getKitchenInventoryItem(
     .from(TABLE)
     .select("*")
     .eq("id", id)
-    .maybeSingle()
-    .returns<KitchenInventory>();
+    .maybeSingle<KitchenInventory>();
 }
 
 async function findKitchenDuplicate(
@@ -118,7 +117,7 @@ export async function adjustKitchenInventoryQty(
       error: { message: "Kitchen item not found" } as { message: string },
     };
   }
-  const item = existing.data;
+  const item = existing.data as KitchenInventory;
   const before = Number(item.current_qty) || 0;
   const after = Math.round(Math.max(0, before + delta) * 1000) / 1000;
   const patch: KitchenInventoryUpdate = {
