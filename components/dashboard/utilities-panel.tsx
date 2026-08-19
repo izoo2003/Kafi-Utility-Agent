@@ -636,9 +636,9 @@ export function UtilitiesPanel({
         </select>
         <p className="text-xs text-muted-foreground">
           {menuKey === "k-electric"
-            ? "K-Electric: four sections below — 239G Mill, 234G Mill, Clifton Office, Personal House."
+            ? "K-Electric: four sections below — 239G Mill, 234G Mill, Clifton Office, KMP House."
             : menuKey === "ssgc"
-              ? "SSGC (Gas): two sections — Clifton Office and Personal House."
+              ? "SSGC (Gas): two sections — Clifton Office and KMP House."
               : menuKey === "kwsb"
                 ? "KWSB (Water Board): one section — Clifton Office only."
                 : menuKey === "jazz"

@@ -1,5 +1,5 @@
 /**
- * Seed SSGC Jul-2026 bills into Clifton Office + Personal House.
+ * Seed SSGC Jul-2026 bills into Clifton Office + KMP House.
  * Run: node scripts/seed-ssgc-bills.mjs
  */
 import { createClient } from "@supabase/supabase-js";
@@ -58,8 +58,8 @@ const BILLS = [
       "SSGC gas bill Jul-2026. Customer KAFI COMMODITIES (PVT) LTD — Qasre Faisal F 50/1 Block 8 Clifton. Customer No 5527820000. Bill ID 552127730429. Measured 4 CM / 0.139545 MMBTU. Total current charges 1,372; amount within due date 1,370. Due 17-Aug-2026. Issue 01-Aug-26. Meter 18482484. Next due = paid_on + 1 month.",
   },
   {
-    provider: "SSGC (Gas) — Personal House",
-    site: "Personal House",
+    provider: "SSGC (Gas) — KMP House",
+    site: "KMP House",
     accountNumber: "8330716652",
     paidOn: "2026-08-13",
     amount: 1370,

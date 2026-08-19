@@ -38,9 +38,9 @@ export const K_ELECTRIC_SITES: readonly SiteUtilityProvider[] = [
     menuKey: "k-electric",
   },
   {
-    key: "ke-personal-house",
-    label: "K-Electric — Personal House",
-    siteLabel: "Personal House",
+    key: "ke-kmp-house",
+    label: "K-Electric — KMP House",
+    siteLabel: "KMP House",
     utility_type: "electricity",
     billing_cycle: "monthly",
     menuKey: "k-electric",
@@ -57,9 +57,9 @@ const OTHER_PROVIDERS: readonly SiteUtilityProvider[] = [
     menuKey: "ssgc",
   },
   {
-    key: "ssgc-personal-house",
-    label: "SSGC (Gas) — Personal House",
-    siteLabel: "Personal House",
+    key: "ssgc-kmp-house",
+    label: "SSGC (Gas) — KMP House",
+    siteLabel: "KMP House",
     utility_type: "gas",
     billing_cycle: "monthly",
     menuKey: "ssgc",
@@ -126,6 +126,18 @@ export function providersForMenu(menuKey: string): SiteUtilityProvider[] {
 export function providerByLabel(label: string | null | undefined) {
   if (!label) return null;
   const t = label.trim().toLowerCase();
+
+  // Legacy "Personal House" → KMP House
+  if (t === "personal house" || t.includes("personal house")) {
+    if (t.includes("ssgc") || t.includes("gas")) {
+      return providerByKey("ssgc-kmp-house");
+    }
+    if (t.includes("kwsb") || t.includes("water")) {
+      return null;
+    }
+    return providerByKey("ke-kmp-house");
+  }
+
   const exact = SITE_UTILITY_PROVIDERS.find(
     (p) => p.label.toLowerCase() === t || p.key === t,
   );
@@ -155,6 +167,7 @@ export function providerByLabel(label: string | null | undefined) {
   return (
     SITE_UTILITY_PROVIDERS.find(
       (p) =>
+        p.label.toLowerCase() === t ||
         p.label.toLowerCase().includes(t) ||
         (p.siteLabel != null && t.includes(p.siteLabel.toLowerCase())),
     ) ?? null

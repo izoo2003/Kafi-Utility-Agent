@@ -463,7 +463,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
         provider: {
           type: SchemaType.STRING,
           description:
-            "Prefer: K-Electric — SURWAY NO 239G Mill | K-Electric — SURWAY NO 234G Mill | K-Electric — Clifton Office | K-Electric — Personal House | SSGC (Gas) — Clifton Office | SSGC (Gas) — Personal House | KWSB (Water Board) — Clifton Office | Jazz monthly bill — Khalid Paracha | Jazz monthly bill — Sadia Paracha (not PTCL)",
+            "Prefer: K-Electric — SURWAY NO 239G Mill | K-Electric — SURWAY NO 234G Mill | K-Electric — Clifton Office | K-Electric — KMP House | SSGC (Gas) — Clifton Office | SSGC (Gas) — KMP House | KWSB (Water Board) — Clifton Office | Jazz monthly bill — Khalid Paracha | Jazz monthly bill — Sadia Paracha (not PTCL)",
         },
         account_number: { type: SchemaType.STRING },
         billing_cycle: { type: SchemaType.STRING },

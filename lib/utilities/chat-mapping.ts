@@ -22,13 +22,13 @@ Issuer → section mapping (use address / account / customer name on the PDF):
 1) K-Electric (KE / e-bill / "KAFI COMMODITIES" industrial OR residential KE):
    - "239" / "S.NO 239" / Hub River Road Baldia industrial large load → provider "K-Electric — SURWAY NO 239G Mill"
    - "234" / "SURVEY NO 234" / Gond Pass Baldia → "K-Electric — SURWAY NO 234G Mill"
-   - Defence / Muhafiz / Phase-VI residential KE (Khalid Mehmood Paracha house) → prefer "K-Electric — Personal House" if address is house; "K-Electric — Clifton Office" if clearly Clifton office. If ambiguous, ask the user which KE site.
+   - Defence / Muhafiz / Phase-VI residential KE (Khalid Mehmood Paracha / KMP house) → prefer "K-Electric — KMP House" if address is house; "K-Electric — Clifton Office" if clearly Clifton office. If ambiguous, ask the user which KE site.
    - Clifton office KE meter → "K-Electric — Clifton Office"
 2) SSGC (gas):
    - "Qasre Faisal" / Block 8 Clifton / KAFI COMMODITIES gas → "SSGC (Gas) — Clifton Office"
-   - House / Phase VI / Muhafiz / Khalid Mehmood Paracha home gas → "SSGC (Gas) — Personal House"
+   - House / Phase VI / Muhafiz / Khalid Mehmood Paracha home gas → "SSGC (Gas) — KMP House"
 3) KWSB (water board) — ONE site only:
-   - Always "KWSB (Water Board) — Clifton Office" (A.Karim Sons / F.50/1 Block-8 Clifton). There is NO Personal House KWSB section.
+   - Always "KWSB (Water Board) — Clifton Office" (A.Karim Sons / F.50/1 Block-8 Clifton). There is NO KMP House KWSB section.
 4) Jazz mobile:
    - Filename/user says KP, or name KHALID MEHMOOD PARACHA, mobile 03008206633, customer 72373646 → "Jazz monthly bill — Khalid Paracha"
    - Filename/user says SKP, or name SADIA KHALID PARACHA, mobile 03218206633, customer 163401563 → "Jazz monthly bill — Sadia Paracha"

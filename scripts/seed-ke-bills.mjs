@@ -97,11 +97,11 @@ const BILLS = [
     invoice: "680018854328",
     pdf: "ke bill clifton office.pdf",
     notes:
-      "KE e-bill Jul-26 from ke bill clifton office.pdf (Defence Phase-VI). Payable within due date Rs 0 (net-metering credit). Current charges 28,351.91 / 392 units. KHALID MEHMOOD PARACHA Acct 0400025196722. WARNING: identical file also saved under Personal House (home ke bill.pdf) — keep only the correct site.",
+      "KE e-bill Jul-26 from ke bill clifton office.pdf (Defence Phase-VI). Payable within due date Rs 0 (net-metering credit). Current charges 28,351.91 / 392 units. KHALID MEHMOOD PARACHA Acct 0400025196722. WARNING: identical file also saved under KMP House (home ke bill.pdf) — keep only the correct site.",
   },
   {
-    provider: "K-Electric — Personal House",
-    site: "Personal House",
+    provider: "K-Electric — KMP House",
+    site: "KMP House",
     accountNumber: "0400025196722",
     paidOn: "2026-08-10",
     amount: 0,
@@ -110,7 +110,7 @@ const BILLS = [
     invoice: "680018854328",
     pdf: "home ke bill.pdf",
     notes:
-      "KE e-bill Jul-26 from home ke bill.pdf. Payable within due date Rs 0 (net-metering credit). Current charges 28,351.91 / 392 units. Acct 0400025196722. WARNING: this PDF is byte-identical to ke bill clifton office.pdf (same Defence Phase-VI meter) — confirm whether this meter is Personal House or Clifton and delete the wrong site log if needed.",
+      "KE e-bill Jul-26 from home ke bill.pdf. Payable within due date Rs 0 (net-metering credit). Current charges 28,351.91 / 392 units. Acct 0400025196722. WARNING: this PDF is byte-identical to ke bill clifton office.pdf (same Defence Phase-VI meter) — confirm whether this meter is KMP House or Clifton and delete the wrong site log if needed.",
   },
 ];
 

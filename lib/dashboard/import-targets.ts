@@ -91,9 +91,9 @@ export function importPromptFor(target: ImportTarget): string {
         "IMPORT TARGET: Internet & utility accounts / bill payments ONLY.",
         "Follow the same mapping as seeded dashboard logs.",
         "ALWAYS call utility_accounts_list first, then utility_payment_create (confirmed=false) with the matching account id.",
-        "Providers (exact labels): K-Electric — SURWAY NO 239G Mill | K-Electric — SURWAY NO 234G Mill | K-Electric — Clifton Office | K-Electric — Personal House | SSGC (Gas) — Clifton Office | SSGC (Gas) — Personal House | KWSB (Water Board) — Clifton Office | Jazz monthly bill — Khalid Paracha | Jazz monthly bill — Sadia Paracha. Do not use PTCL.",
+        "Providers (exact labels): K-Electric — SURWAY NO 239G Mill | K-Electric — SURWAY NO 234G Mill | K-Electric — Clifton Office | K-Electric — KMP House | SSGC (Gas) — Clifton Office | SSGC (Gas) — KMP House | KWSB (Water Board) — Clifton Office | Jazz monthly bill — Khalid Paracha | Jazz monthly bill — Sadia Paracha. Do not use PTCL.",
         "Map: due date → paid_on; amount within due → amount; KE units kWh or SSGC CM → units_kwh; month/cycle → bill_period; invoice/Bill ID/Consumer ID → invoice_number; put customer/mobile/account clues in notes.",
-        "KE: 239/234 Baldia mills by survey no; Clifton vs Personal House by address. SSGC: Block 8 / Qasre Faisal → Clifton; DHA house → Personal House. KWSB: Clifton only (no Personal House). Jazz: KP/Khalid/03008206633 → Khalid Paracha; SKP/Sadia/03218206633 → Sadia Paracha.",
+        "KE: 239/234 Baldia mills by survey no; Clifton vs KMP House by address. SSGC: Block 8 / Qasre Faisal → Clifton; DHA / KMP house → KMP House. KWSB: Clifton only (no KMP House). Jazz: KP/Khalid/03008206633 → Khalid Paracha; SKP/Sadia/03218206633 → Sadia Paracha.",
         "One payment create per bill PDF. Never invent providers or passwords. Do not write to other domains.",
       ].join(" ");
   }
