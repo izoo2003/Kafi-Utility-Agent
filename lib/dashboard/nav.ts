@@ -47,6 +47,11 @@ export const dashboardNav = [
         match: "exact" as const,
       },
       {
+        href: "/dashboard/solar/summary",
+        label: "Energy Summary",
+        match: "prefix" as const,
+      },
+      {
         href: "/dashboard/solar/consumption",
         label: "Consumption",
         match: "prefix" as const,

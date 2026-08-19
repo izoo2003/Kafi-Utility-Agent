@@ -163,6 +163,25 @@ const agentReadTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "solar_energy_summary",
+    description:
+      "Monthly Solar Energy Summary: generated units, consumed units, units exported to grid, MoM comparison, 6-month trend, and alerts. Set with_ai_summary=true for a written AI monthly briefing. month format YYYY-MM.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        month: {
+          type: SchemaType.STRING,
+          description: "YYYY-MM (defaults to current site month)",
+        },
+        with_ai_summary: {
+          type: SchemaType.BOOLEAN,
+          description:
+            "If true, also generate an AI monthly energy summary briefing.",
+        },
+      },
+    },
+  },
+  {
     name: "solar_live_get",
     description:
       "Get the latest SEMS+ live plant snapshot (PV/load/grid/battery power, SOC, today generation/consumption). Does not call SEMS directly — reads the last polled snapshot from the database.",

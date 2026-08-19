@@ -269,6 +269,69 @@ export async function executeAgentTool(
       return rows.slice(0, limit);
     }
 
+    case "solar_energy_summary": {
+      const { getSemsConfig, isSemsConfigured } = await import(
+        "@/lib/sems/config"
+      );
+      const config = getSemsConfig();
+      if (!config) {
+        return {
+          configured: isSemsConfigured(),
+          error: "SEMS+ is not configured",
+        };
+      }
+      const { buildSolarEnergySummary, currentSiteMonth } = await import(
+        "@/lib/solar/energy-summary"
+      );
+      const month =
+        typeof input.month === "string" && input.month.trim()
+          ? input.month.trim()
+          : currentSiteMonth(config.timeZone);
+      const summary = await buildSolarEnergySummary(supabase, config, month);
+      if (input.with_ai_summary === true) {
+        const { generateSolarEnergySummaryAi } = await import(
+          "@/lib/solar/energy-summary-ai"
+        );
+        const ai = await generateSolarEnergySummaryAi(summary);
+        return {
+          summary: {
+            month: summary.month,
+            generated_kwh: summary.generated_kwh,
+            consumed_kwh: summary.consumed_kwh,
+            exported_kwh: summary.exported_kwh,
+            to_load_kwh: summary.to_load_kwh,
+            from_grid_kwh: summary.from_grid_kwh,
+            self_consumption_pct: summary.self_consumption_pct,
+            export_pct: summary.export_pct,
+            vs_prev: summary.vs_prev,
+            previous: summary.previous,
+            month_trend: summary.month_trend,
+            alerts: summary.alerts,
+            comparison_bars: summary.comparison_bars,
+          },
+          ai_summary: ai.summary,
+          model: ai.model,
+        };
+      }
+      return {
+        summary: {
+          month: summary.month,
+          generated_kwh: summary.generated_kwh,
+          consumed_kwh: summary.consumed_kwh,
+          exported_kwh: summary.exported_kwh,
+          to_load_kwh: summary.to_load_kwh,
+          from_grid_kwh: summary.from_grid_kwh,
+          self_consumption_pct: summary.self_consumption_pct,
+          export_pct: summary.export_pct,
+          vs_prev: summary.vs_prev,
+          previous: summary.previous,
+          month_trend: summary.month_trend,
+          alerts: summary.alerts,
+          comparison_bars: summary.comparison_bars,
+        },
+      };
+    }
+
     case "solar_live_get": {
       const { data, error } = await getLatestSolarLiveSnapshot(supabase);
       if (error) {
