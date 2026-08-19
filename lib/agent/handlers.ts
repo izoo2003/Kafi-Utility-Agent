@@ -7,6 +7,7 @@ import {
   kitchenInventoryAssessment,
   listKitchenInventory,
 } from "@/lib/supabase/kitchen-inventory";
+import { kitchenReorderNotice } from "@/lib/kitchen/reorder-statement";
 import {
   getItEquipment,
   listItEquipment,
@@ -100,9 +101,11 @@ export async function executeAgentTool(
       if (error) throw new Error(error.message);
       const rows = ((data ?? []) as KitchenInventory[]).map((item) => {
         const a = kitchenInventoryAssessment(item);
+        const notice = kitchenReorderNotice(item);
         return {
           ...item,
           status: a.status,
+          reorder_statement: notice.statement,
           daily_usage_estimate: a.daily_usage,
           days_remaining_estimate: a.days_remaining,
           consumable: a.consumable,
@@ -124,9 +127,11 @@ export async function executeAgentTool(
       if (!data) return { error: "Not found" };
       const item = data as KitchenInventory;
       const a = kitchenInventoryAssessment(item);
+      const notice = kitchenReorderNotice(item);
       return {
         ...item,
         status: a.status,
+        reorder_statement: notice.statement,
         daily_usage_estimate: a.daily_usage,
         days_remaining_estimate: a.days_remaining,
         consumable: a.consumable,

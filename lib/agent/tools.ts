@@ -17,7 +17,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "kitchen_inventory_list",
     description:
-      "List kitchen inventory with qty, reorder level, status (out|low|watch|ok), daily_usage_estimate, and days_remaining_estimate. Use before refill adjustments.",
+      "List kitchen inventory with qty, status (out|low|watch|ok), reorder_statement (dated human notice), daily_usage_estimate, and days_remaining_estimate. Use before refill adjustments.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {

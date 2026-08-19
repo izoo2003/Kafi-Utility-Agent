@@ -22,9 +22,9 @@ import {
 import { isActiveSiteUtilityProvider } from "@/lib/utilities/providers";
 import {
   PROJECTED_EMPTY_CRITICAL_DAYS,
-  PROJECTED_EMPTY_WARN_DAYS,
   assessKitchenStock,
 } from "@/lib/kitchen/consumption";
+import { kitchenReorderNotice } from "@/lib/kitchen/reorder-statement";
 import {
   OIL_CHANGE_INTERVAL_HOURS,
   hoursRunSinceOilChange,
@@ -93,15 +93,10 @@ export async function collectOpsAlerts(
 
   for (const item of (kitchen.data ?? []) as KitchenInventory[]) {
     const assessment = assessKitchenStock(item);
-    const unit = item.unit ? ` ${item.unit}` : "";
-    const qtyLabel = `${item.current_qty}${unit}`;
+    const notice = kitchenReorderNotice(item);
     const burn =
       assessment.daily_usage != null
-        ? ` Est. burn ~${assessment.daily_usage.toFixed(3)}${unit}/day.`
-        : "";
-    const daysLabel =
-      assessment.days_remaining != null
-        ? ` ~${assessment.days_remaining} day(s) left at current use.`
+        ? ` Est. burn ~${assessment.daily_usage.toFixed(3)}${item.unit ? ` ${item.unit}` : ""}/day.`
         : "";
 
     if (assessment.status === "out") {
@@ -109,8 +104,8 @@ export async function collectOpsAlerts(
         id: `kitchen-out-${item.id}`,
         domain: "kitchen",
         severity: "critical",
-        title: `Out of stock: ${item.item_name}`,
-        detail: `${item.item_name} is at 0${unit}. Restock now.${burn}`,
+        title: `Reorder immediately: ${item.item_name}`,
+        detail: `${notice.statement}${burn}`,
         href: "/dashboard/kitchen-inventory",
       });
       continue;
@@ -124,8 +119,8 @@ export async function collectOpsAlerts(
         id: `kitchen-low-${item.id}`,
         domain: "kitchen",
         severity: criticalSoon ? "critical" : "warning",
-        title: `Low stock: ${item.item_name}`,
-        detail: `${qtyLabel} on hand — reorder level is ${item.reorder_level}${unit}.${daysLabel}${burn}`,
+        title: `Quantity is low: ${item.item_name}`,
+        detail: `${notice.statement}${burn}`,
         href: "/dashboard/kitchen-inventory",
       });
       continue;
@@ -141,8 +136,8 @@ export async function collectOpsAlerts(
         severity: criticalSoon ? "critical" : "warning",
         title: criticalSoon
           ? `Will run out soon: ${item.item_name}`
-          : `Stock running low: ${item.item_name}`,
-        detail: `${qtyLabel} on hand — projected empty within ${PROJECTED_EMPTY_WARN_DAYS} days (${assessment.days_remaining} left). Order before it hits zero.${burn}`,
+          : `Consider reordering: ${item.item_name}`,
+        detail: `${notice.statement}${burn}`,
         href: "/dashboard/kitchen-inventory",
       });
     }

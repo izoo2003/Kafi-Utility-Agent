@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CsvColumn } from "@/lib/export/csv";
 import { listKitchenInventory } from "@/lib/supabase/kitchen-inventory";
+import { kitchenReorderNotice } from "@/lib/kitchen/reorder-statement";
 import { listItEquipment } from "@/lib/supabase/it-equipment";
 import {
   listGeneratorExpenses,
@@ -73,7 +74,21 @@ export async function loadExportBundle(
           { key: "category", header: "Category", value: (r) => r.category },
           { key: "unit", header: "Unit", value: (r) => r.unit },
           { key: "current_qty", header: "Current qty", value: (r) => r.current_qty },
-          { key: "reorder_level", header: "Reorder level", value: (r) => r.reorder_level },
+          {
+            key: "reorder_statement",
+            header: "Reorder notice",
+            value: (r) => kitchenReorderNotice(r).statement,
+          },
+          {
+            key: "status",
+            header: "Status",
+            value: (r) => kitchenReorderNotice(r).status,
+          },
+          {
+            key: "low_stock_threshold",
+            header: "Low-stock threshold",
+            value: (r) => r.reorder_level,
+          },
           { key: "reorder_qty", header: "Reorder qty", value: (r) => r.reorder_qty },
           { key: "supplier", header: "Supplier", value: (r) => r.supplier },
           { key: "cost_per_unit", header: "Cost / unit", value: (r) => r.cost_per_unit },

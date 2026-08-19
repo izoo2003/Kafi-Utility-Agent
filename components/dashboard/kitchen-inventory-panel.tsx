@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { KitchenInventory } from "@/lib/types/database";
-import { kitchenInventoryStatus } from "@/lib/supabase/kitchen-inventory";
+import { kitchenReorderNotice } from "@/lib/kitchen/reorder-statement";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
@@ -170,7 +170,7 @@ export function KitchenInventoryPanel({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title="Kitchen inventory"
-          description="Track stock, auto daily use for consumables, and reorder thresholds."
+          description="Track stock and dated reorder notices (low / out of stock). Consumables auto-decrement daily."
           icon="kitchen"
           accent="amber"
         />
@@ -185,13 +185,13 @@ export function KitchenInventoryPanel({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[24%]">Item</TableHead>
+              <TableHead className="w-[20%]">Item</TableHead>
               <TableHead className="w-[10%]">Qty</TableHead>
-              <TableHead className="w-[10%]">Reorder</TableHead>
-              <TableHead className="w-[10%]">Status</TableHead>
-              <TableHead className="w-[14%]">Supplier</TableHead>
-              <TableHead className="w-[14%]">Updated</TableHead>
-              <TableHead className="w-[18%] text-right">Actions</TableHead>
+              <TableHead className="w-[36%]">Reorder notice</TableHead>
+              <TableHead className="w-[8%]">Status</TableHead>
+              <TableHead className="w-[10%]">Supplier</TableHead>
+              <TableHead className="w-[8%]">Updated</TableHead>
+              <TableHead className="w-[8%] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -206,7 +206,8 @@ export function KitchenInventoryPanel({
               </TableRow>
             ) : (
               pageRows.map((item) => {
-                const status = kitchenInventoryStatus(item);
+                const notice = kitchenReorderNotice(item);
+                const status = notice.status;
                 const qtyLabel = `${item.current_qty}${item.unit ? ` ${item.unit}` : ""}`;
                 const badgeVariant =
                   status === "out" || status === "low"
@@ -214,6 +215,14 @@ export function KitchenInventoryPanel({
                     : status === "watch"
                       ? "outline"
                       : "secondary";
+                const statusLabel =
+                  status === "out"
+                    ? "Out"
+                    : status === "low"
+                      ? "Low"
+                      : status === "watch"
+                        ? "Watch"
+                        : "OK";
                 return (
                   <TableRow key={item.id}>
                     <TableCell>
@@ -228,10 +237,21 @@ export function KitchenInventoryPanel({
                       <CellText>{qtyLabel}</CellText>
                     </TableCell>
                     <TableCell>
-                      <CellText>{item.reorder_level}</CellText>
+                      <span
+                        className={
+                          status === "out"
+                            ? "text-sm font-medium text-destructive"
+                            : status === "low" || status === "watch"
+                              ? "text-sm text-amber-800 dark:text-amber-200"
+                              : "text-sm text-muted-foreground"
+                        }
+                        title={notice.statement}
+                      >
+                        {notice.statement}
+                      </span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={badgeVariant}>{status}</Badge>
+                      <Badge variant={badgeVariant}>{statusLabel}</Badge>
                     </TableCell>
                     <TableCell>
                       <CellText>{item.supplier ?? "—"}</CellText>
@@ -311,7 +331,7 @@ export function KitchenInventoryPanel({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reorder_level">Reorder level</Label>
+              <Label htmlFor="reorder_level">Low-stock threshold (qty)</Label>
               <Input
                 id="reorder_level"
                 type="number"
