@@ -17,7 +17,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "kitchen_inventory_list",
     description:
-      "List kitchen inventory with qty, status (out|low|watch|ok), reorder_statement (dated human notice), daily_usage_estimate, and days_remaining_estimate. Use before refill adjustments.",
+      "List kitchen inventory with qty_in (In), qty_out (Out), current_qty (Stock = In − Out), status (out|low|watch|ok), reorder_statement, daily_usage_estimate, days_remaining_estimate. Use before refill adjustments.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -31,7 +31,8 @@ const agentReadTools: FunctionDeclaration[] = [
   },
   {
     name: "kitchen_inventory_get",
-    description: "Get one kitchen inventory item by id.",
+    description:
+      "Get one kitchen inventory item by id (includes In / Out / Stock).",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -41,6 +42,25 @@ const agentReadTools: FunctionDeclaration[] = [
         },
       },
       required: ["id"],
+    },
+  },
+  {
+    name: "kitchen_monthly_consumption",
+    description:
+      "Kitchen EDA analytics for a month (YYYY-MM): KPIs, alerts, top Out items, category mix, 6-month trend, stock health, plus monthly In/Out report. Set with_ai_summary=true for AI exploratory insights (findings, risks, trends, actions).",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        month: {
+          type: SchemaType.STRING,
+          description: "YYYY-MM (defaults to current site month)",
+        },
+        with_ai_summary: {
+          type: SchemaType.BOOLEAN,
+          description:
+            "If true, generate AI EDA insights from the analytics payload.",
+        },
+      },
     },
   },
   {

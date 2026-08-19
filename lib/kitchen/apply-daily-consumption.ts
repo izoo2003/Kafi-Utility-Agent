@@ -111,6 +111,11 @@ export async function applyDailyKitchenConsumption(
     if (days.length === 0) continue;
 
     let qty = Number(item.current_qty) || 0;
+    let qtyIn = Number(item.qty_in) || 0;
+    let qtyOut = Number(item.qty_out) || 0;
+    if (qtyIn === 0 && qtyOut === 0 && qty > 0) {
+      qtyIn = qty;
+    }
     const qtyStart = qty;
     let totalDelta = 0;
 
@@ -123,6 +128,8 @@ export async function applyDailyKitchenConsumption(
       const next = roundQty(Math.max(0, qty - burn));
       const delta = roundQty(next - qty);
       if (delta !== 0) {
+        const take = roundQty(-delta);
+        qtyOut = roundQty(qtyOut + take);
         await supabase.from("kitchen_consumption_log").insert({
           kitchen_item_id: item.id,
           applied_on: day,
@@ -141,7 +148,9 @@ export async function applyDailyKitchenConsumption(
     const { error: updErr } = await supabase
       .from("kitchen_inventory")
       .update({
-        current_qty: qty,
+        qty_in: qtyIn,
+        qty_out: qtyOut,
+        current_qty: roundQty(Math.max(0, qtyIn - qtyOut)),
         last_auto_decrement_on: today,
       })
       .eq("id", item.id);

@@ -117,12 +117,7 @@ export async function createSolarMonitoringLog(
 
   const existing = matches?.[0] ?? null;
   if (existing) {
-    const overwrite = incomingShouldOverwrite({
-      incomingDate: input.log_date,
-      existingDate: existing.log_date,
-      existingUpdatedAt: existing.updated_at,
-    });
-    if (!overwrite) return writeOk(existing, "skipped");
+    // Same calendar day → always update that row (never create a duplicate log).
     const { data, error } = await supabase
       .from(LOG)
       .update(input)
@@ -177,13 +172,17 @@ export async function upsertSolarLiveSnapshot(
     .single<SolarLiveSnapshot>();
 }
 
-/** Update today's monitoring row if present; otherwise insert a SEMS-synced row. */
+/** Update the monitoring row for that calendar day if present; otherwise insert. */
 export async function upsertSolarMonitoringLogByDate(
   supabase: SupabaseClient,
   input: {
     log_date: string;
     generation_kwh: number | null;
     consumption_kwh: number | null;
+    to_load_kwh?: number | null;
+    to_grid_kwh?: number | null;
+    from_grid_kwh?: number | null;
+    from_pv_bat_kwh?: number | null;
     battery_soc_pct: number | null;
     alert_flag?: boolean;
     notes?: string;
@@ -200,17 +199,34 @@ export async function upsertSolarMonitoringLogByDate(
   if (existing.error) return existing;
 
   const alertFlag = input.alert_flag ?? false;
+  const patch = {
+    generation_kwh: input.generation_kwh,
+    consumption_kwh: input.consumption_kwh,
+    to_load_kwh:
+      input.to_load_kwh !== undefined
+        ? input.to_load_kwh
+        : (existing.data?.to_load_kwh ?? null),
+    to_grid_kwh:
+      input.to_grid_kwh !== undefined
+        ? input.to_grid_kwh
+        : (existing.data?.to_grid_kwh ?? null),
+    from_grid_kwh:
+      input.from_grid_kwh !== undefined
+        ? input.from_grid_kwh
+        : (existing.data?.from_grid_kwh ?? null),
+    from_pv_bat_kwh:
+      input.from_pv_bat_kwh !== undefined
+        ? input.from_pv_bat_kwh
+        : (existing.data?.from_pv_bat_kwh ?? null),
+    battery_soc_pct: input.battery_soc_pct,
+    alert_flag: alertFlag,
+    notes: input.notes ?? existing.data?.notes ?? "Synced from SEMS+",
+  };
 
   if (existing.data) {
     return supabase
       .from(LOG)
-      .update({
-        generation_kwh: input.generation_kwh,
-        consumption_kwh: input.consumption_kwh,
-        battery_soc_pct: input.battery_soc_pct,
-        alert_flag: alertFlag,
-        notes: input.notes ?? existing.data.notes,
-      })
+      .update(patch)
       .eq("id", existing.data.id)
       .select("*")
       .single<SolarMonitoringLog>();
@@ -220,11 +236,7 @@ export async function upsertSolarMonitoringLogByDate(
     .from(LOG)
     .insert({
       log_date: input.log_date,
-      generation_kwh: input.generation_kwh,
-      consumption_kwh: input.consumption_kwh,
-      battery_soc_pct: input.battery_soc_pct,
-      alert_flag: alertFlag,
-      notes: input.notes ?? "Synced from SEMS+",
+      ...patch,
     } satisfies SolarMonitoringLogInsert)
     .select("*")
     .single<SolarMonitoringLog>();

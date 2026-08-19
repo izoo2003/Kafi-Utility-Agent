@@ -66,10 +66,21 @@ export async function createKitchenInventoryItem(
   supabase: SupabaseClient,
   input: KitchenInventoryInsert,
 ): Promise<DomainWriteResult<KitchenInventory>> {
-  const existing = await findKitchenDuplicate(supabase, input.item_name);
+  const opening = Math.max(0, Number(input.current_qty) || 0);
+  const seeded: KitchenInventoryInsert = {
+    ...input,
+    qty_in: Number(input.qty_in) || opening,
+    qty_out: Number(input.qty_out) || 0,
+    current_qty: Math.max(
+      0,
+      (Number(input.qty_in) || opening) - (Number(input.qty_out) || 0),
+    ),
+  };
+
+  const existing = await findKitchenDuplicate(supabase, seeded.item_name);
   if (existing) {
     const overwrite = incomingShouldOverwrite({
-      incomingDate: input.last_restocked_at ?? null,
+      incomingDate: seeded.last_restocked_at ?? null,
       existingDate: existing.last_restocked_at,
       existingUpdatedAt: existing.updated_at,
     });
@@ -78,7 +89,7 @@ export async function createKitchenInventoryItem(
     }
     const { data, error } = await supabase
       .from(TABLE)
-      .update(input)
+      .update(seeded)
       .eq("id", existing.id)
       .select("*")
       .single<KitchenInventory>();
@@ -88,7 +99,7 @@ export async function createKitchenInventoryItem(
 
   const { data, error } = await supabase
     .from(TABLE)
-    .insert(input)
+    .insert(seeded)
     .select("*")
     .single<KitchenInventory>();
   if (error) return writeErr(error.message);
@@ -109,40 +120,21 @@ export async function adjustKitchenInventoryQty(
   delta: number,
   notes?: string | null,
 ) {
-  const existing = await getKitchenInventoryItem(supabase, id);
-  if (existing.error) return { data: null, error: existing.error };
-  if (!existing.data) {
+  const { recordKitchenStockMovement } = await import(
+    "@/lib/kitchen/stock-movements"
+  );
+  const amount = Math.abs(Number(delta) || 0);
+  if (!(amount > 0)) {
     return {
       data: null,
-      error: { message: "Kitchen item not found" } as { message: string },
+      error: { message: "Delta must be non-zero" } as { message: string },
     };
   }
-  const item = existing.data as KitchenInventory;
-  const before = Number(item.current_qty) || 0;
-  const after = Math.round(Math.max(0, before + delta) * 1000) / 1000;
-  const patch: KitchenInventoryUpdate = {
-    current_qty: after,
-  };
-  if (delta > 0) {
-    patch.last_restocked_at = new Date().toISOString().slice(0, 10);
-  }
-  if (notes) {
-    patch.notes = notes;
-  }
-  const updated = await updateKitchenInventoryItem(supabase, id, patch);
-  if (updated.error) return updated;
-
-  await supabase.from("kitchen_consumption_log").insert({
-    kitchen_item_id: id,
-    applied_on: new Date().toISOString().slice(0, 10),
-    qty_before: before,
-    qty_after: after,
-    qty_delta: Math.round((after - before) * 1000) / 1000,
-    reason: delta >= 0 ? "manual_refill" : "manual_use",
-    notes: notes ?? null,
+  return recordKitchenStockMovement(supabase, id, {
+    direction: delta > 0 ? "in" : "out",
+    qty: amount,
+    notes,
   });
-
-  return updated;
 }
 
 export async function deleteKitchenInventoryItem(

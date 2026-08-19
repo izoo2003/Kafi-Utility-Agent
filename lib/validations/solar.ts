@@ -17,6 +17,8 @@ export const solarSpecsInsertSchema = z.object({
   install_date: optionalDate,
   vendor: optionalText,
   warranty_expiry: optionalDate,
+  inverter_expiry: optionalDate,
+  battery_expiry: optionalDate,
   spec_file_url: optionalText,
 });
 
@@ -30,6 +32,18 @@ export const solarMonitoringLogInsertSchema = z.object({
     z.union([z.number().nonnegative(), z.null()]),
   ),
   consumption_kwh: optionalNumber.pipe(
+    z.union([z.number().nonnegative(), z.null()]),
+  ),
+  to_load_kwh: optionalNumber.pipe(
+    z.union([z.number().nonnegative(), z.null()]),
+  ),
+  to_grid_kwh: optionalNumber.pipe(
+    z.union([z.number().nonnegative(), z.null()]),
+  ),
+  from_grid_kwh: optionalNumber.pipe(
+    z.union([z.number().nonnegative(), z.null()]),
+  ),
+  from_pv_bat_kwh: optionalNumber.pipe(
     z.union([z.number().nonnegative(), z.null()]),
   ),
   battery_soc_pct: optionalNumber.pipe(

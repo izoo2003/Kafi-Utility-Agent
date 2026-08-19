@@ -75,7 +75,7 @@ export function importPromptFor(target: ImportTarget): string {
         "IMPORT TARGET: Solar system specs ONLY.",
         "Read every page/photo (nameplates, install docs, spec sheets).",
         "Create or update solar specs via solar_specs_create / solar_specs_update with confirmed=false.",
-        "Map: panel capacity kW → panel_capacity_kw; inverter model; battery kWh → battery_capacity_kwh; install date (DD/MM/YYYY); vendor; warranty expiry; notes in free text fields as available.",
+        "Map: panel capacity kW → panel_capacity_kw; inverter model; battery kWh → battery_capacity_kwh; install date (DD/MM/YYYY); vendor; warranty expiry; inverter expiry → inverter_expiry; battery expiry → battery_expiry; notes in free text fields as available.",
         "If multiple distinct systems/rows appear, one create per distinct system. Do not write monitoring logs.",
       ].join(" ");
     case "solar-monitoring":

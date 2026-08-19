@@ -46,12 +46,18 @@ type SpecsForm = {
   install_date: string;
   vendor: string;
   warranty_expiry: string;
+  inverter_expiry: string;
+  battery_expiry: string;
 };
 
 type LogForm = {
   log_date: string;
   generation_kwh: string;
+  to_load_kwh: string;
+  to_grid_kwh: string;
   consumption_kwh: string;
+  from_pv_bat_kwh: string;
+  from_grid_kwh: string;
   battery_soc_pct: string;
   alert_flag: boolean;
   notes: string;
@@ -64,16 +70,30 @@ const emptySpecs = (): SpecsForm => ({
   install_date: "",
   vendor: "",
   warranty_expiry: "",
+  inverter_expiry: "",
+  battery_expiry: "",
 });
 
 const emptyLog = (): LogForm => ({
   log_date: "",
   generation_kwh: "",
+  to_load_kwh: "",
+  to_grid_kwh: "",
   consumption_kwh: "",
+  from_pv_bat_kwh: "",
+  from_grid_kwh: "",
   battery_soc_pct: "",
   alert_flag: false,
   notes: "",
 });
+
+function numOrEmpty(v: number | null | undefined) {
+  return v == null ? "" : String(v);
+}
+
+function parseOptionalNumber(v: string) {
+  return v === "" ? null : Number(v);
+}
 
 function fileNameFromPath(path: string | null) {
   if (!path) return null;
@@ -126,6 +146,8 @@ export function SolarPanel({
         install_date: specsForm.install_date || null,
         vendor: specsForm.vendor,
         warranty_expiry: specsForm.warranty_expiry || null,
+        inverter_expiry: specsForm.inverter_expiry || null,
+        battery_expiry: specsForm.battery_expiry || null,
       };
 
       let saved: SolarSpecs;
@@ -178,18 +200,13 @@ export function SolarPanel({
     try {
       const payload = {
         log_date: logForm.log_date,
-        generation_kwh:
-          logForm.generation_kwh === ""
-            ? null
-            : Number(logForm.generation_kwh),
-        consumption_kwh:
-          logForm.consumption_kwh === ""
-            ? null
-            : Number(logForm.consumption_kwh),
-        battery_soc_pct:
-          logForm.battery_soc_pct === ""
-            ? null
-            : Number(logForm.battery_soc_pct),
+        generation_kwh: parseOptionalNumber(logForm.generation_kwh),
+        to_load_kwh: parseOptionalNumber(logForm.to_load_kwh),
+        to_grid_kwh: parseOptionalNumber(logForm.to_grid_kwh),
+        consumption_kwh: parseOptionalNumber(logForm.consumption_kwh),
+        from_pv_bat_kwh: parseOptionalNumber(logForm.from_pv_bat_kwh),
+        from_grid_kwh: parseOptionalNumber(logForm.from_grid_kwh),
+        battery_soc_pct: parseOptionalNumber(logForm.battery_soc_pct),
         alert_flag: logForm.alert_flag,
         notes: logForm.notes,
       };
@@ -335,6 +352,8 @@ export function SolarPanel({
                               install_date: row.install_date ?? "",
                               vendor: row.vendor ?? "",
                               warranty_expiry: row.warranty_expiry ?? "",
+                              inverter_expiry: row.inverter_expiry ?? "",
+                              battery_expiry: row.battery_expiry ?? "",
                             });
                             setUploadFile(null);
                             setError(null);
@@ -391,20 +410,21 @@ export function SolarPanel({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[14%]">Date</TableHead>
-                <TableHead className="w-[14%]">Gen kWh</TableHead>
-                <TableHead className="w-[14%]">Use kWh</TableHead>
-                <TableHead className="w-[12%]">Battery %</TableHead>
-                <TableHead className="w-[12%]">Alert</TableHead>
-                <TableHead className="w-[14%]">Notes</TableHead>
-                <TableHead className="w-[20%] text-right">Actions</TableHead>
+                <TableHead className="w-[12%]">Date</TableHead>
+                <TableHead className="w-[10%]">Gen</TableHead>
+                <TableHead className="w-[10%]">To Load</TableHead>
+                <TableHead className="w-[10%]">To Grid</TableHead>
+                <TableHead className="w-[10%]">Use</TableHead>
+                <TableHead className="w-[10%]">Battery %</TableHead>
+                <TableHead className="w-[10%]">Alert</TableHead>
+                <TableHead className="w-[28%] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {logsSorted.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="max-w-none py-8 text-center text-muted-foreground"
                   >
                     No monitoring logs yet.
@@ -420,6 +440,12 @@ export function SolarPanel({
                       <CellText>{row.generation_kwh ?? "—"}</CellText>
                     </TableCell>
                     <TableCell>
+                      <CellText>{row.to_load_kwh ?? "—"}</CellText>
+                    </TableCell>
+                    <TableCell>
+                      <CellText>{row.to_grid_kwh ?? "—"}</CellText>
+                    </TableCell>
+                    <TableCell>
                       <CellText>{row.consumption_kwh ?? "—"}</CellText>
                     </TableCell>
                     <TableCell>
@@ -431,9 +457,6 @@ export function SolarPanel({
                       >
                         {row.alert_flag ? "alert" : "ok"}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <CellText>{row.notes ?? "—"}</CellText>
                     </TableCell>
                     <TableCell className="max-w-none">
                       <TableActions>
@@ -451,18 +474,13 @@ export function SolarPanel({
                             setEditingLog(row);
                             setLogForm({
                               log_date: row.log_date,
-                              generation_kwh:
-                                row.generation_kwh == null
-                                  ? ""
-                                  : String(row.generation_kwh),
-                              consumption_kwh:
-                                row.consumption_kwh == null
-                                  ? ""
-                                  : String(row.consumption_kwh),
-                              battery_soc_pct:
-                                row.battery_soc_pct == null
-                                  ? ""
-                                  : String(row.battery_soc_pct),
+                              generation_kwh: numOrEmpty(row.generation_kwh),
+                              to_load_kwh: numOrEmpty(row.to_load_kwh),
+                              to_grid_kwh: numOrEmpty(row.to_grid_kwh),
+                              consumption_kwh: numOrEmpty(row.consumption_kwh),
+                              from_pv_bat_kwh: numOrEmpty(row.from_pv_bat_kwh),
+                              from_grid_kwh: numOrEmpty(row.from_grid_kwh),
+                              battery_soc_pct: numOrEmpty(row.battery_soc_pct),
                               alert_flag: row.alert_flag,
                               notes: row.notes ?? "",
                             });
@@ -532,6 +550,14 @@ export function SolarPanel({
                   value: viewingSpecs.warranty_expiry,
                 },
                 {
+                  label: "Inverter expiry",
+                  value: viewingSpecs.inverter_expiry,
+                },
+                {
+                  label: "Battery expiry",
+                  value: viewingSpecs.battery_expiry,
+                },
+                {
                   label: "Spec file",
                   value: viewingSpecs.spec_file_url
                     ? fileNameFromPath(viewingSpecs.spec_file_url)
@@ -568,11 +594,39 @@ export function SolarPanel({
                       : `${viewingLog.generation_kwh} kWh`,
                 },
                 {
+                  label: "To Load",
+                  value:
+                    viewingLog.to_load_kwh == null
+                      ? null
+                      : `${viewingLog.to_load_kwh} kWh`,
+                },
+                {
+                  label: "To Grid",
+                  value:
+                    viewingLog.to_grid_kwh == null
+                      ? null
+                      : `${viewingLog.to_grid_kwh} kWh`,
+                },
+                {
                   label: "Consumption",
                   value:
                     viewingLog.consumption_kwh == null
                       ? null
                       : `${viewingLog.consumption_kwh} kWh`,
+                },
+                {
+                  label: "From PV&BAT",
+                  value:
+                    viewingLog.from_pv_bat_kwh == null
+                      ? null
+                      : `${viewingLog.from_pv_bat_kwh} kWh`,
+                },
+                {
+                  label: "From Grid",
+                  value:
+                    viewingLog.from_grid_kwh == null
+                      ? null
+                      : `${viewingLog.from_grid_kwh} kWh`,
                 },
                 {
                   label: "Battery SOC",
@@ -671,6 +725,32 @@ export function SolarPanel({
                   setSpecsForm((p) => ({
                     ...p,
                     warranty_expiry: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Inverter expiry</Label>
+              <Input
+                type="date"
+                value={specsForm.inverter_expiry}
+                onChange={(e) =>
+                  setSpecsForm((p) => ({
+                    ...p,
+                    inverter_expiry: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Battery expiry</Label>
+              <Input
+                type="date"
+                value={specsForm.battery_expiry}
+                onChange={(e) =>
+                  setSpecsForm((p) => ({
+                    ...p,
+                    battery_expiry: e.target.value,
                   }))
                 }
               />
@@ -774,6 +854,66 @@ export function SolarPanel({
                   setLogForm((p) => ({
                     ...p,
                     consumption_kwh: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>To Load kWh</Label>
+              <Input
+                type="number"
+                min="0"
+                step="any"
+                value={logForm.to_load_kwh}
+                onChange={(e) =>
+                  setLogForm((p) => ({
+                    ...p,
+                    to_load_kwh: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>To Grid kWh</Label>
+              <Input
+                type="number"
+                min="0"
+                step="any"
+                value={logForm.to_grid_kwh}
+                onChange={(e) =>
+                  setLogForm((p) => ({
+                    ...p,
+                    to_grid_kwh: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>From PV&BAT kWh</Label>
+              <Input
+                type="number"
+                min="0"
+                step="any"
+                value={logForm.from_pv_bat_kwh}
+                onChange={(e) =>
+                  setLogForm((p) => ({
+                    ...p,
+                    from_pv_bat_kwh: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>From Grid kWh</Label>
+              <Input
+                type="number"
+                min="0"
+                step="any"
+                value={logForm.from_grid_kwh}
+                onChange={(e) =>
+                  setLogForm((p) => ({
+                    ...p,
+                    from_grid_kwh: e.target.value,
                   }))
                 }
               />

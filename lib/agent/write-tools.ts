@@ -74,7 +74,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "kitchen_inventory_adjust_qty",
     description:
-      "Add or remove stock on a kitchen item by delta (preferred for refills). Example: refilled 2 packs of tea → delta=+2. Used 1 soap → delta=-1. Looks up by id from kitchen_inventory_list. Sets last_restocked_at when delta>0. Requires confirmation.",
+      "Record kitchen stock In or Out via delta. Stock = In − Out. Positive delta = In (refill/received). Negative delta = Out (finished/consumed). Example: refilled 2 packs tea → delta=+2. Used/finished 1 soap → delta=-1. Prefer this over editing current_qty. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -82,7 +82,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
         delta: {
           type: SchemaType.NUMBER,
           description:
-            "Positive to refill/add stock, negative to record manual use. Non-zero.",
+            "Positive = In (add stock), negative = Out (consume). Non-zero.",
         },
         notes: {
           type: SchemaType.STRING,
@@ -371,6 +371,14 @@ export const agentWriteTools: FunctionDeclaration[] = [
         install_date: { type: SchemaType.STRING },
         vendor: { type: SchemaType.STRING },
         warranty_expiry: { type: SchemaType.STRING },
+        inverter_expiry: {
+          type: SchemaType.STRING,
+          description: "Inverter warranty/expiry date (YYYY-MM-DD or DD/MM/YYYY)",
+        },
+        battery_expiry: {
+          type: SchemaType.STRING,
+          description: "Battery warranty/expiry date (YYYY-MM-DD or DD/MM/YYYY)",
+        },
         ...confirmedProperty,
       },
     },
@@ -389,6 +397,14 @@ export const agentWriteTools: FunctionDeclaration[] = [
         install_date: { type: SchemaType.STRING },
         vendor: { type: SchemaType.STRING },
         warranty_expiry: { type: SchemaType.STRING },
+        inverter_expiry: {
+          type: SchemaType.STRING,
+          description: "Inverter warranty/expiry date (YYYY-MM-DD or DD/MM/YYYY)",
+        },
+        battery_expiry: {
+          type: SchemaType.STRING,
+          description: "Battery warranty/expiry date (YYYY-MM-DD or DD/MM/YYYY)",
+        },
         ...confirmedProperty,
       },
       required: ["id"],
@@ -406,13 +422,30 @@ export const agentWriteTools: FunctionDeclaration[] = [
   },
   {
     name: "solar_monitoring_create",
-    description: "Create a solar monitoring log entry. Requires confirmation.",
+    description:
+      "Create or update (same log_date) a solar monitoring log. Prefer updating the existing day — never duplicate the same date. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         log_date: { type: SchemaType.STRING, description: "YYYY-MM-DD" },
         generation_kwh: { type: SchemaType.NUMBER },
         consumption_kwh: { type: SchemaType.NUMBER },
+        to_load_kwh: {
+          type: SchemaType.NUMBER,
+          description: "Generation used on-site (To Load)",
+        },
+        to_grid_kwh: {
+          type: SchemaType.NUMBER,
+          description: "Generation exported to grid (To Grid)",
+        },
+        from_pv_bat_kwh: {
+          type: SchemaType.NUMBER,
+          description: "Consumption from PV and/or battery",
+        },
+        from_grid_kwh: {
+          type: SchemaType.NUMBER,
+          description: "Consumption imported from grid",
+        },
         battery_soc_pct: { type: SchemaType.NUMBER },
         alert_flag: { type: SchemaType.BOOLEAN },
         notes: { type: SchemaType.STRING },
@@ -423,7 +456,8 @@ export const agentWriteTools: FunctionDeclaration[] = [
   },
   {
     name: "solar_monitoring_update",
-    description: "Update a solar monitoring log entry. Requires confirmation.",
+    description:
+      "Update a solar monitoring log entry. Same log_date updates that day's row (no duplicates). Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -431,6 +465,10 @@ export const agentWriteTools: FunctionDeclaration[] = [
         log_date: { type: SchemaType.STRING },
         generation_kwh: { type: SchemaType.NUMBER },
         consumption_kwh: { type: SchemaType.NUMBER },
+        to_load_kwh: { type: SchemaType.NUMBER },
+        to_grid_kwh: { type: SchemaType.NUMBER },
+        from_pv_bat_kwh: { type: SchemaType.NUMBER },
+        from_grid_kwh: { type: SchemaType.NUMBER },
         battery_soc_pct: { type: SchemaType.NUMBER },
         alert_flag: { type: SchemaType.BOOLEAN },
         notes: { type: SchemaType.STRING },

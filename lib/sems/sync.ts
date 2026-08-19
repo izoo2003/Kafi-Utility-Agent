@@ -8,6 +8,10 @@ import {
 import { SemsClient } from "@/lib/sems/client";
 import { getSemsConfig } from "@/lib/sems/config";
 import { fetchDayEnergy } from "@/lib/sems/day-energy";
+import {
+  fetchConsumptionStats,
+  formatSiteDate,
+} from "@/lib/sems/consumption-stats";
 import { fetchLiveFlow } from "@/lib/sems/flow";
 import {
   upsertSolarLiveSnapshot,
@@ -16,12 +20,7 @@ import {
 import type { SolarLiveSnapshot } from "@/lib/types/database";
 
 function formatLocalDate(timeZone: string, at: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(at);
+  return formatSiteDate(timeZone, at);
 }
 
 export type SemsSyncResult = {
@@ -70,10 +69,30 @@ export async function syncSemsLive(
     const flow = await fetchLiveFlow(client, config.stationId);
     // Flow is instantaneous power; daily kWh usually comes from telecounting.
     const dayEnergy = await fetchDayEnergy(client, config.stationId);
+    const logDate = formatLocalDate(config.timeZone);
+
+    let splits: Awaited<ReturnType<typeof fetchConsumptionStats>> | null =
+      null;
+    try {
+      splits = await fetchConsumptionStats(client, config.stationId, {
+        period: "day",
+        anchorDate: logDate,
+        timeZone: config.timeZone,
+      });
+    } catch {
+      splits = null;
+    }
+
     const generationToday =
-      dayEnergy.generationTodayKwh ?? flow.eGen ?? null;
+      dayEnergy.generationTodayKwh ??
+      splits?.generation_kwh ??
+      flow.eGen ??
+      null;
     const consumptionToday =
-      dayEnergy.consumptionTodayKwh ?? flow.eUse ?? null;
+      dayEnergy.consumptionTodayKwh ??
+      splits?.consumption_kwh ??
+      flow.eUse ??
+      null;
     const fetchedAt = new Date().toISOString();
 
     const alerts = evaluateSemsAlerts(
@@ -105,7 +124,10 @@ export async function syncSemsLive(
             dayEnergy.generationTodayKwh != null ||
             dayEnergy.consumptionTodayKwh != null
               ? "telecounting"
-              : "flow",
+              : splits
+                ? "statistics"
+                : "flow",
+          _consumptionSplit: splits,
           _flowParsed: {
             pSystem: flow.pSystem ?? null,
             pConsum: flow.pConsum ?? null,
@@ -122,7 +144,6 @@ export async function syncSemsLive(
       throw new Error(snapError.message);
     }
 
-    const logDate = formatLocalDate(config.timeZone);
     let monitoringLogId: string | null = null;
 
     const { data: logRow, error: logError } =
@@ -130,6 +151,14 @@ export async function syncSemsLive(
         log_date: logDate,
         generation_kwh: generationToday,
         consumption_kwh: consumptionToday,
+        ...(splits
+          ? {
+              to_load_kwh: splits.to_load_kwh,
+              to_grid_kwh: splits.to_grid_kwh,
+              from_grid_kwh: splits.from_grid_kwh,
+              from_pv_bat_kwh: splits.from_pv_bat_kwh,
+            }
+          : {}),
         battery_soc_pct: flow.soc ?? null,
         alert_flag: alerts.length > 0,
         notes: formatAlertNotes(alerts),

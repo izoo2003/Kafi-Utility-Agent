@@ -23,6 +23,17 @@ export const kitchenInventoryInsertSchema = z.object({
   notes: optionalText,
 });
 
+export const kitchenStockMovementSchema = z.object({
+  direction: z.enum(["in", "out"]),
+  qty: z.coerce.number().positive("Quantity must be greater than zero"),
+  applied_on: optionalDate,
+  notes: optionalText,
+});
+
+export type KitchenStockMovementInput = z.infer<
+  typeof kitchenStockMovementSchema
+>;
+
 export const kitchenInventoryUpdateSchema = kitchenInventoryInsertSchema
   .partial()
   .extend({

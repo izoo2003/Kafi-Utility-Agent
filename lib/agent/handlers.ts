@@ -139,6 +139,50 @@ export async function executeAgentTool(
       };
     }
 
+    case "kitchen_monthly_consumption": {
+      const { currentSiteMonth } = await import(
+        "@/lib/kitchen/monthly-consumption"
+      );
+      const { buildKitchenEdaAnalytics } = await import(
+        "@/lib/kitchen/eda-analytics"
+      );
+      const month =
+        typeof input.month === "string" && input.month.trim()
+          ? input.month.trim()
+          : currentSiteMonth();
+      const eda = await buildKitchenEdaAnalytics(supabase, month);
+      if (input.with_ai_summary === true) {
+        const { generateKitchenEdaInsights } = await import(
+          "@/lib/kitchen/monthly-summary-ai"
+        );
+        const ai = await generateKitchenEdaInsights(eda);
+        return {
+          report: eda.report,
+          eda: {
+            kpis: eda.kpis,
+            alerts: eda.alerts,
+            top_out_items: eda.top_out_items,
+            category_mix: eda.category_mix,
+            month_trend: eda.month_trend,
+            stock_health: eda.stock_health,
+          },
+          ai_summary: ai.summary,
+          model: ai.model,
+        };
+      }
+      return {
+        report: eda.report,
+        eda: {
+          kpis: eda.kpis,
+          alerts: eda.alerts,
+          top_out_items: eda.top_out_items,
+          category_mix: eda.category_mix,
+          month_trend: eda.month_trend,
+          stock_health: eda.stock_health,
+        },
+      };
+    }
+
     case "it_equipment_list": {
       const { data, error } = await listItEquipment(supabase);
       if (error) throw new Error(error.message);

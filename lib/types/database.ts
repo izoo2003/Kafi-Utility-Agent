@@ -18,6 +18,11 @@ export type KitchenInventory = AuditColumns & {
   item_name: string;
   category: string | null;
   unit: string | null;
+  /** Cumulative stock received (In). */
+  qty_in: number;
+  /** Cumulative stock finished/consumed (Out). */
+  qty_out: number;
+  /** Current stock = qty_in - qty_out. */
   current_qty: number;
   reorder_level: number;
   reorder_qty: number | null;
@@ -26,6 +31,18 @@ export type KitchenInventory = AuditColumns & {
   last_restocked_at: IsoDate | null;
   /** Last site date auto daily consumption was applied. */
   last_auto_decrement_on: IsoDate | null;
+  notes: string | null;
+};
+
+export type KitchenConsumptionLog = {
+  id: Uuid;
+  created_at: IsoTimestamptz;
+  kitchen_item_id: Uuid;
+  applied_on: IsoDate;
+  qty_before: number;
+  qty_after: number;
+  qty_delta: number;
+  reason: string;
   notes: string | null;
 };
 
@@ -97,6 +114,10 @@ export type SolarSpecs = AuditColumns & {
   install_date: IsoDate | null;
   vendor: string | null;
   warranty_expiry: IsoDate | null;
+  /** Inverter warranty / expiry date */
+  inverter_expiry: IsoDate | null;
+  /** Battery warranty / expiry date */
+  battery_expiry: IsoDate | null;
   spec_file_url: string | null;
 };
 
@@ -104,6 +125,14 @@ export type SolarMonitoringLog = AuditColumns & {
   log_date: IsoDate;
   generation_kwh: number | null;
   consumption_kwh: number | null;
+  /** AC generation used on-site (kWh). */
+  to_load_kwh: number | null;
+  /** AC generation exported to grid (kWh). */
+  to_grid_kwh: number | null;
+  /** Consumption from grid import (kWh). */
+  from_grid_kwh: number | null;
+  /** Consumption covered by PV and/or battery (kWh). */
+  from_pv_bat_kwh: number | null;
   battery_soc_pct: number | null;
   alert_flag: boolean;
   notes: string | null;
