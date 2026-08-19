@@ -154,7 +154,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "utility_accounts_list",
     description:
-      "List utility accounts with ids and exact provider labels used by the Utilities dashboard (K-Electric sites, SSGC sites, KWSB Clifton, Jazz Khalid/Sadia). Call this BEFORE utility_payment_create so you can map a bill PDF to the correct utility_account_id. Never returns passwords.",
+      "List utility accounts with ids and exact provider labels used by the Utilities dashboard (K-Electric sites, SSGC sites, KWSB Clifton, PTCL Office/KMP House, Jazz Khalid/Sadia). Call this BEFORE utility_payment_create so you can map a bill PDF or image to the correct utility_account_id. Never returns passwords.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {

@@ -73,6 +73,22 @@ const OTHER_PROVIDERS: readonly SiteUtilityProvider[] = [
     menuKey: "kwsb",
   },
   {
+    key: "ptcl-office",
+    label: "PTCL — Office",
+    siteLabel: "Office",
+    utility_type: "internet",
+    billing_cycle: "monthly",
+    menuKey: "ptcl",
+  },
+  {
+    key: "ptcl-kmp-house",
+    label: "PTCL — KMP House",
+    siteLabel: "KMP House",
+    utility_type: "internet",
+    billing_cycle: "monthly",
+    menuKey: "ptcl",
+  },
+  {
     key: "jazz-khalid-paracha",
     label: "Jazz monthly bill — Khalid Paracha",
     siteLabel: "Khalid Paracha",
@@ -102,6 +118,7 @@ export const UTILITY_MENU_OPTIONS = [
   { key: "k-electric", label: "K-Electric" },
   { key: "ssgc", label: "SSGC (Gas)" },
   { key: "kwsb", label: "KWSB (Water Board)" },
+  { key: "ptcl", label: "PTCL" },
   { key: "jazz", label: "Jazz monthly bill" },
 ] as const;
 
@@ -132,6 +149,9 @@ export function providerByLabel(label: string | null | undefined) {
     if (t.includes("ssgc") || t.includes("gas")) {
       return providerByKey("ssgc-kmp-house");
     }
+    if (t.includes("ptcl")) {
+      return providerByKey("ptcl-kmp-house");
+    }
     if (t.includes("kwsb") || t.includes("water")) {
       return null;
     }
@@ -149,7 +169,7 @@ export function providerByLabel(label: string | null | undefined) {
   );
   if (bySite) return bySite;
 
-  // Legacy / removed single-provider rows — do not map to a site/person.
+  // Legacy bare "PTCL" (pre site split) — ambiguous, do not auto-map.
   if (
     t === "k-electric" ||
     t === "kelectric" ||

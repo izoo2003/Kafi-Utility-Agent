@@ -16,6 +16,7 @@ export const siteUtilityProviderKeySchema = z.enum([
   "k-electric",
   "ssgc",
   "kwsb",
+  "ptcl",
   "jazz",
 ]);
 

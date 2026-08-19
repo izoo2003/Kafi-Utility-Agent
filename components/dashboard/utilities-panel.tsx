@@ -259,6 +259,10 @@ function SiteBillSection({
               <p className="text-sm text-muted-foreground">
                 KWSB water board bill records for this location.
               </p>
+            ) : provider.menuKey === "ptcl" ? (
+              <p className="text-sm text-muted-foreground">
+                PTCL bill records for this location — add payments via chat or Log payment.
+              </p>
             ) : provider.menuKey === "jazz" ? (
               <p className="text-sm text-muted-foreground">
                 Jazz mobile bill records for this person.
@@ -641,9 +645,11 @@ export function UtilitiesPanel({
               ? "SSGC (Gas): two sections — Clifton Office and KMP House."
               : menuKey === "kwsb"
                 ? "KWSB (Water Board): one section — Clifton Office only."
-                : menuKey === "jazz"
-                  ? "Jazz: two sections — Khalid Paracha and Sadia Paracha."
-                  : "Showing one utility at a time — log payments for the selected provider."}
+                : menuKey === "ptcl"
+                  ? "PTCL: two sections — Office and KMP House. Log bills via chat or Log payment."
+                  : menuKey === "jazz"
+                    ? "Jazz: two sections — Khalid Paracha and Sadia Paracha."
+                    : "Showing one utility at a time — log payments for the selected provider."}
         </p>
       </div>
 
