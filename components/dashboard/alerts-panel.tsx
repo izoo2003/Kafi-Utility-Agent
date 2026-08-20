@@ -8,6 +8,7 @@ import {
   Fuel,
   SunMedium,
   Wifi,
+  Building2,
 } from "lucide-react";
 import type { OpsAlert } from "@/lib/alerts/types";
 import { RunAlertDigestButton } from "@/components/dashboard/run-alert-digest-button";
@@ -39,6 +40,11 @@ const domainMeta = {
     icon: Wifi,
     chip: "bg-[oklch(0.94_0.04_250)] text-[oklch(0.42_0.1_250)]",
   },
+  tenants: {
+    label: "Tenants",
+    icon: Building2,
+    chip: "bg-[oklch(0.94_0.04_290)] text-[oklch(0.42_0.12_290)]",
+  },
 } as const;
 
 function severityStyles(severity: OpsAlert["severity"]) {
@@ -64,7 +70,8 @@ export function AlertsPanel({ alerts }: { alerts: OpsAlert[] }) {
           </h2>
           <p className="mt-1 text-sm text-muted-foreground sm:text-base">
             Derived from inventory, warranties, generator service / oil change
-            (200 h of logged outage runs), solar flags, and utility bills.
+            (200 h of logged outage runs), solar flags, utility bills, and
+            tenant rent / electricity dues.
             Digests can email once per alert per 24 hours.
           </p>
         </div>
@@ -89,8 +96,8 @@ export function AlertsPanel({ alerts }: { alerts: OpsAlert[] }) {
               All clear
             </p>
             <p className="mt-1 text-sm text-[oklch(0.42_0.04_155)]">
-              No low stock, warranty, generator service, solar, or utility bill
-              alerts right now.
+              No low stock, warranty, generator service, solar, utility bill,
+              or tenant rent / electricity alerts right now.
             </p>
           </div>
         </div>

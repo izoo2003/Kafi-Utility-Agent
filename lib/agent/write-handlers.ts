@@ -52,12 +52,28 @@ import {
   getUtilityAccount,
   updateUtilityAccount,
 } from "@/lib/supabase/utilities";
+import {
+  createTenant,
+  createTenantElectricBill,
+  createTenantRentLog,
+  deleteTenant,
+  deleteTenantElectricBill,
+  deleteTenantRentLog,
+  findTenantByName,
+  getTenant,
+  getTenantElectricBill,
+  getTenantRentLog,
+  updateTenant,
+  updateTenantElectricBill,
+  updateTenantRentLog,
+} from "@/lib/supabase/tenants";
 import { nextDueFromLastPaid } from "@/lib/utilities/billing";
 import { formatDate } from "@/lib/format/datetime";
 import type {
   ItEquipment,
   KitchenInventory,
   SolarSpecs,
+  Tenant,
   UtilityAccount,
 } from "@/lib/types/database";
 import {
@@ -77,6 +93,13 @@ import {
   solarMonitoringUpdateSchemaAgent,
   solarSpecsCreateSchema,
   solarSpecsUpdateSchemaAgent,
+  tenantCreateSchema,
+  tenantDeleteSchema,
+  tenantElectricBillCreateSchema,
+  tenantElectricBillUpdateSchemaAgent,
+  tenantRentLogCreateSchema,
+  tenantRentLogUpdateSchemaAgent,
+  tenantUpdateSchemaAgent,
   utilityCreateSchema,
   utilityPaymentCreateSchema,
   utilityUpdateSchemaAgent,
@@ -815,6 +838,230 @@ export async function executeWriteTool(
         return needsConfirmation(name, summary, { id });
       }
       const { error } = await deleteUtilityPaymentLog(supabase, id);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: id };
+    }
+
+    case "tenants_create": {
+      const parsed = tenantCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const payload = parsed.data;
+      const summary = `Create tenant "${payload.tenant_name}"${payload.rent_amount != null ? ` with rent ${payload.rent_amount}` : ""}${payload.rent_due_date ? ` due ${formatDate(payload.rent_due_date)}` : ""}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { ...payload });
+      }
+      const { data, error, outcome } = await createTenant(
+        supabase,
+        withUpdatedBy({ ...payload }, user),
+      );
+      if (error) throw new Error(error.message);
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
+    }
+
+    case "tenants_update": {
+      const parsed = tenantUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, tenant_name_lookup, ...fields } = parsed.data;
+      const patch = stripUndefined(fields as Record<string, unknown>);
+      if (Object.keys(patch).length === 0) {
+        return { error: "Provide at least one field to update" };
+      }
+      let tenantId = id;
+      if (!tenantId && tenant_name_lookup) {
+        const found = await findTenantByName(supabase, tenant_name_lookup);
+        tenantId = found?.id;
+      }
+      if (!tenantId) return { error: "Tenant not found" };
+      const existing = await getTenant(supabase, tenantId);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Tenant not found" };
+      const row = existing.data as Tenant;
+      const summary = `Update tenant "${row.tenant_name}": set ${summarizeFields(patch)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id: tenantId, ...patch });
+      }
+      const { data, error } = await updateTenant(
+        supabase,
+        tenantId,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "tenants_delete": {
+      const parsed = tenantDeleteSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      let tenantId = parsed.data.id;
+      if (!tenantId && parsed.data.tenant_name_lookup) {
+        const found = await findTenantByName(
+          supabase,
+          parsed.data.tenant_name_lookup,
+        );
+        tenantId = found?.id;
+      }
+      if (!tenantId) return { error: "Tenant not found" };
+      const existing = await getTenant(supabase, tenantId);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Tenant not found" };
+      const summary = `DELETE tenant "${existing.data.tenant_name}" and all rent records and electricity bills. This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id: tenantId });
+      }
+      const { error } = await deleteTenant(supabase, tenantId);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: tenantId };
+    }
+
+    case "tenant_rent_log_create": {
+      const parsed = tenantRentLogCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { tenant_id, tenant_name, ...rest } = parsed.data;
+      let tenantId = tenant_id;
+      if (!tenantId && tenant_name) {
+        const found = await findTenantByName(supabase, tenant_name);
+        tenantId = found?.id;
+      }
+      if (!tenantId) return { error: "Tenant not found — call tenants_list or create the tenant first." };
+      const tenant = await getTenant(supabase, tenantId);
+      if (tenant.error) throw new Error(tenant.error.message);
+      if (!tenant.data) return { error: "Tenant not found" };
+      const label = tenant.data.tenant_name;
+      const summary = `Log rent for ${label}${rest.rent_amount != null ? ` — amount ${rest.rent_amount}` : ""}${rest.rent_due_date ? ` due ${formatDate(rest.rent_due_date)}` : ""}${rest.payment_status ? ` (${rest.payment_status})` : ""}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, {
+          tenant_id: tenantId,
+          ...rest,
+        });
+      }
+      const { data, error, outcome } = await createTenantRentLog(
+        supabase,
+        withUpdatedBy({ tenant_id: tenantId, ...rest }, user),
+      );
+      if (error) throw new Error(error.message);
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
+    }
+
+    case "tenant_rent_log_update": {
+      const parsed = tenantRentLogUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, ...fields } = parsed.data;
+      const patch = stripUndefined(fields as Record<string, unknown>);
+      if (Object.keys(patch).length === 0) {
+        return { error: "Provide at least one field to update" };
+      }
+      const existing = await getTenantRentLog(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Rent log not found" };
+      const summary = `Update rent log ${id}: set ${summarizeFields(patch)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id, ...patch });
+      }
+      const { data, error } = await updateTenantRentLog(
+        supabase,
+        id,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "tenant_rent_log_delete": {
+      const parsed = idOnlySchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id } = parsed.data;
+      const existing = await getTenantRentLog(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Rent log not found" };
+      const summary = `DELETE rent log ${id}. This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id });
+      }
+      const { error } = await deleteTenantRentLog(supabase, id);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: id };
+    }
+
+    case "tenant_electric_bill_create": {
+      const parsed = tenantElectricBillCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { tenant_id, tenant_name, ...rest } = parsed.data;
+      let tenantId = tenant_id;
+      if (!tenantId && tenant_name) {
+        const found = await findTenantByName(supabase, tenant_name);
+        tenantId = found?.id;
+      }
+      if (!tenantId) return { error: "Tenant not found — call tenants_list or create the tenant first." };
+      const tenant = await getTenant(supabase, tenantId);
+      if (tenant.error) throw new Error(tenant.error.message);
+      if (!tenant.data) return { error: "Tenant not found" };
+      const label = tenant.data.tenant_name;
+      const summary = `Log electricity bill for ${label}${rest.ke_charges_amount != null ? ` — KE charges ${rest.ke_charges_amount}` : ""}${rest.due_date ? ` due ${formatDate(rest.due_date)}` : ""}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, {
+          tenant_id: tenantId,
+          ...rest,
+        });
+      }
+      const { data, error, outcome } = await createTenantElectricBill(
+        supabase,
+        withUpdatedBy({ tenant_id: tenantId, ...rest }, user),
+      );
+      if (error) throw new Error(error.message);
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
+    }
+
+    case "tenant_electric_bill_update": {
+      const parsed = tenantElectricBillUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, ...fields } = parsed.data;
+      const patch = stripUndefined(fields as Record<string, unknown>);
+      if (Object.keys(patch).length === 0) {
+        return { error: "Provide at least one field to update" };
+      }
+      const existing = await getTenantElectricBill(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Electricity bill not found" };
+      const summary = `Update tenant electricity bill ${id}: set ${summarizeFields(patch)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id, ...patch });
+      }
+      const { data, error } = await updateTenantElectricBill(
+        supabase,
+        id,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "tenant_electric_bill_delete": {
+      const parsed = idOnlySchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id } = parsed.data;
+      const existing = await getTenantElectricBill(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Electricity bill not found" };
+      const summary = `DELETE tenant electricity bill ${id}. This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id });
+      }
+      const { error } = await deleteTenantElectricBill(supabase, id);
       if (error) throw new Error(error.message);
       return { status: "ok", summary, deleted_id: id };
     }

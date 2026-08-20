@@ -7,6 +7,9 @@ export const IMPORT_TARGETS = [
   "solar-specs",
   "solar-monitoring",
   "utilities",
+  "tenants",
+  "tenant-rent",
+  "tenant-electricity",
 ] as const;
 
 export type ImportTarget = (typeof IMPORT_TARGETS)[number];
@@ -95,6 +98,36 @@ export function importPromptFor(target: ImportTarget): string {
         "Map: due date → paid_on; amount within due → amount; KE units kWh or SSGC CM → units_kwh; month/cycle → bill_period; invoice/Bill ID/Consumer ID → invoice_number; put customer/mobile/account clues in notes.",
         "KE: 239/234 Baldia mills by survey no; Clifton vs KMP House by address. SSGC: Block 8 / Qasre Faisal → Clifton; DHA / KMP house → KMP House. KWSB: Clifton only. PTCL: Office vs KMP House by address/user. Jazz: KP/Khalid/03008206633 → Khalid Paracha; SKP/Sadia/03218206633 → Sadia Paracha.",
         "One payment create per bill PDF or image. Never invent providers or passwords. Do not write to other domains.",
+      ].join(" ");
+    case "tenants":
+      return [
+        "IMPORT TARGET: Tenant accounts ONLY.",
+        "Extract EVERY distinct tenant row.",
+        "For EACH tenant call tenants_create with confirmed=false (one tool call per tenant).",
+        "Map: tenant/name → tenant_name; rent amount → rent_amount; rent due date → rent_due_date;",
+        "payment status → payment_status (paid|unpaid|partial|overdue); payment date → payment_date;",
+        "outstanding/overdue amount → outstanding_amount; notes.",
+        "Dates are DD/MM/YYYY. Skip headers/blank lines. Do not write rent logs or electricity bills separately unless they are clearly extra history rows.",
+      ].join(" ");
+    case "tenant-rent":
+      return [
+        "IMPORT TARGET: Tenant rent records ONLY.",
+        "ALWAYS call tenants_list first so you can resolve tenant_name to the correct tenant.",
+        "For EACH rent row call tenant_rent_log_create with confirmed=false.",
+        "Map: tenant name → tenant_name; rent amount → rent_amount; due date → rent_due_date;",
+        "payment status → payment_status; payment date → payment_date; outstanding → outstanding_amount; notes.",
+        "Dates are DD/MM/YYYY. Do not create new tenants unless the name is clearly missing from tenants_list — then tenants_create first.",
+        "Do not write electricity bills.",
+      ].join(" ");
+    case "tenant-electricity":
+      return [
+        "IMPORT TARGET: Tenant electricity (K-Electric) bills ONLY.",
+        "ALWAYS call tenants_list first so you can resolve tenant_name.",
+        "For EACH bill row call tenant_electric_bill_create with confirmed=false.",
+        "Map: tenant name → tenant_name; KE charges / amount → ke_charges_amount; due date → due_date;",
+        "payment status → payment_status; payment date → payment_date; outstanding → outstanding_amount; notes.",
+        "Dates are DD/MM/YYYY. These are tenant-billed KE charges, NOT site utility meters (239G/234G/Clifton/KMP).",
+        "Do not write rent logs or utility_payment_create.",
       ].join(" ");
   }
 }

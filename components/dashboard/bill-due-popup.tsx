@@ -24,7 +24,7 @@ function dismissSignature(alerts: OpsAlert[]) {
 
 function isPopupAlert(a: OpsAlert) {
   if (!(a.severity === "critical" || a.severity === "warning")) return false;
-  if (a.domain === "utilities") return true;
+  if (a.domain === "utilities" || a.domain === "tenants") return true;
   return a.id.startsWith("generator-oil");
 }
 

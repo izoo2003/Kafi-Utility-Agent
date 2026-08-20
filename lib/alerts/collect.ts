@@ -6,6 +6,8 @@ import type {
   KitchenInventory,
   SolarLiveSnapshot,
   SolarMonitoringLog,
+  Tenant,
+  TenantElectricBill,
   UtilityAccount,
   UtilityPaymentLog,
 } from "@/lib/types/database";
@@ -32,6 +34,10 @@ import {
   oilChangeStatus,
 } from "@/lib/generator/oil-change";
 import { formatDate } from "@/lib/format/datetime";
+import {
+  effectivePaymentStatus,
+  formatMoney,
+} from "@/lib/tenants/payment-status";
 
 const WARRANTY_WARNING_DAYS = 30;
 const SERVICE_WARNING_DAYS = 14;
@@ -57,7 +63,18 @@ function daysUntil(dateIso: string) {
 export async function collectOpsAlerts(
   supabase: SupabaseClient,
 ): Promise<OpsAlert[]> {
-  const [kitchen, it, maintenance, runs, solar, live, utilities, payments] =
+  const [
+    kitchen,
+    it,
+    maintenance,
+    runs,
+    solar,
+    live,
+    utilities,
+    payments,
+    tenants,
+    tenantBills,
+  ] =
     await Promise.all([
       supabase.from("kitchen_inventory").select("*"),
       supabase.from("it_equipment").select("*"),
@@ -84,6 +101,11 @@ export async function collectOpsAlerts(
         .from("utility_payment_logs")
         .select("*")
         .order("paid_on", { ascending: false }),
+      supabase.from("tenants").select("*"),
+      supabase
+        .from("tenant_electric_bills")
+        .select("*")
+        .order("due_date", { ascending: false }),
     ]);
 
   const alerts: OpsAlert[] = [];
@@ -332,6 +354,113 @@ export async function collectOpsAlerts(
     }
   }
 
+  if (
+    !tenants.error ||
+    !/tenants|does not exist|schema cache/i.test(tenants.error.message)
+  ) {
+    for (const tenant of (tenants.data ?? []) as Tenant[]) {
+      const status = effectivePaymentStatus(
+        tenant.payment_status,
+        tenant.rent_due_date,
+        today,
+      );
+      const outstanding = Number(tenant.outstanding_amount ?? 0);
+      if (status !== "overdue" && !(status !== "paid" && outstanding > 0)) {
+        if (status !== "unpaid" && status !== "partial") continue;
+        if (!tenant.rent_due_date || tenant.rent_due_date > serviceHorizon) {
+          continue;
+        }
+      }
+
+      const overdue = status === "overdue";
+      const dueSoon =
+        !overdue &&
+        tenant.rent_due_date != null &&
+        tenant.rent_due_date <= serviceHorizon;
+      if (!overdue && !dueSoon && outstanding <= 0) continue;
+
+      alerts.push({
+        id: `tenant-rent-${tenant.id}`,
+        domain: "tenants",
+        severity: overdue || outstanding > 0 ? "critical" : "warning",
+        title: overdue
+          ? `Rent overdue: ${tenant.tenant_name}`
+          : outstanding > 0
+            ? `Rent outstanding: ${tenant.tenant_name}`
+            : `Rent due: ${tenant.tenant_name}`,
+        detail: [
+          tenant.rent_due_date
+            ? `Due ${formatDate(tenant.rent_due_date)}`
+            : null,
+          tenant.rent_amount != null
+            ? `rent ${formatMoney(tenant.rent_amount)}`
+            : null,
+          outstanding > 0
+            ? `outstanding ${formatMoney(outstanding)}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || "Rent payment needs attention.",
+        href: `/dashboard/tenants/records?tenant=${tenant.id}`,
+      });
+    }
+  }
+
+  if (
+    !tenantBills.error ||
+    !/tenant_electric_bills|does not exist|schema cache/i.test(
+      tenantBills.error.message,
+    )
+  ) {
+    const tenantNames = new Map(
+      ((tenants.data ?? []) as Tenant[]).map((t) => [t.id, t.tenant_name]),
+    );
+    const latestByTenant = new Map<string, TenantElectricBill>();
+    for (const bill of (tenantBills.data ?? []) as TenantElectricBill[]) {
+      if (!latestByTenant.has(bill.tenant_id)) {
+        latestByTenant.set(bill.tenant_id, bill);
+      }
+    }
+    for (const bill of latestByTenant.values()) {
+      const status = effectivePaymentStatus(
+        bill.payment_status,
+        bill.due_date,
+        today,
+      );
+      const outstanding = Number(bill.outstanding_amount ?? 0);
+      const name = tenantNames.get(bill.tenant_id) ?? "Tenant";
+      const overdue = status === "overdue";
+      const dueSoon =
+        !overdue &&
+        bill.due_date != null &&
+        bill.due_date <= serviceHorizon &&
+        status !== "paid";
+      if (!overdue && !dueSoon && !(status !== "paid" && outstanding > 0)) {
+        continue;
+      }
+      alerts.push({
+        id: `tenant-ke-${bill.tenant_id}`,
+        domain: "tenants",
+        severity: overdue || outstanding > 0 ? "critical" : "warning",
+        title: overdue
+          ? `Tenant electricity overdue: ${name}`
+          : `Tenant electricity due: ${name}`,
+        detail: [
+          bill.due_date ? `Due ${formatDate(bill.due_date)}` : null,
+          bill.ke_charges_amount != null
+            ? `KE charges ${formatMoney(bill.ke_charges_amount)}`
+            : null,
+          outstanding > 0
+            ? `outstanding ${formatMoney(outstanding)}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || "Electricity bill needs attention.",
+        href: `/dashboard/tenants/electricity?tenant=${bill.tenant_id}`,
+      });
+    }
+  }
+
   const severityRank: Record<OpsAlert["severity"], number> = {
     critical: 0,
     warning: 1,
@@ -345,6 +474,7 @@ export async function collectOpsAlerts(
     generator: 2,
     solar: 3,
     utilities: 4,
+    tenants: 5,
   };
 
   return alerts.sort((a, b) => {

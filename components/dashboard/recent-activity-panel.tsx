@@ -9,6 +9,7 @@ const domainLabel: Record<RecentActivityItem["domain"], string> = {
   generator: "Generator",
   solar: "Solar",
   utilities: "Utilities",
+  tenants: "Tenants",
 };
 
 export function RecentActivityPanel({

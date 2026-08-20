@@ -1,4 +1,5 @@
 import {
+  Building2,
   CookingPot,
   Cpu,
   Fuel,
@@ -19,6 +20,7 @@ const icons = {
   generator: Fuel,
   solar: SunMedium,
   utilities: Wifi,
+  tenants: Building2,
 } as const;
 
 const accentStyles: Record<NavAccent, string> = {
@@ -28,6 +30,7 @@ const accentStyles: Record<NavAccent, string> = {
   orange: "bg-[oklch(0.94_0.05_55)] text-[oklch(0.48_0.14_45)]",
   teal: "bg-[oklch(0.93_0.05_185)] text-[oklch(0.4_0.1_185)]",
   emerald: "bg-[oklch(0.93_0.05_155)] text-[oklch(0.4_0.1_155)]",
+  violet: "bg-[oklch(0.94_0.04_290)] text-[oklch(0.42_0.12_290)]",
 };
 
 export function NavIcon({

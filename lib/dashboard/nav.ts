@@ -16,9 +16,21 @@ export const dashboardNav = [
   {
     href: "/dashboard/kitchen-inventory",
     label: "Kitchen",
-    description: "Stock levels and reorder thresholds",
+    description: "Stock ledger and consumption analytics",
     icon: "kitchen",
     accent: "amber",
+    children: [
+      {
+        href: "/dashboard/kitchen-inventory",
+        label: "Stock Ledger",
+        match: "exact" as const,
+      },
+      {
+        href: "/dashboard/kitchen-inventory/analytics",
+        label: "Consumption Analytics",
+        match: "prefix" as const,
+      },
+    ],
   },
   {
     href: "/dashboard/it-equipment",
@@ -69,6 +81,30 @@ export const dashboardNav = [
     description: "K-Electric (4 sites), SSGC, KWSB, PTCL, Jazz bills & dues",
     icon: "utilities",
     accent: "emerald",
+  },
+  {
+    href: "/dashboard/tenants",
+    label: "Tenants",
+    description: "Accounts, rent records, and tenant electricity bills",
+    icon: "tenants",
+    accent: "violet",
+    children: [
+      {
+        href: "/dashboard/tenants",
+        label: "Create tenant",
+        match: "exact" as const,
+      },
+      {
+        href: "/dashboard/tenants/records",
+        label: "Rent records",
+        match: "prefix" as const,
+      },
+      {
+        href: "/dashboard/tenants/electricity",
+        label: "Electricity bills",
+        match: "prefix" as const,
+      },
+    ],
   },
 ] as const;
 

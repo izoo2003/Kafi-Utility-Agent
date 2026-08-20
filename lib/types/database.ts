@@ -201,11 +201,43 @@ export type UtilityPaymentLog = AuditColumns & {
   notes: string | null;
 };
 
+export type TenantPaymentStatus = "paid" | "unpaid" | "partial" | "overdue";
+
+export type Tenant = AuditColumns & {
+  tenant_name: string;
+  rent_amount: number | null;
+  rent_due_date: IsoDate | null;
+  payment_status: TenantPaymentStatus;
+  payment_date: IsoDate | null;
+  outstanding_amount: number | null;
+  notes: string | null;
+};
+
+export type TenantRentLog = AuditColumns & {
+  tenant_id: Uuid;
+  rent_amount: number | null;
+  rent_due_date: IsoDate | null;
+  payment_status: TenantPaymentStatus;
+  payment_date: IsoDate | null;
+  outstanding_amount: number | null;
+  notes: string | null;
+};
+
+export type TenantElectricBill = AuditColumns & {
+  tenant_id: Uuid;
+  ke_charges_amount: number | null;
+  due_date: IsoDate | null;
+  payment_status: TenantPaymentStatus;
+  payment_date: IsoDate | null;
+  outstanding_amount: number | null;
+  notes: string | null;
+};
+
 export type AlertNotificationChannel = "email" | "console";
 
 export type AlertNotification = {
   alert_id: string;
-  domain: "kitchen" | "it" | "generator" | "solar" | "utilities";
+  domain: "kitchen" | "it" | "generator" | "solar" | "utilities" | "tenants";
   severity: "critical" | "warning" | "info";
   title: string;
   detail: string;
@@ -251,6 +283,17 @@ export type Database = {
         Row: UtilityPaymentLog;
         Insert: UtilityPaymentLogInsert;
         Update: UtilityPaymentLogUpdate;
+      };
+      tenants: { Row: Tenant; Insert: TenantInsert; Update: TenantUpdate };
+      tenant_rent_logs: {
+        Row: TenantRentLog;
+        Insert: TenantRentLogInsert;
+        Update: TenantRentLogUpdate;
+      };
+      tenant_electric_bills: {
+        Row: TenantElectricBill;
+        Insert: TenantElectricBillInsert;
+        Update: TenantElectricBillUpdate;
       };
       alert_notifications: {
         Row: AlertNotification;
@@ -316,6 +359,25 @@ export type UtilityPaymentLogInsert = Partial<
 };
 export type UtilityPaymentLogUpdate = Partial<
   OmitAuditOnWrite<UtilityPaymentLog>
+>;
+
+export type TenantInsert = Partial<OmitAuditOnWrite<Tenant>> & {
+  tenant_name: string;
+};
+export type TenantUpdate = Partial<OmitAuditOnWrite<Tenant>>;
+
+export type TenantRentLogInsert = Partial<OmitAuditOnWrite<TenantRentLog>> & {
+  tenant_id: Uuid;
+};
+export type TenantRentLogUpdate = Partial<OmitAuditOnWrite<TenantRentLog>>;
+
+export type TenantElectricBillInsert = Partial<
+  OmitAuditOnWrite<TenantElectricBill>
+> & {
+  tenant_id: Uuid;
+};
+export type TenantElectricBillUpdate = Partial<
+  OmitAuditOnWrite<TenantElectricBill>
 >;
 
 export const SOLAR_SPECS_BUCKET = "solar-specs" as const;

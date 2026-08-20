@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type RecentActivityItem = {
   id: string;
-  domain: "kitchen" | "it" | "generator" | "solar" | "utilities";
+  domain: "kitchen" | "it" | "generator" | "solar" | "utilities" | "tenants";
   label: string;
   detail: string;
   href: string;
@@ -32,7 +32,16 @@ export async function collectRecentActivity(
   supabase: SupabaseClient,
   limit = 12,
 ): Promise<RecentActivityItem[]> {
-  const [kitchen, it, maintenance, fuel, solarSpecs, solarLog, utilities] =
+  const [
+    kitchen,
+    it,
+    maintenance,
+    fuel,
+    solarSpecs,
+    solarLog,
+    utilities,
+    tenants,
+  ] =
     await Promise.all([
       supabase
         .from("kitchen_inventory")
@@ -67,6 +76,11 @@ export async function collectRecentActivity(
       supabase
         .from("utility_accounts")
         .select("id, utility_type, provider, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(6),
+      supabase
+        .from("tenants")
+        .select("id, tenant_name, payment_status, updated_at")
         .order("updated_at", { ascending: false })
         .limit(6),
     ]);
@@ -136,6 +150,16 @@ export async function collectRecentActivity(
         label: `${r.utility_type} account`,
         detail: String(r.provider ?? "No provider"),
         href: "/dashboard/utilities",
+      }),
+    ),
+    ...pickUpdated(
+      tenants.data as Array<Record<string, unknown>> | null,
+      (r) => ({
+        id: `tenant-${r.id}`,
+        domain: "tenants",
+        label: String(r.tenant_name ?? "Tenant"),
+        detail: `Rent ${r.payment_status ?? "unpaid"}`,
+        href: "/dashboard/tenants",
       }),
     ),
   ];

@@ -13,6 +13,11 @@ import {
   listSolarSpecs,
 } from "@/lib/supabase/solar";
 import { listUtilityAccounts } from "@/lib/supabase/utilities";
+import {
+  listTenantElectricBills,
+  listTenantRentLogs,
+  listTenants,
+} from "@/lib/supabase/tenants";
 import type {
   GeneratorExpense,
   GeneratorFuelLog,
@@ -21,6 +26,9 @@ import type {
   KitchenInventory,
   SolarMonitoringLog,
   SolarSpecs,
+  Tenant,
+  TenantElectricBill,
+  TenantRentLog,
   UtilityAccount,
 } from "@/lib/types/database";
 
@@ -33,6 +41,9 @@ export const EXPORT_RESOURCES = [
   "solar-specs",
   "solar-monitoring",
   "utilities",
+  "tenants",
+  "tenant-rent",
+  "tenant-electricity",
 ] as const;
 
 export type ExportResource = (typeof EXPORT_RESOURCES)[number];
@@ -240,6 +251,101 @@ export async function loadExportBundle(
           { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
         ]),
         rows: asRows(data),
+      };
+    }
+    case "tenants": {
+      const { data, error } = await listTenants(supabase);
+      if (error) throw new Error(error.message);
+      return {
+        title: "Tenants",
+        filename: "tenants",
+        columns: cols<Tenant>([
+          { key: "tenant_name", header: "Tenant name", value: (r) => r.tenant_name },
+          { key: "rent_amount", header: "Rent amount", value: (r) => r.rent_amount },
+          { key: "rent_due_date", header: "Rent due date", value: (r) => r.rent_due_date },
+          { key: "payment_status", header: "Payment status", value: (r) => r.payment_status },
+          { key: "payment_date", header: "Payment date", value: (r) => r.payment_date },
+          {
+            key: "outstanding_amount",
+            header: "Outstanding / overdue",
+            value: (r) => r.outstanding_amount,
+          },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(data),
+      };
+    }
+    case "tenant-rent": {
+      const [tenants, logs] = await Promise.all([
+        listTenants(supabase),
+        listTenantRentLogs(supabase),
+      ]);
+      if (tenants.error) throw new Error(tenants.error.message);
+      if (logs.error) throw new Error(logs.error.message);
+      const names = new Map(
+        (tenants.data ?? []).map((t) => [t.id, t.tenant_name]),
+      );
+      const rows = (logs.data ?? []).map((r) => ({
+        ...r,
+        tenant_name: names.get(r.tenant_id) ?? "",
+      }));
+      return {
+        title: "Tenant rent records",
+        filename: "tenant-rent",
+        columns: cols<TenantRentLog & { tenant_name: string }>([
+          { key: "tenant_name", header: "Tenant name", value: (r) => r.tenant_name },
+          { key: "rent_amount", header: "Rent amount", value: (r) => r.rent_amount },
+          { key: "rent_due_date", header: "Rent due date", value: (r) => r.rent_due_date },
+          { key: "payment_status", header: "Payment status", value: (r) => r.payment_status },
+          { key: "payment_date", header: "Payment date", value: (r) => r.payment_date },
+          {
+            key: "outstanding_amount",
+            header: "Outstanding / overdue",
+            value: (r) => r.outstanding_amount,
+          },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(rows),
+      };
+    }
+    case "tenant-electricity": {
+      const [tenants, bills] = await Promise.all([
+        listTenants(supabase),
+        listTenantElectricBills(supabase),
+      ]);
+      if (tenants.error) throw new Error(tenants.error.message);
+      if (bills.error) throw new Error(bills.error.message);
+      const names = new Map(
+        (tenants.data ?? []).map((t) => [t.id, t.tenant_name]),
+      );
+      const rows = (bills.data ?? []).map((r) => ({
+        ...r,
+        tenant_name: names.get(r.tenant_id) ?? "",
+      }));
+      return {
+        title: "Tenant electricity bills",
+        filename: "tenant-electricity",
+        columns: cols<TenantElectricBill & { tenant_name: string }>([
+          { key: "tenant_name", header: "Tenant name", value: (r) => r.tenant_name },
+          {
+            key: "ke_charges_amount",
+            header: "KE charges amount",
+            value: (r) => r.ke_charges_amount,
+          },
+          { key: "due_date", header: "Due date", value: (r) => r.due_date },
+          { key: "payment_status", header: "Payment status", value: (r) => r.payment_status },
+          { key: "payment_date", header: "Payment date", value: (r) => r.payment_date },
+          {
+            key: "outstanding_amount",
+            header: "Outstanding amount",
+            value: (r) => r.outstanding_amount,
+          },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(rows),
       };
     }
   }

@@ -18,6 +18,7 @@ Priority is inherited from the source register and drives build order.
 | 10 | Generator maintenance schedule & fuel log | Excel | High |
 | 11 | Solar system specs & monitoring requirements | Word / PDF | High |
 | 12 | Internet & utility account details | Excel | Medium |
+| 13 | Tenants (accounts, rent logs, electricity bills) | Dashboard / chat | Medium |
 
 More domains (items 1–7) may be added later — every new domain must follow the same table + CRUD + agent-tool pattern already established, not a one-off structure.
 

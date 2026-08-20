@@ -20,6 +20,11 @@ import {
   markGeminiKeySuccess,
 } from "@/lib/agent/models";
 import type { ChatAttachmentInput } from "@/lib/validations/agent";
+import {
+  GROUNDING_NUDGE,
+  shouldRequireLiveLookup,
+  wrapToolResult,
+} from "@/lib/agent/grounding";
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -69,6 +74,7 @@ async function runWithModel(
   ctx: { supabase: SupabaseClient; user: User },
   messages: ChatMessage[],
   latestParts: string | Part[],
+  hasAttachments: boolean,
 ): Promise<{
   reply: string;
   toolsUsed: string[];
@@ -79,6 +85,9 @@ async function runWithModel(
     model: modelName,
     systemInstruction: agentSystemPrompt,
     tools: [{ functionDeclarations: agentTools }],
+    generationConfig: {
+      temperature: 0.2,
+    },
   });
 
   const chat = model.startChat({
@@ -87,12 +96,23 @@ async function runWithModel(
 
   const toolsUsed: string[] = [];
   const pendingConfirmations: PendingConfirmation[] = [];
+  const userText = messages[messages.length - 1]?.content ?? "";
+  let nudgedForGrounding = false;
   let result = await chat.sendMessage(latestParts);
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const functionCalls = result.response.functionCalls();
 
     if (!functionCalls?.length) {
+      if (
+        !nudgedForGrounding &&
+        toolsUsed.length === 0 &&
+        shouldRequireLiveLookup(userText, hasAttachments)
+      ) {
+        nudgedForGrounding = true;
+        result = await chat.sendMessage(GROUNDING_NUDGE);
+        continue;
+      }
       const text = result.response.text()?.trim();
       return {
         reply:
@@ -124,9 +144,7 @@ async function runWithModel(
         responseParts.push({
           functionResponse: {
             name: call.name,
-            response: {
-              result: toolResult,
-            },
+            response: wrapToolResult(toolResult),
           },
         });
       } catch (error) {
@@ -134,6 +152,7 @@ async function runWithModel(
           functionResponse: {
             name: call.name,
             response: {
+              source: "site_database",
               error:
                 error instanceof Error
                   ? error.message
@@ -211,6 +230,7 @@ export async function runFacilityOpsAgent(
           ctx,
           messages,
           latestParts,
+          Boolean(attachments?.length),
         );
         markGeminiKeySuccess(index);
         return {

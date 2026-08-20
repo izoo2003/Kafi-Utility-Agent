@@ -30,12 +30,25 @@ import {
   listUtilityPaymentLogs,
 } from "@/lib/supabase/utilities";
 import {
+  findTenantByName,
+  getTenant,
+  listTenantElectricBills,
+  listTenantRentLogs,
+  listTenants,
+} from "@/lib/supabase/tenants";
+import {
   latestPayment,
   nextDueFromLastPaid,
 } from "@/lib/utilities/billing";
 import { providerByLabel, isActiveSiteUtilityProvider } from "@/lib/utilities/providers";
-import type { ItEquipment, KitchenInventory } from "@/lib/types/database";
+import type {
+  ItEquipment,
+  KitchenInventory,
+  Tenant,
+} from "@/lib/types/database";
+import { normalizeKeyPart } from "@/lib/dashboard/dedupe";
 import type { WriteToolName } from "@/lib/validations/agent-writes";
+import { truncatedList } from "@/lib/agent/grounding";
 
 export type PendingConfirmation = {
   tool: WriteToolName;
@@ -48,10 +61,10 @@ export type AgentToolContext = {
   user: User;
 };
 
-function clampLimit(value: unknown, fallback = 20) {
+function clampLimit(value: unknown, fallback = 40) {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return fallback;
-  return Math.min(Math.max(Math.trunc(n), 1), 100);
+  return Math.min(Math.max(Math.trunc(n), 1), 200);
 }
 
 export function extractPendingConfirmation(
@@ -217,22 +230,21 @@ export async function executeAgentTool(
       if (error) throw new Error(error.message);
       const rows = data ?? [];
       const schedule = nextDueFromMaintenanceRows(rows);
-      return {
+      return truncatedList(rows, limit, {
         schedule: {
           next_maintenance_due: schedule.nextDue,
           last_maintenance_done: schedule.lastDoneDate,
           has_pending_not_done: schedule.pendingNotDone,
           cadence: "Monthly checkup (about every 1 month)",
         },
-        records: rows.slice(0, limit),
-      };
+      });
     }
 
     case "generator_fuel_log_list": {
       const limit = clampLimit(input.limit);
       const { data, error } = await listGeneratorFuelLog(supabase);
       if (error) throw new Error(error.message);
-      return (data ?? []).slice(0, limit);
+      return truncatedList(data ?? [], limit);
     }
 
     case "generator_expense_list": {
@@ -244,12 +256,11 @@ export async function executeAgentTool(
         (sum, r) => sum + (Number(r.debit) || 0),
         0,
       );
-      return {
+      return truncatedList(rows, limit, {
         total_expense: totalDebit,
         total_debit: totalDebit,
-        currency_note: "Sum of debit column",
-        records: rows.slice(0, limit),
-      };
+        currency_note: "Sum of debit column (all rows, not just returned)",
+      });
     }
 
     case "solar_specs_list": {
@@ -266,7 +277,7 @@ export async function executeAgentTool(
       if (input.alerts_only === true) {
         rows = rows.filter((r) => r.alert_flag === true);
       }
-      return rows.slice(0, limit);
+      return truncatedList(rows, limit);
     }
 
     case "solar_energy_summary": {
@@ -410,6 +421,92 @@ export async function executeAgentTool(
           notes: r.notes,
         };
       });
+    }
+
+    case "tenants_list": {
+      const { data, error } = await listTenants(supabase);
+      if (error) throw new Error(error.message);
+      let rows = data ?? [];
+      if (typeof input.name_contains === "string" && input.name_contains.trim()) {
+        const q = normalizeKeyPart(input.name_contains);
+        rows = rows.filter((r) =>
+          normalizeKeyPart(r.tenant_name).includes(q),
+        );
+      }
+      return rows.map((r) => ({
+        id: r.id,
+        tenant_name: r.tenant_name,
+        rent_amount: r.rent_amount,
+        rent_due_date: r.rent_due_date,
+        payment_status: r.payment_status,
+        payment_date: r.payment_date,
+        outstanding_amount: r.outstanding_amount,
+        notes: r.notes,
+      }));
+    }
+
+    case "tenants_get": {
+      const id = typeof input.id === "string" ? input.id : "";
+      const name =
+        typeof input.tenant_name === "string" ? input.tenant_name : "";
+      let row: Tenant | null = null;
+      if (id) {
+        const found = await getTenant(supabase, id);
+        if (found.error) throw new Error(found.error.message);
+        row = found.data;
+      } else if (name) {
+        row = await findTenantByName(supabase, name);
+      } else {
+        return { error: "Provide id or tenant_name" };
+      }
+      if (!row) return { error: "Tenant not found" };
+      return row;
+    }
+
+    case "tenant_rent_logs_list": {
+      const { data: tenants, error: tenantsError } = await listTenants(supabase);
+      if (tenantsError) throw new Error(tenantsError.message);
+      let tenantId =
+        typeof input.tenant_id === "string" ? input.tenant_id : undefined;
+      if (!tenantId && typeof input.tenant_name === "string") {
+        const match = await findTenantByName(supabase, input.tenant_name);
+        tenantId = match?.id;
+        if (!tenantId) return { error: "Tenant not found" };
+      }
+      const { data, error } = await listTenantRentLogs(supabase, tenantId);
+      if (error) throw new Error(error.message);
+      const names = new Map(
+        (tenants ?? []).map((t) => [t.id, t.tenant_name]),
+      );
+      const limit = clampLimit(input.limit, 40);
+      const mapped = (data ?? []).map((r) => ({
+        ...r,
+        tenant_name: names.get(r.tenant_id) ?? null,
+      }));
+      return truncatedList(mapped, limit);
+    }
+
+    case "tenant_electric_bills_list": {
+      const { data: tenants, error: tenantsError } = await listTenants(supabase);
+      if (tenantsError) throw new Error(tenantsError.message);
+      let tenantId =
+        typeof input.tenant_id === "string" ? input.tenant_id : undefined;
+      if (!tenantId && typeof input.tenant_name === "string") {
+        const match = await findTenantByName(supabase, input.tenant_name);
+        tenantId = match?.id;
+        if (!tenantId) return { error: "Tenant not found" };
+      }
+      const { data, error } = await listTenantElectricBills(supabase, tenantId);
+      if (error) throw new Error(error.message);
+      const names = new Map(
+        (tenants ?? []).map((t) => [t.id, t.tenant_name]),
+      );
+      const limit = clampLimit(input.limit, 40);
+      const mapped = (data ?? []).map((r) => ({
+        ...r,
+        tenant_name: names.get(r.tenant_id) ?? null,
+      }));
+      return truncatedList(mapped, limit);
     }
 
     default:

@@ -5,7 +5,8 @@ export type AlertDomain =
   | "it"
   | "generator"
   | "solar"
-  | "utilities";
+  | "utilities"
+  | "tenants";
 
 export type OpsAlert = {
   id: string;

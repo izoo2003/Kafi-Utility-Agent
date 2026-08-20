@@ -26,6 +26,14 @@ import {
   utilityAccountUpdateSchema,
   utilityPaymentLogInsertSchema,
 } from "@/lib/validations/utilities";
+import {
+  tenantElectricBillInsertSchema,
+  tenantElectricBillUpdateSchema,
+  tenantInsertSchema,
+  tenantRentLogInsertSchema,
+  tenantRentLogUpdateSchema,
+  tenantUpdateSchema,
+} from "@/lib/validations/tenants";
 
 export const WRITE_TOOL_NAMES = [
   "kitchen_inventory_create",
@@ -55,6 +63,15 @@ export const WRITE_TOOL_NAMES = [
   "utility_accounts_delete",
   "utility_payment_create",
   "utility_payment_delete",
+  "tenants_create",
+  "tenants_update",
+  "tenants_delete",
+  "tenant_rent_log_create",
+  "tenant_rent_log_update",
+  "tenant_rent_log_delete",
+  "tenant_electric_bill_create",
+  "tenant_electric_bill_update",
+  "tenant_electric_bill_delete",
 ] as const;
 
 export type WriteToolName = (typeof WRITE_TOOL_NAMES)[number];
@@ -185,3 +202,45 @@ export const utilityPaymentCreateSchema = utilityPaymentLogInsertSchema.omit({
   bill_file_url: true,
 });
 export const utilityPaymentDeleteSchema = idOnlySchema;
+
+export const tenantCreateSchema = tenantInsertSchema;
+export const tenantUpdateSchemaAgent = tenantUpdateSchema
+  .extend({
+    tenant_name_lookup: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => Boolean(v.id || v.tenant_name_lookup), {
+    message: "Provide id or tenant_name_lookup to find the tenant",
+  });
+
+export const tenantDeleteSchema = z
+  .object({
+    id: z.string().uuid().optional(),
+    tenant_name_lookup: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => Boolean(v.id || v.tenant_name_lookup), {
+    message: "Provide id or tenant_name_lookup to find the tenant",
+  });
+
+const tenantRef = {
+  tenant_id: z.string().uuid().optional(),
+  tenant_name: z.string().trim().min(1).optional(),
+};
+
+export const tenantRentLogCreateSchema = tenantRentLogInsertSchema
+  .omit({ tenant_id: true })
+  .extend(tenantRef)
+  .refine((v) => Boolean(v.tenant_id || v.tenant_name), {
+    message: "Provide tenant_id or tenant_name",
+  });
+export const tenantRentLogUpdateSchemaAgent = tenantRentLogUpdateSchema.required(
+  { id: true },
+);
+
+export const tenantElectricBillCreateSchema = tenantElectricBillInsertSchema
+  .omit({ tenant_id: true })
+  .extend(tenantRef)
+  .refine((v) => Boolean(v.tenant_id || v.tenant_name), {
+    message: "Provide tenant_id or tenant_name",
+  });
+export const tenantElectricBillUpdateSchemaAgent =
+  tenantElectricBillUpdateSchema.required({ id: true });

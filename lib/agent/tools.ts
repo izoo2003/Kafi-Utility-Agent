@@ -8,7 +8,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "ops_alerts_list",
     description:
-      "List current site alerts: kitchen out/low/projected-empty stock, IT warranty expiry, generator service due, solar alert flags, utility bills. Use for status summaries.",
+      "List current site alerts: kitchen out/low/projected-empty stock, IT warranty expiry, generator service due, solar alert flags, utility bills, tenant rent and tenant electricity dues. Use for status summaries.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {},
@@ -105,7 +105,7 @@ const agentReadTools: FunctionDeclaration[] = [
       properties: {
         limit: {
           type: SchemaType.NUMBER,
-          description: "Max rows to return (default 20)",
+          description: "Max rows to return (default 40, max 200). Response includes total and truncated.",
         },
       },
     },
@@ -118,7 +118,7 @@ const agentReadTools: FunctionDeclaration[] = [
       properties: {
         limit: {
           type: SchemaType.NUMBER,
-          description: "Max rows to return (default 20)",
+          description: "Max rows to return (default 40, max 200). Response includes total and truncated.",
         },
       },
     },
@@ -157,7 +157,7 @@ const agentReadTools: FunctionDeclaration[] = [
         },
         limit: {
           type: SchemaType.NUMBER,
-          description: "Max rows to return (default 20)",
+          description: "Max rows to return (default 40, max 200). Response includes total and truncated.",
         },
       },
     },
@@ -201,6 +201,66 @@ const agentReadTools: FunctionDeclaration[] = [
           type: SchemaType.STRING,
           format: "enum",
           enum: ["internet", "electricity", "gas", "water"],
+        },
+      },
+    },
+  },
+  {
+    name: "tenants_list",
+    description:
+      "List tenant accounts with current rent snapshot: tenant_name, rent_amount, rent_due_date, payment_status, payment_date, outstanding_amount. Call this BEFORE tenant_rent_log_create or tenant_electric_bill_create so you can map a name to tenant_id.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        name_contains: {
+          type: SchemaType.STRING,
+          description: "Optional case-insensitive name filter",
+        },
+      },
+    },
+  },
+  {
+    name: "tenants_get",
+    description: "Get one tenant by id or tenant_name, including current rent fields.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        id: { type: SchemaType.STRING, description: "Tenant UUID" },
+        tenant_name: {
+          type: SchemaType.STRING,
+          description: "Exact or close tenant name",
+        },
+      },
+    },
+  },
+  {
+    name: "tenant_rent_logs_list",
+    description:
+      "List rent payment history for tenants (due date, amount, status, payment date, outstanding). Filter by tenant_id or tenant_name.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        tenant_id: { type: SchemaType.STRING },
+        tenant_name: { type: SchemaType.STRING },
+        limit: {
+          type: SchemaType.NUMBER,
+          description: "Max rows to return (default 40, max 200). Response includes total and truncated.",
+        },
+      },
+    },
+  },
+  {
+    name: "tenant_electric_bills_list",
+    description:
+      "List tenant electricity (K-Electric) bills: tenant name, KE charges, due date, payment status, payment date, outstanding. Filter by tenant_id or tenant_name. These are tenant-billed KE charges, not site utility meters.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        tenant_id: { type: SchemaType.STRING },
+        tenant_name: { type: SchemaType.STRING },
+        limit: {
+          type: SchemaType.NUMBER,
+          description: "Max rows to return (default 40, max 200). Response includes total and truncated.",
         },
       },
     },

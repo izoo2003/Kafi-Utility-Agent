@@ -91,5 +91,28 @@ Site date display/parse convention: DD/MM/YYYY (stored as ISO dates).
 - notes text
 - **never store passwords/credentials in this table or anywhere in the app.** Reference a password manager entry name only.
 
+## 6. Tenants (`tenants`, `tenant_rent_logs`, `tenant_electric_bills`)
+`tenants` (account + current rent snapshot):
+- tenant_name text (unique, case-insensitive)
+- rent_amount numeric
+- rent_due_date date
+- payment_status text (`paid` | `unpaid` | `partial` | `overdue`)
+- payment_date date
+- outstanding_amount numeric
+- notes text
+
+`tenant_rent_logs` (history per tenant; latest log syncs the tenant snapshot):
+- tenant_id uuid → tenants
+- same rent/payment fields as the tenant snapshot
+
+`tenant_electric_bills` (K-Electric charges billed to the tenant — not site utility meters):
+- tenant_id uuid → tenants
+- ke_charges_amount numeric
+- due_date date
+- payment_status text (`paid` | `unpaid` | `partial` | `overdue`)
+- payment_date date
+- outstanding_amount numeric
+- notes text
+
 ## Adding a new domain later
 Follow the same shape: base audit columns + domain fields + one `..._log` table if the domain has recurring events (like fuel or monitoring). Don't invent a different pattern.

@@ -596,4 +596,182 @@ export const agentWriteTools: FunctionDeclaration[] = [
       required: ["id"],
     },
   },
+  {
+    name: "tenants_create",
+    description:
+      "Create a tenant account with current rent fields (name, rent amount, due date, payment status, payment date, outstanding). Also writes the first rent log when rent fields are present. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        tenant_name: { type: SchemaType.STRING },
+        rent_amount: { type: SchemaType.NUMBER },
+        rent_due_date: {
+          type: SchemaType.STRING,
+          description: "YYYY-MM-DD or DD/MM/YYYY",
+        },
+        payment_status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["paid", "unpaid", "partial", "overdue"],
+        },
+        payment_date: { type: SchemaType.STRING },
+        outstanding_amount: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["tenant_name"],
+    },
+  },
+  {
+    name: "tenants_update",
+    description:
+      "Update a tenant account by id (or tenant_name_lookup). Changing rent fields also upserts a rent log for that due date. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        tenant_name_lookup: {
+          type: SchemaType.STRING,
+          description: "Find tenant by current name when id unknown",
+        },
+        tenant_name: { type: SchemaType.STRING },
+        rent_amount: { type: SchemaType.NUMBER },
+        rent_due_date: { type: SchemaType.STRING },
+        payment_status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["paid", "unpaid", "partial", "overdue"],
+        },
+        payment_date: { type: SchemaType.STRING },
+        outstanding_amount: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+    },
+  },
+  {
+    name: "tenants_delete",
+    description:
+      "Delete a tenant account and all of their rent records and electricity bills. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        tenant_name_lookup: {
+          type: SchemaType.STRING,
+          description: "Find tenant by name when id unknown",
+        },
+        ...confirmedProperty,
+      },
+    },
+  },
+  {
+    name: "tenant_rent_log_create",
+    description:
+      "Log a rent payment for a tenant (amount, due date, payment status, payment date, outstanding). Resolve tenant via tenants_list; pass tenant_id or tenant_name. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        tenant_id: { type: SchemaType.STRING },
+        tenant_name: { type: SchemaType.STRING },
+        rent_amount: { type: SchemaType.NUMBER },
+        rent_due_date: { type: SchemaType.STRING },
+        payment_status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["paid", "unpaid", "partial", "overdue"],
+        },
+        payment_date: { type: SchemaType.STRING },
+        outstanding_amount: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+    },
+  },
+  {
+    name: "tenant_rent_log_update",
+    description: "Update a tenant rent log by id. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        rent_amount: { type: SchemaType.NUMBER },
+        rent_due_date: { type: SchemaType.STRING },
+        payment_status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["paid", "unpaid", "partial", "overdue"],
+        },
+        payment_date: { type: SchemaType.STRING },
+        outstanding_amount: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "tenant_rent_log_delete",
+    description: "Delete a tenant rent log entry. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: { ...idProp, ...confirmedProperty },
+      required: ["id"],
+    },
+  },
+  {
+    name: "tenant_electric_bill_create",
+    description:
+      "Log a tenant electricity (K-Electric) bill: KE charges amount, due date, payment status, payment date, outstanding. Resolve tenant via tenants_list; pass tenant_id or tenant_name. Not for site utility meters. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        tenant_id: { type: SchemaType.STRING },
+        tenant_name: { type: SchemaType.STRING },
+        ke_charges_amount: { type: SchemaType.NUMBER },
+        due_date: { type: SchemaType.STRING },
+        payment_status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["paid", "unpaid", "partial", "overdue"],
+        },
+        payment_date: { type: SchemaType.STRING },
+        outstanding_amount: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+    },
+  },
+  {
+    name: "tenant_electric_bill_update",
+    description:
+      "Update a tenant electricity bill by id. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        ke_charges_amount: { type: SchemaType.NUMBER },
+        due_date: { type: SchemaType.STRING },
+        payment_status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["paid", "unpaid", "partial", "overdue"],
+        },
+        payment_date: { type: SchemaType.STRING },
+        outstanding_amount: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "tenant_electric_bill_delete",
+    description: "Delete a tenant electricity bill. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: { ...idProp, ...confirmedProperty },
+      required: ["id"],
+    },
+  },
 ];
