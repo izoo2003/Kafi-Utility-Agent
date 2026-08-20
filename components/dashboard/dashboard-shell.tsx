@@ -54,7 +54,7 @@ export function DashboardShell({
   );
 
   const sidebarFooter = (
-    <div className="mt-auto border-t border-[oklch(0.9_0.02_220)] p-3 space-y-3">
+    <div className="shrink-0 border-t border-[oklch(0.9_0.02_220)] p-3 space-y-3">
       <div className="px-1 text-center">
         <p className="text-[11px] font-medium leading-snug text-[oklch(0.38_0.04_195)]">
           Made By Izaan Bin Mujeeb
@@ -67,20 +67,16 @@ export function DashboardShell({
     </div>
   );
 
-  const sidebarBody = (
-    <>
-      {brand}
-      <SidebarNav onNavigate={() => setMobileOpen(false)} />
-      {sidebarFooter}
-    </>
-  );
-
   return (
     <ChatSessionProvider>
     <div className="flex min-h-full min-h-dvh flex-1">
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-[oklch(0.88_0.02_220)] bg-[oklch(0.975_0.012_220_/_0.92)] backdrop-blur-md print:hidden md:flex">
-        {sidebarBody}
+      {/* Desktop sidebar — brand + footer pinned; nav scrolls */}
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-hidden border-r border-[oklch(0.88_0.02_220)] bg-[oklch(0.975_0.012_220_/_0.92)] backdrop-blur-md print:hidden md:flex">
+        <div className="shrink-0">{brand}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+          <SidebarNav onNavigate={() => setMobileOpen(false)} />
+        </div>
+        {sidebarFooter}
       </aside>
 
       {/* Mobile drawer */}
@@ -118,14 +114,14 @@ export function DashboardShell({
               <X className="size-4" />
             </Button>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            <div className="px-4 py-3 text-xs text-muted-foreground">
-              Signed in as{" "}
-              <span className="font-medium text-foreground">{username}</span>
-            </div>
-            <SidebarNav onNavigate={() => setMobileOpen(false)} />
-            {sidebarFooter}
+          <div className="px-4 py-3 text-xs text-muted-foreground shrink-0">
+            Signed in as{" "}
+            <span className="font-medium text-foreground">{username}</span>
           </div>
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+            <SidebarNav onNavigate={() => setMobileOpen(false)} />
+          </div>
+          {sidebarFooter}
         </aside>
       </div>
 

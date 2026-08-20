@@ -20,7 +20,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-1 flex-col gap-1 p-2 sm:gap-1.5 sm:p-3">
+    <nav className="flex flex-col gap-1 p-2 sm:gap-1.5 sm:p-3">
       {dashboardNav.map((item) => {
         const active =
           item.href === "/dashboard"
