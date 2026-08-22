@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   solarSectionFromPath,
@@ -12,6 +12,7 @@ import {
   resolveSolarSiteId,
   solarSiteNavLabel,
 } from "@/lib/dashboard/solar-site-nav";
+import { apiFetch } from "@/lib/dashboard/api-client";
 import type { SolarSitePublic } from "@/lib/sems/sites";
 import { ChevronDown } from "lucide-react";
 
@@ -79,10 +80,35 @@ function SolarSectionNavInner({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [plantSites, setPlantSites] = useState<SolarSitePublic[]>(sites);
+
+  useEffect(() => {
+    setPlantSites(sites);
+  }, [sites]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiFetch<{ sites: SolarSitePublic[] }>(
+          "/api/solar/sites",
+        );
+        if (!cancelled && data.sites.length > 0) {
+          setPlantSites(data.sites);
+        }
+      } catch {
+        /* keep server-passed sites */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const current = active ?? solarSectionFromPath(pathname);
   const currentMeta = solarSections.find((s) => s.value === current);
-  const defaultSite = sites[0]?.id ?? "";
-  const siteId = resolveSolarSiteId(searchParams.get("site"), sites, defaultSite);
+  const defaultSite = plantSites[0]?.id ?? "";
+  const siteId = resolveSolarSiteId(searchParams.get("site"), plantSites, defaultSite);
 
   function onSiteChange(nextSiteId: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -102,13 +128,13 @@ function SolarSectionNavInner({
         </p>
       </div>
       <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-        {sites.length > 1 ? (
+        {plantSites.length > 1 ? (
           <NavSelect
             id="solar-plant-select"
             label="Solar plant"
             value={siteId}
             onChange={onSiteChange}
-            options={sites.map((site) => ({
+            options={plantSites.map((site) => ({
               value: site.id,
               label: solarSiteNavLabel(site.label),
             }))}
