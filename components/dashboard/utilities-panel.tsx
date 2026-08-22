@@ -198,6 +198,7 @@ function SiteBillSection({
   ensuringKey,
   onLogPayment,
   onEdit,
+  onEditPayment,
   onDeletePayment,
 }: {
   provider: SiteUtilityProvider;
@@ -206,6 +207,7 @@ function SiteBillSection({
   ensuringKey: string | null;
   onLogPayment: () => void;
   onEdit: () => void;
+  onEditPayment: (log: UtilityPaymentLog) => void;
   onDeletePayment: (id: string) => Promise<void>;
 }) {
   const title = provider.siteLabel ?? provider.label;
@@ -390,6 +392,14 @@ function SiteBillSection({
                     </TableCell>
                     <TableCell className="max-w-none">
                       <TableActions>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEditPayment(log)}
+                        >
+                          Edit
+                        </Button>
                         <ConfirmDeleteButton
                           onConfirm={async () => {
                             await onDeletePayment(log.id);
@@ -431,6 +441,8 @@ export function UtilitiesPanel({
 
   const [payOpen, setPayOpen] = useState(false);
   const [payForm, setPayForm] = useState<PayForm>(emptyPay);
+  const [editingPayment, setEditingPayment] =
+    useState<UtilityPaymentLog | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -495,6 +507,7 @@ export function UtilitiesPanel({
     setActiveProviderKey(provider.key);
     const acct = await ensureAccount(provider);
     if (!acct) return;
+    setEditingPayment(null);
     setPayForm({
       paid_on: todayIso(),
       amount:
@@ -503,6 +516,25 @@ export function UtilitiesPanel({
       bill_period: "",
       invoice_number: "",
       notes: "",
+      file: null,
+    });
+    setError(null);
+    setPayOpen(true);
+  }
+
+  function openEditPayment(
+    provider: SiteUtilityProvider,
+    log: UtilityPaymentLog,
+  ) {
+    setActiveProviderKey(provider.key);
+    setEditingPayment(log);
+    setPayForm({
+      paid_on: log.paid_on,
+      amount: log.amount == null ? "" : String(log.amount),
+      units_kwh: log.units_kwh == null ? "" : String(log.units_kwh),
+      bill_period: log.bill_period ?? "",
+      invoice_number: log.invoice_number ?? "",
+      notes: log.notes ?? "",
       file: null,
     });
     setError(null);
@@ -545,34 +577,55 @@ export function UtilitiesPanel({
       setError("No utility selected.");
       return;
     }
-    const acct =
-      accountForProvider(items, activeProvider) ??
-      (await ensureAccount(activeProvider));
-    if (!acct || !payForm.paid_on) {
+    if (!payForm.paid_on) {
       setError("Paid date is required.");
       return;
     }
+
     setSaving(true);
     setError(null);
     try {
-      const data = await apiFetch<UtilityPaymentLog>("/api/utilities/payments", {
-        method: "POST",
-        body: JSON.stringify({
-          utility_account_id: acct.id,
-          paid_on: payForm.paid_on,
-          amount: payForm.amount === "" ? null : Number(payForm.amount),
-          units_kwh:
-            payForm.units_kwh === "" ? null : Number(payForm.units_kwh),
-          bill_period: payForm.bill_period || null,
-          invoice_number: payForm.invoice_number || null,
-          notes: payForm.notes,
-        }),
-      });
-      let saved = data;
+      const payload = {
+        paid_on: payForm.paid_on,
+        amount: payForm.amount === "" ? null : Number(payForm.amount),
+        units_kwh:
+          payForm.units_kwh === "" ? null : Number(payForm.units_kwh),
+        bill_period: payForm.bill_period || null,
+        invoice_number: payForm.invoice_number || null,
+        notes: payForm.notes,
+      };
+
+      let saved: UtilityPaymentLog;
+      if (editingPayment) {
+        saved = await apiFetch<UtilityPaymentLog>(
+          `/api/utilities/payments/${editingPayment.id}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+          },
+        );
+      } else {
+        const acct =
+          accountForProvider(items, activeProvider) ??
+          (await ensureAccount(activeProvider));
+        if (!acct) {
+          setError("Could not resolve utility account.");
+          setSaving(false);
+          return;
+        }
+        saved = await apiFetch<UtilityPaymentLog>("/api/utilities/payments", {
+          method: "POST",
+          body: JSON.stringify({
+            utility_account_id: acct.id,
+            ...payload,
+          }),
+        });
+      }
+
       if (payForm.file) {
         const formData = new FormData();
         formData.append("file", payForm.file);
-        const res = await fetch(`/api/utilities/payments/${data.id}/upload`, {
+        const res = await fetch(`/api/utilities/payments/${saved.id}/upload`, {
           method: "POST",
           body: formData,
         });
@@ -585,20 +638,37 @@ export function UtilitiesPanel({
         }
         if (json.data) saved = json.data;
       }
-      setPayments((prev) => [saved, ...prev]);
+
+      setPayments((prev) =>
+        editingPayment
+          ? prev.map((p) => (p.id === saved.id ? saved : p))
+          : [saved, ...prev],
+      );
       if (payForm.amount !== "") {
-        setItems((prev) =>
-          prev.map((a) =>
-            a.id === acct.id
-              ? { ...a, monthly_avg_cost: Number(payForm.amount) }
-              : a,
-          ),
-        );
+        const acct = accountForProvider(items, activeProvider);
+        if (acct) {
+          const updated = await apiFetch<UtilityAccount>(
+            `/api/utilities/${acct.id}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({
+                monthly_avg_cost: Number(payForm.amount),
+              }),
+            },
+          ).catch(() => null);
+          if (updated) {
+            setItems((prev) =>
+              prev.map((i) => (i.id === updated.id ? updated : i)),
+            );
+          }
+        }
       }
       setPayOpen(false);
+      setEditingPayment(null);
+      setPayForm(emptyPay());
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not log payment");
+      setError(e instanceof Error ? e.message : "Could not save payment");
     } finally {
       setSaving(false);
     }
@@ -669,6 +739,7 @@ export function UtilitiesPanel({
             ensuringKey={ensuringKey}
             onLogPayment={() => void openPay(provider)}
             onEdit={() => openEdit(provider)}
+            onEditPayment={(log) => openEditPayment(provider, log)}
             onDeletePayment={async (id) => {
               await apiFetch(`/api/utilities/payments/${id}`, {
                 method: "DELETE",
@@ -752,10 +823,21 @@ export function UtilitiesPanel({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+      <Dialog
+        open={payOpen}
+        onOpenChange={(open) => {
+          setPayOpen(open);
+          if (!open) {
+            setEditingPayment(null);
+            setError(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Log payment — {dialogTitle}</DialogTitle>
+            <DialogTitle>
+              {editingPayment ? "Edit payment" : "Log payment"} — {dialogTitle}
+            </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Next due will be one month after this paid date. Include units from
@@ -822,7 +904,11 @@ export function UtilitiesPanel({
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Bill PDF (optional)</Label>
+              <Label>
+                {editingPayment
+                  ? "Replace bill PDF (optional)"
+                  : "Bill PDF (optional)"}
+              </Label>
               <Input
                 type="file"
                 accept=".pdf,application/pdf,image/*"
@@ -857,7 +943,11 @@ export function UtilitiesPanel({
               onClick={() => void savePayment()}
               disabled={saving || !payForm.paid_on}
             >
-              {saving ? "Saving…" : "Save payment"}
+              {saving
+                ? "Saving…"
+                : editingPayment
+                  ? "Update payment"
+                  : "Save payment"}
             </Button>
           </DialogFooter>
         </DialogContent>

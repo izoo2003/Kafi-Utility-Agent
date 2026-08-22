@@ -44,7 +44,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               <NavIcon
                 name={item.icon}
                 accent={item.accent}
-                size="sm"
+                size="md"
                 className={cn(
                   "transition-transform duration-200",
                   active ? "scale-105" : "group-hover:scale-105",

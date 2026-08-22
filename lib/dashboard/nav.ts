@@ -11,14 +11,14 @@ export const dashboardNav = [
     label: "Chat",
     description: "Ask or update site records via chat",
     icon: "chat",
-    accent: "slate",
+    accent: "sky",
   },
   {
     href: "/dashboard/kitchen-inventory",
     label: "Kitchen",
     description: "Stock ledger and consumption analytics",
     icon: "kitchen",
-    accent: "amber",
+    accent: "emerald",
     children: [
       {
         href: "/dashboard/kitchen-inventory",
@@ -37,7 +37,7 @@ export const dashboardNav = [
     label: "IT Equipment",
     description: "Asset register and assignment",
     icon: "it",
-    accent: "sky",
+    accent: "violet",
   },
   {
     href: "/dashboard/generator",
@@ -85,7 +85,7 @@ export const dashboardNav = [
     label: "Utilities",
     description: "K-Electric (4 sites), SSGC, KWSB, PTCL, Jazz bills & dues",
     icon: "utilities",
-    accent: "emerald",
+    accent: "rose",
   },
   {
     href: "/dashboard/tenants",
@@ -114,4 +114,6 @@ export const dashboardNav = [
 ] as const;
 
 export type DashboardNavItem = (typeof dashboardNav)[number];
-export type NavAccent = DashboardNavItem["accent"];
+export type NavAccent =
+  | DashboardNavItem["accent"]
+  | "amber";
