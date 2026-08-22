@@ -248,24 +248,29 @@ export async function buildSolarEnergySummary(
   let semsCurrent: ConsumptionStats | null = null;
   let semsPrev: ConsumptionStats | null = null;
 
-  try {
-    semsCurrent = await fetchConsumptionStats(client, config.stationId, {
-      period: "month",
-      anchorDate: monthAnchor(month),
-      timeZone: config.timeZone,
-    });
-  } catch {
+  if (config.static) {
     semsCurrent = null;
-  }
-
-  try {
-    semsPrev = await fetchConsumptionStats(client, config.stationId, {
-      period: "month",
-      anchorDate: monthAnchor(prevMonth),
-      timeZone: config.timeZone,
-    });
-  } catch {
     semsPrev = null;
+  } else {
+    try {
+      semsCurrent = await fetchConsumptionStats(client, config.stationId, {
+        period: "month",
+        anchorDate: monthAnchor(month),
+        timeZone: config.timeZone,
+      });
+    } catch {
+      semsCurrent = null;
+    }
+
+    try {
+      semsPrev = await fetchConsumptionStats(client, config.stationId, {
+        period: "month",
+        anchorDate: monthAnchor(prevMonth),
+        timeZone: config.timeZone,
+      });
+    } catch {
+      semsPrev = null;
+    }
   }
 
   const { data: logs, error: logsErr } = await listSolarMonitoringLog(

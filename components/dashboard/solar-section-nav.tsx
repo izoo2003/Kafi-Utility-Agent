@@ -138,7 +138,9 @@ function SolarSectionNavInner({
               value: site.id,
               label: site.offline
                 ? `${solarSiteNavLabel(site.label)} (Offline)`
-                : solarSiteNavLabel(site.label),
+                : site.static
+                  ? `${solarSiteNavLabel(site.label)} (Static)`
+                  : solarSiteNavLabel(site.label),
             }))}
             className="w-full sm:w-52"
           />

@@ -17,6 +17,7 @@ import type { SolarSitePublic } from "@/lib/sems/sites";
 import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { SolarSiteOfflineNotice } from "@/components/dashboard/solar-site-offline-notice";
+import { SolarSiteStaticNotice } from "@/components/dashboard/solar-site-static-notice";
 import type { SolarEnergySummary } from "@/lib/solar/energy-summary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,7 +93,7 @@ function SolarEnergySummaryPanelInner({
   initialSiteId: string;
   initialMonth?: string;
 }) {
-  const { siteId, site, isOffline } = useSolarSiteId(sites, initialSiteId);
+  const { siteId, site, isOffline, isStatic } = useSolarSiteId(sites, initialSiteId);
   const [month, setMonth] = useState(initialMonth || currentMonthValue());
   const [summary, setSummary] = useState<SolarEnergySummary | null>(null);
   const [aiText, setAiText] = useState<string | null>(null);
@@ -151,6 +152,7 @@ function SolarEnergySummaryPanelInner({
   return (
     <div className="space-y-4">
       {isOffline ? <SolarSiteOfflineNotice siteLabel={site?.label} /> : null}
+      {isStatic ? <SolarSiteStaticNotice siteLabel={site?.label} /> : null}
 
       {!isOffline ? (
       <>

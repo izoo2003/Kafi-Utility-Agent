@@ -10,6 +10,7 @@ import { apiFetch } from "@/lib/dashboard/api-client";
 import type { SolarSitePublic } from "@/lib/sems/sites";
 import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import { SolarSiteOfflineNotice } from "@/components/dashboard/solar-site-offline-notice";
+import { SolarSiteStaticNotice } from "@/components/dashboard/solar-site-static-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -82,7 +83,7 @@ function SolarLivePanelInner({
   configured: boolean;
 }) {
   const router = useRouter();
-  const { siteId, site, isOffline } = useSolarSiteId(sites, initialSiteId);
+  const { siteId, site, isOffline, isStatic } = useSolarSiteId(sites, initialSiteId);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [alerts, setAlerts] = useState(initialAlerts);
   const [syncing, setSyncing] = useState(false);
@@ -211,7 +212,7 @@ function SolarLivePanelInner({
       value: snapshot?.station_id ?? "—",
     },
     {
-      label: "Last sync",
+      label: isStatic ? "Last capture" : "Last sync",
       value: formatFetchedAt(snapshot?.fetched_at),
     },
     {
@@ -222,17 +223,23 @@ function SolarLivePanelInner({
 
   return (
     <div className="space-y-8">
+      {isStatic ? (
+        <SolarSiteStaticNotice
+          siteLabel={site?.label}
+          capturedAt={formatFetchedAt(snapshot?.fetched_at)}
+        />
+      ) : null}
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="font-heading text-lg font-semibold">Live power flow</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Instantaneous power/SOC come from SEMS+ stations/flow; today&apos;s
-              kWh usually from equipment telecounting. Refreshed on Sync / cron
-              (not a websocket). Sync also updates today&apos;s monitoring log
-              under Records and auto-flags baseline breaches.
+              {isStatic
+                ? "Archived instantaneous readings from the last on-site iSolarCloud capture. Historical daily totals are available under Consumption and Energy Summary."
+                : "Instantaneous power/SOC come from SEMS+ stations/flow; today's kWh usually from equipment telecounting. Refreshed on Sync / cron (not a websocket). Sync also updates today's monitoring log under Records and auto-flags baseline breaches."}
             </p>
           </div>
+          {!isStatic ? (
           <div className="flex flex-wrap items-end gap-2 self-start">
             <Button
               type="button"
@@ -246,6 +253,7 @@ function SolarLivePanelInner({
               {syncing ? "Syncing…" : "Sync now"}
             </Button>
           </div>
+          ) : null}
         </div>
 
         {error ? (

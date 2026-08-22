@@ -34,5 +34,5 @@ export function useSolarSiteId(
     [router, pathname, searchParams],
   );
 
-  return { siteId, setSiteId, site, isOffline: site?.offline === true };
+  return { siteId, setSiteId, site, isOffline: site?.offline === true && site?.static !== true, isStatic: site?.static === true };
 }

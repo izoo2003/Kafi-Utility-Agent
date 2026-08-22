@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/dashboard/api-client";
 import type { SolarSitePublic } from "@/lib/sems/sites";
 import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import { SolarSiteOfflineNotice } from "@/components/dashboard/solar-site-offline-notice";
+import { SolarSiteStaticNotice } from "@/components/dashboard/solar-site-static-notice";
 import type { ConsumptionPeriod, ConsumptionStats } from "@/lib/sems/consumption-stats";
 import { Button } from "@/components/ui/button";
 
@@ -179,7 +180,7 @@ function SolarConsumptionPanelInner({
   initialSiteId: string;
   initialDate: string;
 }) {
-  const { siteId, site, isOffline } = useSolarSiteId(sites, initialSiteId);
+  const { siteId, site, isOffline, isStatic } = useSolarSiteId(sites, initialSiteId);
   const [period, setPeriod] = useState<ConsumptionPeriod>("day");
   const [anchor, setAnchor] = useState(initialDate);
   const [stats, setStats] = useState<ConsumptionStats | null>(null);
@@ -238,12 +239,14 @@ function SolarConsumptionPanelInner({
 
   return (
     <div className="space-y-4">
+      {isStatic ? <SolarSiteStaticNotice siteLabel={site?.label} /> : null}
       <div className="flex flex-col gap-3 rounded-xl border border-[oklch(0.9_0.02_185)] bg-[oklch(0.99_0.01_185)] px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
         <div>
           <p className="text-sm font-medium">Consumption Monitoring</p>
           <p className="text-xs text-muted-foreground">
-            SEMS+ style split: generation To Load vs To Grid, and consumption
-            From PV&amp;BAT vs From Grid.
+            {isStatic
+              ? "Archived splits built from imported monitoring logs. Use the date arrows to browse historical days."
+              : "SEMS+ style split: generation To Load vs To Grid, and consumption From PV&BAT vs From Grid."}
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -296,7 +299,8 @@ function SolarConsumptionPanelInner({
             type="button"
             size="sm"
             onClick={() => void syncToday()}
-            disabled={loading || syncing}
+            disabled={loading || syncing || isStatic}
+            className={isStatic ? "hidden" : undefined}
           >
             {syncing ? "Syncing…" : "Sync today"}
           </Button>

@@ -6,11 +6,13 @@ import {
   isSolarSiteOffline,
   solarSiteOfflinePayload,
 } from "@/lib/sems/site-offline";
+import { isSolarSiteStatic, solarSiteStaticPayload } from "@/lib/sems/site-static";
 import {
   fetchConsumptionStats,
   formatSiteDate,
   type ConsumptionPeriod,
 } from "@/lib/sems/consumption-stats";
+import { buildConsumptionStatsFromLogs } from "@/lib/solar/static-data";
 import { listSolarMonitoringLog } from "@/lib/supabase/solar";
 
 const PERIODS: ConsumptionPeriod[] = ["day", "week", "month", "year"];
@@ -61,6 +63,42 @@ export async function GET(request: Request) {
     url.searchParams.get("date")?.trim() ||
     formatSiteDate(config.timeZone);
 
+  const logsResult = await listSolarMonitoringLog(supabase, config.stationId);
+  if (logsResult.error) {
+    return NextResponse.json(
+      { error: logsResult.error.message },
+      { status: 500 },
+    );
+  }
+  const allLogs = logsResult.data ?? [];
+
+  if (isSolarSiteStatic(config)) {
+    const stats = buildConsumptionStatsFromLogs(
+      allLogs,
+      periodParam,
+      anchor,
+    );
+    const inRange = allLogs.filter(
+      (row) => row.log_date >= stats.start_date && row.log_date <= stats.end_date,
+    );
+
+    return NextResponse.json({
+      ok: true,
+      data: {
+        stats,
+        logs: inRange,
+        site: {
+          id: config.id,
+          label: config.label,
+          stationId: config.stationId,
+          stationName: config.stationName ?? config.label,
+        },
+        station_name: config.stationName ?? config.label,
+        ...solarSiteStaticPayload(config.label),
+      },
+    });
+  }
+
   try {
     const client = new SemsClient(
       config.region,
@@ -73,8 +111,7 @@ export async function GET(request: Request) {
       timeZone: config.timeZone,
     });
 
-    const logs = await listSolarMonitoringLog(supabase, config.stationId);
-    const inRange = (logs.data ?? []).filter(
+    const inRange = allLogs.filter(
       (r) => r.log_date >= stats.start_date && r.log_date <= stats.end_date,
     );
 

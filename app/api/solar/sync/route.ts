@@ -3,6 +3,8 @@ import { requireUser } from "@/lib/auth/require-user";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSolarSite } from "@/lib/sems/config";
 import { isSolarSiteOffline, solarSiteOfflinePayload } from "@/lib/sems/site-offline";
+import { isSolarSiteStatic } from "@/lib/sems/site-static";
+import { getSolarLiveSnapshot } from "@/lib/supabase/solar";
 import { syncAllSemsLive, syncSemsLive } from "@/lib/sems/sync";
 
 /** Manual SEMS+ sync (authenticated dashboard user). Uses service role for snapshot write. */
@@ -38,6 +40,26 @@ export async function POST(request: Request) {
       if (isSolarSiteOffline(site)) {
         return NextResponse.json(solarSiteOfflinePayload(site.label), {
           status: 503,
+        });
+      }
+      if (isSolarSiteStatic(site)) {
+        const { data: snapshot } = await getSolarLiveSnapshot(
+          supabase,
+          site.stationId,
+        );
+        return NextResponse.json({
+          ok: true,
+          data: {
+            site_id: site.id,
+            site_label: site.label,
+            configured: true,
+            snapshot,
+            monitoringLogId: null,
+            alerts: [],
+            error: null,
+            static: true,
+            note: "Static archive site — snapshot is not refreshed from SEMS+.",
+          },
         });
       }
     }

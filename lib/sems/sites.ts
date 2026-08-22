@@ -2,18 +2,39 @@ import { z } from "zod";
 import { resolveRegion, type RegionConfig } from "@/lib/sems/regions";
 import { parseStationDetailBlob } from "@/lib/sems/types";
 
-const siteInputSchema = z.object({
-  id: z.string().trim().min(1),
-  label: z.string().trim().min(1),
-  server: z.string().trim().optional(),
-  email: z.string().trim().min(1),
-  password: z.string().min(1),
-  stationId: z.string().trim().optional(),
-  stationDetail: z.string().trim().optional(),
-  stationName: z.string().trim().optional().nullable(),
-  timeZone: z.string().trim().optional(),
-  offline: z.boolean().optional(),
-});
+const siteInputSchema = z
+  .object({
+    id: z.string().trim().min(1),
+    label: z.string().trim().min(1),
+    server: z.string().trim().optional(),
+    email: z.string().trim().optional(),
+    password: z.string().optional(),
+    stationId: z.string().trim().optional(),
+    stationDetail: z.string().trim().optional(),
+    stationName: z.string().trim().optional().nullable(),
+    timeZone: z.string().trim().optional(),
+    offline: z.boolean().optional(),
+    static: z.boolean().optional(),
+  })
+  .superRefine((raw, ctx) => {
+    const isStatic = raw.static === true;
+    if (!isStatic) {
+      if (!raw.email?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Solar site "${raw.id}" requires email unless static=true`,
+          path: ["email"],
+        });
+      }
+      if (!raw.password) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Solar site "${raw.id}" requires password unless static=true`,
+          path: ["password"],
+        });
+      }
+    }
+  });
 
 export type SolarSiteConfig = {
   id: string;
@@ -25,6 +46,7 @@ export type SolarSiteConfig = {
   stationName: string | null;
   timeZone: string;
   offline: boolean;
+  static: boolean;
 };
 
 export type SolarSitePublic = {
@@ -33,9 +55,11 @@ export type SolarSitePublic = {
   stationId: string;
   stationName: string | null;
   offline: boolean;
+  static: boolean;
 };
 
 function resolveSite(raw: z.infer<typeof siteInputSchema>): SolarSiteConfig {
+  const isStatic = raw.static === true;
   const region = resolveRegion(
     raw.server?.trim() || process.env.SEMS_SERVER?.trim() || "eu",
   );
@@ -58,8 +82,8 @@ function resolveSite(raw: z.infer<typeof siteInputSchema>): SolarSiteConfig {
     id: raw.id,
     label: raw.label,
     region,
-    email: raw.email,
-    password: raw.password,
+    email: raw.email?.trim() || "static@local",
+    password: raw.password || "static",
     stationId,
     stationName,
     timeZone:
@@ -67,6 +91,7 @@ function resolveSite(raw: z.infer<typeof siteInputSchema>): SolarSiteConfig {
       process.env.SEMS_TIMEZONE?.trim() ||
       region.defaultTimezone,
     offline: raw.offline === true,
+    static: isStatic,
   };
 }
 
@@ -143,12 +168,13 @@ export function requireSolarSite(id?: string | null): SolarSiteConfig {
 
 export function listSolarSitesPublic(): SolarSitePublic[] {
   return listSolarSites().map(
-    ({ id, label, stationId, stationName, offline }) => ({
+    ({ id, label, stationId, stationName, offline, static: isStatic }) => ({
       id,
       label,
       stationId,
       stationName,
       offline,
+      static: isStatic,
     }),
   );
 }

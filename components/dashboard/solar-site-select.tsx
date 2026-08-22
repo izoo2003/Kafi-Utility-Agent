@@ -30,7 +30,11 @@ export function SolarSiteSelect({
         >
           {sites.map((site) => (
             <option key={site.id} value={site.id}>
-              {site.label}
+              {site.offline
+                ? `${site.label} (Offline)`
+                : site.static
+                  ? `${site.label} (Static)`
+                  : site.label}
             </option>
           ))}
         </select>

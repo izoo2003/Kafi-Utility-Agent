@@ -51,6 +51,18 @@ export async function syncSemsLiveForSite(
     };
   }
 
+  if (config.static) {
+    return {
+      site_id: config.id,
+      site_label: config.label,
+      configured: true,
+      snapshot: null,
+      monitoringLogId: null,
+      alerts: [],
+      error: null,
+    };
+  }
+
   const thresholds = getSemsAlertThresholds(config.timeZone);
 
   try {

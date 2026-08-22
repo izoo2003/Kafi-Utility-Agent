@@ -6,6 +6,10 @@ import {
   isSolarSiteOffline,
   solarSiteOfflinePayload,
 } from "@/lib/sems/site-offline";
+import {
+  isSolarSiteStatic,
+  solarSiteStaticPayload,
+} from "@/lib/sems/site-static";
 import { getSolarLiveSnapshot } from "@/lib/supabase/solar";
 
 export async function GET(request: Request) {
@@ -38,5 +42,6 @@ export async function GET(request: Request) {
       stationName: site.stationName,
     },
     configured: isSemsConfigured(),
+    ...(isSolarSiteStatic(site) ? solarSiteStaticPayload(site.label) : {}),
   });
 }
