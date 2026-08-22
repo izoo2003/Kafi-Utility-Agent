@@ -3,6 +3,10 @@ import { requireUser } from "@/lib/auth/require-user";
 import { SemsClient } from "@/lib/sems/client";
 import { getSemsConfig, requireSolarSite } from "@/lib/sems/config";
 import {
+  isSolarSiteOffline,
+  solarSiteOfflinePayload,
+} from "@/lib/sems/site-offline";
+import {
   fetchConsumptionStats,
   formatSiteDate,
   type ConsumptionPeriod,
@@ -46,6 +50,11 @@ export async function GET(request: Request) {
       { error: "SEMS+ is not configured" },
       { status: 400 },
     );
+  }
+  if (isSolarSiteOffline(config)) {
+    return NextResponse.json(solarSiteOfflinePayload(config.label), {
+      status: 503,
+    });
   }
 
   const anchor =

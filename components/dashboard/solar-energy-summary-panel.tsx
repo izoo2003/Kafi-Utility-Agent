@@ -16,6 +16,7 @@ import {
 import type { SolarSitePublic } from "@/lib/sems/sites";
 import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import { SolarSiteOfflineNotice } from "@/components/dashboard/solar-site-offline-notice";
 import type { SolarEnergySummary } from "@/lib/solar/energy-summary";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -91,7 +92,7 @@ function SolarEnergySummaryPanelInner({
   initialSiteId: string;
   initialMonth?: string;
 }) {
-  const { siteId } = useSolarSiteId(sites, initialSiteId);
+  const { siteId, site, isOffline } = useSolarSiteId(sites, initialSiteId);
   const [month, setMonth] = useState(initialMonth || currentMonthValue());
   const [summary, setSummary] = useState<SolarEnergySummary | null>(null);
   const [aiText, setAiText] = useState<string | null>(null);
@@ -100,6 +101,13 @@ function SolarEnergySummaryPanelInner({
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (isOffline) {
+      setSummary(null);
+      setAiText(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -113,13 +121,14 @@ function SolarEnergySummaryPanelInner({
     } finally {
       setLoading(false);
     }
-  }, [siteId, month]);
+  }, [siteId, month, isOffline]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   async function runAi() {
+    if (isOffline) return;
     setAiLoading(true);
     setError(null);
     try {
@@ -141,6 +150,10 @@ function SolarEnergySummaryPanelInner({
 
   return (
     <div className="space-y-4">
+      {isOffline ? <SolarSiteOfflineNotice siteLabel={site?.label} /> : null}
+
+      {!isOffline ? (
+      <>
       <div className="flex flex-col gap-3 rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50/90 via-white to-stone-50 px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
           <h2 className="font-heading text-lg font-semibold text-stone-900">
@@ -459,6 +472,8 @@ function SolarEnergySummaryPanelInner({
         <p className="text-sm text-muted-foreground">
           Loading solar energy summary…
         </p>
+      ) : null}
+      </>
       ) : null}
     </div>
   );

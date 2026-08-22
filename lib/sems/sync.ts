@@ -8,6 +8,7 @@ import {
 import { SemsClient } from "@/lib/sems/client";
 import type { SolarSiteConfig } from "@/lib/sems/sites";
 import { listSolarSites, requireSolarSite } from "@/lib/sems/sites";
+import { solarSiteOfflinePayload } from "@/lib/sems/site-offline";
 import { fetchDayEnergy } from "@/lib/sems/day-energy";
 import {
   fetchConsumptionStats,
@@ -38,6 +39,18 @@ export async function syncSemsLiveForSite(
   supabase: SupabaseClient,
   config: SolarSiteConfig,
 ): Promise<SemsSyncResult> {
+  if (config.offline) {
+    return {
+      site_id: config.id,
+      site_label: config.label,
+      configured: true,
+      snapshot: null,
+      monitoringLogId: null,
+      alerts: [],
+      error: solarSiteOfflinePayload(config.label).error,
+    };
+  }
+
   const thresholds = getSemsAlertThresholds(config.timeZone);
 
   try {

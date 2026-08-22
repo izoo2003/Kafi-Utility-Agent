@@ -19,6 +19,11 @@ export function useSolarSiteId(
     [searchParams, sites, defaultSiteId],
   );
 
+  const site = useMemo(
+    () => sites.find((entry) => entry.id === siteId) ?? sites[0] ?? null,
+    [sites, siteId],
+  );
+
   const setSiteId = useCallback(
     (next: string) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -29,5 +34,5 @@ export function useSolarSiteId(
     [router, pathname, searchParams],
   );
 
-  return { siteId, setSiteId };
+  return { siteId, setSiteId, site, isOffline: site?.offline === true };
 }

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { supabaseErrorResponse } from "@/lib/api/parse";
 import { getSolarSite, isSemsConfigured } from "@/lib/sems/config";
+import {
+  isSolarSiteOffline,
+  solarSiteOfflinePayload,
+} from "@/lib/sems/site-offline";
 import { getSolarLiveSnapshot } from "@/lib/supabase/solar";
 
 export async function GET(request: Request) {
@@ -15,6 +19,11 @@ export async function GET(request: Request) {
       { error: siteId ? `Unknown solar site "${siteId}"` : "No solar sites configured" },
       { status: siteId ? 404 : 400 },
     );
+  }
+  if (isSolarSiteOffline(site)) {
+    return NextResponse.json(solarSiteOfflinePayload(site.label), {
+      status: 503,
+    });
   }
 
   const { data, error } = await getSolarLiveSnapshot(supabase, site.stationId);

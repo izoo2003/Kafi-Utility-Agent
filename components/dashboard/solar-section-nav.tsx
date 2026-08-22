@@ -136,7 +136,9 @@ function SolarSectionNavInner({
             onChange={onSiteChange}
             options={plantSites.map((site) => ({
               value: site.id,
-              label: solarSiteNavLabel(site.label),
+              label: site.offline
+                ? `${solarSiteNavLabel(site.label)} (Offline)`
+                : solarSiteNavLabel(site.label),
             }))}
             className="w-full sm:w-52"
           />

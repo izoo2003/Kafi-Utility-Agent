@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSolarSite } from "@/lib/sems/config";
+import { isSolarSiteOffline, solarSiteOfflinePayload } from "@/lib/sems/site-offline";
 import { syncAllSemsLive, syncSemsLive } from "@/lib/sems/sync";
 
 /** Manual SEMS+ sync (authenticated dashboard user). Uses service role for snapshot write. */
@@ -33,7 +34,12 @@ export async function POST(request: Request) {
     }
 
     if (siteParam) {
-      requireSolarSite(siteParam);
+      const site = requireSolarSite(siteParam);
+      if (isSolarSiteOffline(site)) {
+        return NextResponse.json(solarSiteOfflinePayload(site.label), {
+          status: 503,
+        });
+      }
     }
 
     const result = await syncSemsLive(supabase, siteParam);

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { getSemsConfig, requireSolarSite } from "@/lib/sems/config";
 import {
+  isSolarSiteOffline,
+  solarSiteOfflinePayload,
+} from "@/lib/sems/site-offline";
+import {
   buildSolarEnergySummary,
   currentSiteMonth,
 } from "@/lib/solar/energy-summary";
@@ -31,6 +35,11 @@ export async function GET(request: Request) {
       { error: "SEMS+ is not configured" },
       { status: 400 },
     );
+  }
+  if (isSolarSiteOffline(config)) {
+    return NextResponse.json(solarSiteOfflinePayload(config.label), {
+      status: 503,
+    });
   }
 
   const month =
@@ -73,6 +82,11 @@ export async function POST(request: Request) {
         { error: "SEMS+ is not configured" },
         { status: 400 },
       );
+    }
+    if (isSolarSiteOffline(config)) {
+      return NextResponse.json(solarSiteOfflinePayload(config.label), {
+        status: 503,
+      });
     }
     let month = currentSiteMonth(config.timeZone);
     if (body.month?.trim()) month = body.month.trim();

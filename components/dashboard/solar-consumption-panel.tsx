@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import type { SolarSitePublic } from "@/lib/sems/sites";
 import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
+import { SolarSiteOfflineNotice } from "@/components/dashboard/solar-site-offline-notice";
 import type { ConsumptionPeriod, ConsumptionStats } from "@/lib/sems/consumption-stats";
 import { Button } from "@/components/ui/button";
 
@@ -178,7 +179,7 @@ function SolarConsumptionPanelInner({
   initialSiteId: string;
   initialDate: string;
 }) {
-  const { siteId } = useSolarSiteId(sites, initialSiteId);
+  const { siteId, site, isOffline } = useSolarSiteId(sites, initialSiteId);
   const [period, setPeriod] = useState<ConsumptionPeriod>("day");
   const [anchor, setAnchor] = useState(initialDate);
   const [stats, setStats] = useState<ConsumptionStats | null>(null);
@@ -187,6 +188,12 @@ function SolarConsumptionPanelInner({
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (isOffline) {
+      setStats(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -200,7 +207,7 @@ function SolarConsumptionPanelInner({
     } finally {
       setLoading(false);
     }
-  }, [siteId, period, anchor]);
+  }, [siteId, period, anchor, isOffline]);
 
   useEffect(() => {
     void load();
@@ -219,6 +226,14 @@ function SolarConsumptionPanelInner({
     } finally {
       setSyncing(false);
     }
+  }
+
+  if (isOffline) {
+    return (
+      <div className="space-y-4">
+        <SolarSiteOfflineNotice siteLabel={site?.label} />
+      </div>
+    );
   }
 
   return (

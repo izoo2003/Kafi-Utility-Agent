@@ -9,6 +9,7 @@ import type { SolarLiveSnapshot } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import type { SolarSitePublic } from "@/lib/sems/sites";
 import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
+import { SolarSiteOfflineNotice } from "@/components/dashboard/solar-site-offline-notice";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -81,7 +82,7 @@ function SolarLivePanelInner({
   configured: boolean;
 }) {
   const router = useRouter();
-  const { siteId } = useSolarSiteId(sites, initialSiteId);
+  const { siteId, site, isOffline } = useSolarSiteId(sites, initialSiteId);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [alerts, setAlerts] = useState(initialAlerts);
   const [syncing, setSyncing] = useState(false);
@@ -111,6 +112,13 @@ function SolarLivePanelInner({
   }, []);
 
   useEffect(() => {
+    if (isOffline) {
+      setSnapshot(null);
+      setAlerts([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     if (siteId === initialSiteId) {
       setSnapshot(initialSnapshot);
       setAlerts(initialAlerts);
@@ -118,7 +126,7 @@ function SolarLivePanelInner({
       return;
     }
     void loadSite(siteId);
-  }, [siteId, initialSiteId, initialSnapshot, initialAlerts, loadSite]);
+  }, [siteId, initialSiteId, initialSnapshot, initialAlerts, loadSite, isOffline]);
 
   async function syncNow() {
     setSyncing(true);
@@ -163,6 +171,14 @@ function SolarLivePanelInner({
           restart the app, then sync.
         </p>
       </section>
+    );
+  }
+
+  if (isOffline) {
+    return (
+      <div className="space-y-8">
+        <SolarSiteOfflineNotice siteLabel={site?.label} />
+      </div>
     );
   }
 

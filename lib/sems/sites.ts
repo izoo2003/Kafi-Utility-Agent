@@ -12,6 +12,7 @@ const siteInputSchema = z.object({
   stationDetail: z.string().trim().optional(),
   stationName: z.string().trim().optional().nullable(),
   timeZone: z.string().trim().optional(),
+  offline: z.boolean().optional(),
 });
 
 export type SolarSiteConfig = {
@@ -23,6 +24,7 @@ export type SolarSiteConfig = {
   stationId: string;
   stationName: string | null;
   timeZone: string;
+  offline: boolean;
 };
 
 export type SolarSitePublic = {
@@ -30,6 +32,7 @@ export type SolarSitePublic = {
   label: string;
   stationId: string;
   stationName: string | null;
+  offline: boolean;
 };
 
 function resolveSite(raw: z.infer<typeof siteInputSchema>): SolarSiteConfig {
@@ -63,6 +66,7 @@ function resolveSite(raw: z.infer<typeof siteInputSchema>): SolarSiteConfig {
       raw.timeZone?.trim() ||
       process.env.SEMS_TIMEZONE?.trim() ||
       region.defaultTimezone,
+    offline: raw.offline === true,
   };
 }
 
@@ -138,12 +142,15 @@ export function requireSolarSite(id?: string | null): SolarSiteConfig {
 }
 
 export function listSolarSitesPublic(): SolarSitePublic[] {
-  return listSolarSites().map(({ id, label, stationId, stationName }) => ({
-    id,
-    label,
-    stationId,
-    stationName,
-  }));
+  return listSolarSites().map(
+    ({ id, label, stationId, stationName, offline }) => ({
+      id,
+      label,
+      stationId,
+      stationName,
+      offline,
+    }),
+  );
 }
 
 /** True when at least one SEMS site is configured. */
