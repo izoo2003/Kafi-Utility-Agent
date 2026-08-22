@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { resolveRegion, type RegionConfig } from "@/lib/sems/regions";
 import { parseStationDetailBlob } from "@/lib/sems/types";
+import { BUILTIN_STATIC_SOLAR_SITES } from "@/lib/solar/static-sites/registry";
 
 const siteInputSchema = z
   .object({
@@ -129,14 +130,31 @@ function legacySiteFromEnv(): SolarSiteConfig | null {
 
 export function listSolarSites(): SolarSiteConfig[] {
   const json = process.env.SEMS_SITES?.trim();
+  let fromEnv: SolarSiteConfig[] = [];
   if (json) {
     const parsed = JSON.parse(json) as unknown;
     const arr = z.array(siteInputSchema).parse(parsed);
-    return arr.map(resolveSite);
+    fromEnv = arr.map(resolveSite);
+  } else {
+    const legacy = legacySiteFromEnv();
+    fromEnv = legacy ? [legacy] : [];
   }
 
-  const legacy = legacySiteFromEnv();
-  return legacy ? [legacy] : [];
+  const envIds = new Set(fromEnv.map((site) => site.id.toLowerCase()));
+  const builtins = BUILTIN_STATIC_SOLAR_SITES.filter(
+    (site) => !envIds.has(site.id.toLowerCase()),
+  ).map((site) =>
+    resolveSite({
+      id: site.id,
+      label: site.label,
+      static: site.static,
+      stationId: site.stationId,
+      stationName: site.stationName,
+      timeZone: site.timeZone,
+    }),
+  );
+
+  return [...fromEnv, ...builtins];
 }
 
 export function getSolarSite(id?: string | null): SolarSiteConfig | null {
