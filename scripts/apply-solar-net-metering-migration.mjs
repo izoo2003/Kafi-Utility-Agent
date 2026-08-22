@@ -23,29 +23,19 @@ function loadEnv(path) {
 loadEnv(".env");
 
 const password = process.env.SUPABASE_DB_PASSWORD;
-const ref = "rfmcpoocpaohpdjvjhlg";
 const databaseUrl = process.env.DATABASE_URL?.trim();
+const ref = "rfmcpoocpaohpdjvjhlg";
 if (!password && !databaseUrl) {
   console.error("Missing SUPABASE_DB_PASSWORD or DATABASE_URL");
   process.exit(1);
 }
 
-const sql = readFileSync("supabase/migrations/20260820100000_tenants.sql", "utf8");
+const sql = readFileSync(
+  "supabase/migrations/20260822140000_solar_net_metering.sql",
+  "utf8",
+);
 
 const regions = ["ap-south-1", "ap-southeast-1", "eu-west-1"];
-
-async function verify(client) {
-  const check = await client.query(
-    `select table_name from information_schema.tables
-     where table_schema = 'public'
-       and table_name in ('tenants', 'tenant_rent_logs', 'tenant_electric_bills')
-     order by table_name`,
-  );
-  console.log(
-    "Tables:",
-    check.rows.map((r) => r.table_name).join(", "),
-  );
-}
 
 async function main() {
   if (databaseUrl) {
@@ -56,11 +46,15 @@ async function main() {
     try {
       await client.connect();
       await client.query(sql);
-      console.log("Applied tenants migration via DATABASE_URL");
-      await verify(client);
+      console.log("Applied net metering migration via DATABASE_URL");
       await client.end();
       return;
     } catch (e) {
+      if (/already exists/i.test(String(e.message ?? e))) {
+        console.log("Net metering tables already exist");
+        await client.end();
+        return;
+      }
       console.warn("DATABASE_URL failed:", e.message ?? e);
       try {
         await client.end();
@@ -80,8 +74,7 @@ async function main() {
     try {
       await client.connect();
       await client.query(sql);
-      console.log("Applied tenants migration via", region);
-      await verify(client);
+      console.log("Applied net metering migration via", region);
       await client.end();
       return;
     } catch (e) {

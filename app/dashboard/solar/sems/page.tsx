@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { getLatestSolarLiveSnapshot } from "@/lib/supabase/solar";
-import { isSemsConfigured } from "@/lib/sems/config";
+import {
+  getSolarSite,
+  isSemsConfigured,
+  listSolarSitesPublic,
+} from "@/lib/sems/config";
+import { getSolarLiveSnapshot } from "@/lib/supabase/solar";
 import { evaluateSnapshotAlerts } from "@/lib/sems/alert-rules";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
@@ -8,8 +12,13 @@ import { SolarLivePanel } from "@/components/dashboard/solar-live-panel";
 import type { SolarLiveSnapshot } from "@/lib/types/database";
 
 export default async function SolarSemsPage() {
+  const sites = listSolarSitesPublic();
+  const defaultSite = sites[0]?.id ?? "";
   const supabase = await createClient();
-  const live = await getLatestSolarLiveSnapshot(supabase);
+  const site = getSolarSite(defaultSite);
+  const live = site
+    ? await getSolarLiveSnapshot(supabase, site.stationId)
+    : { data: null, error: null };
 
   const liveSnapshot =
     live.error &&
@@ -42,6 +51,8 @@ export default async function SolarSemsPage() {
       <SolarSectionNav active="sems" />
 
       <SolarLivePanel
+        sites={sites}
+        initialSiteId={defaultSite}
         initialSnapshot={liveSnapshot}
         initialAlerts={alerts}
         configured={isSemsConfigured()}

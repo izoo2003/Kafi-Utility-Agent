@@ -24,52 +24,19 @@ loadEnv(".env");
 
 const password = process.env.SUPABASE_DB_PASSWORD;
 const ref = "rfmcpoocpaohpdjvjhlg";
-const databaseUrl = process.env.DATABASE_URL?.trim();
-if (!password && !databaseUrl) {
-  console.error("Missing SUPABASE_DB_PASSWORD or DATABASE_URL");
+if (!password) {
+  console.error("Missing SUPABASE_DB_PASSWORD");
   process.exit(1);
 }
 
-const sql = readFileSync("supabase/migrations/20260820100000_tenants.sql", "utf8");
+const sql = readFileSync(
+  "supabase/migrations/20260822120000_solar_multi_site.sql",
+  "utf8",
+);
 
 const regions = ["ap-south-1", "ap-southeast-1", "eu-west-1"];
 
-async function verify(client) {
-  const check = await client.query(
-    `select table_name from information_schema.tables
-     where table_schema = 'public'
-       and table_name in ('tenants', 'tenant_rent_logs', 'tenant_electric_bills')
-     order by table_name`,
-  );
-  console.log(
-    "Tables:",
-    check.rows.map((r) => r.table_name).join(", "),
-  );
-}
-
 async function main() {
-  if (databaseUrl) {
-    const client = new pg.Client({
-      connectionString: databaseUrl,
-      ssl: { rejectUnauthorized: false },
-    });
-    try {
-      await client.connect();
-      await client.query(sql);
-      console.log("Applied tenants migration via DATABASE_URL");
-      await verify(client);
-      await client.end();
-      return;
-    } catch (e) {
-      console.warn("DATABASE_URL failed:", e.message ?? e);
-      try {
-        await client.end();
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-
   let lastErr;
   for (const region of regions) {
     const url = `postgresql://postgres.${ref}:${encodeURIComponent(password)}@aws-0-${region}.pooler.supabase.com:6543/postgres`;
@@ -80,12 +47,11 @@ async function main() {
     try {
       await client.connect();
       await client.query(sql);
-      console.log("Applied tenants migration via", region);
-      await verify(client);
+      console.log(`Applied solar multi-site migration via ${region}`);
       await client.end();
       return;
-    } catch (e) {
-      lastErr = e;
+    } catch (err) {
+      lastErr = err;
       try {
         await client.end();
       } catch {
@@ -93,7 +59,7 @@ async function main() {
       }
     }
   }
-  console.error(lastErr);
+  console.error("Migration failed:", lastErr);
   process.exit(1);
 }
 

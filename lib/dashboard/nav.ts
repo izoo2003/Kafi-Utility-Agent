@@ -73,6 +73,11 @@ export const dashboardNav = [
         label: "SEMS+",
         match: "prefix" as const,
       },
+      {
+        href: "/dashboard/solar/net-metering",
+        label: "Net Metering",
+        match: "prefix" as const,
+      },
     ],
   },
   {

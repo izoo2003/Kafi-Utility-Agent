@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
-import { getSemsConfig } from "@/lib/sems/config";
+import { getSemsConfig, requireSolarSite } from "@/lib/sems/config";
 import {
   buildSolarEnergySummary,
   currentSiteMonth,
@@ -11,9 +11,12 @@ export async function GET(request: Request) {
   const { supabase, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
+  const url = new URL(request.url);
+  const siteParam = url.searchParams.get("site")?.trim() || null;
+
   let config;
   try {
-    config = getSemsConfig();
+    config = siteParam ? requireSolarSite(siteParam) : getSemsConfig();
   } catch (error) {
     return NextResponse.json(
       {
@@ -30,7 +33,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const url = new URL(request.url);
   const month =
     url.searchParams.get("month")?.trim() ||
     currentSiteMonth(config.timeZone);
@@ -62,32 +64,19 @@ export async function POST(request: Request) {
 
   let config;
   try {
-    config = getSemsConfig();
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Invalid SEMS config",
-      },
-      { status: 500 },
-    );
-  }
-  if (!config) {
-    return NextResponse.json(
-      { error: "SEMS+ is not configured" },
-      { status: 400 },
-    );
-  }
-
-  let month = currentSiteMonth(config.timeZone);
-  try {
-    const body = (await request.json()) as { month?: string };
+    const body = (await request.json()) as { month?: string; site?: string };
+    config = body.site?.trim()
+      ? requireSolarSite(body.site.trim())
+      : getSemsConfig();
+    if (!config) {
+      return NextResponse.json(
+        { error: "SEMS+ is not configured" },
+        { status: 400 },
+      );
+    }
+    let month = currentSiteMonth(config.timeZone);
     if (body.month?.trim()) month = body.month.trim();
-  } catch {
-    /* empty ok */
-  }
 
-  try {
     const summary = await buildSolarEnergySummary(supabase, config, month);
     const ai = await generateSolarEnergySummaryAi(summary);
     return NextResponse.json({ ok: true, data: { summary, ai } });

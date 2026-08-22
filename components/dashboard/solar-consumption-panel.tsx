@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import type { SolarSitePublic } from "@/lib/sems/sites";
+import { SolarSiteSelect } from "@/components/dashboard/solar-site-select";
 import type { ConsumptionPeriod, ConsumptionStats } from "@/lib/sems/consumption-stats";
 import { Button } from "@/components/ui/button";
 
@@ -150,10 +152,15 @@ function SplitCard({
 }
 
 export function SolarConsumptionPanel({
+  sites,
+  initialSiteId,
   initialDate,
 }: {
+  sites: SolarSitePublic[];
+  initialSiteId: string;
   initialDate: string;
 }) {
+  const [siteId, setSiteId] = useState(initialSiteId);
   const [period, setPeriod] = useState<ConsumptionPeriod>("day");
   const [anchor, setAnchor] = useState(initialDate);
   const [stats, setStats] = useState<ConsumptionStats | null>(null);
@@ -166,7 +173,7 @@ export function SolarConsumptionPanel({
     setError(null);
     try {
       const result = await apiFetch<ApiPayload>(
-        `/api/solar/consumption?period=${period}&date=${encodeURIComponent(anchor)}`,
+        `/api/solar/consumption?site=${encodeURIComponent(siteId)}&period=${period}&date=${encodeURIComponent(anchor)}`,
       );
       setStats(result.stats);
     } catch (e) {
@@ -175,7 +182,7 @@ export function SolarConsumptionPanel({
     } finally {
       setLoading(false);
     }
-  }, [period, anchor]);
+  }, [siteId, period, anchor]);
 
   useEffect(() => {
     void load();
@@ -185,7 +192,9 @@ export function SolarConsumptionPanel({
     setSyncing(true);
     setError(null);
     try {
-      await apiFetch("/api/solar/sync", { method: "POST" });
+      await apiFetch(`/api/solar/sync?site=${encodeURIComponent(siteId)}`, {
+        method: "POST",
+      });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sync failed");
@@ -204,7 +213,8 @@ export function SolarConsumptionPanel({
             From PV&amp;BAT vs From Grid.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <SolarSiteSelect sites={sites} value={siteId} onChange={setSiteId} />
           <div className="flex items-center gap-1 rounded-lg border bg-background px-1">
             <Button
               type="button"

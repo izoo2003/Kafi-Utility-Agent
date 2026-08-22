@@ -38,7 +38,11 @@ function buildPrompt(summary: SolarEnergySummary): string {
     .join("\n");
 
   return `You are a facility energy analyst for one office solar plant${
-    summary.station_name ? ` (${summary.station_name})` : ""
+    summary.site_label
+      ? ` (${summary.site_label})`
+      : summary.station_name
+        ? ` (${summary.station_name})`
+        : ""
   }.
 
 Write a clear monthly Solar Energy Summary for ${summary.month} (${summary.start_date} → ${summary.end_date}).

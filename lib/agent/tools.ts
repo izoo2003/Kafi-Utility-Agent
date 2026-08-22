@@ -165,10 +165,15 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "solar_energy_summary",
     description:
-      "Monthly Solar Energy Summary: generated units, consumed units, units exported to grid, MoM comparison, 6-month trend, and alerts. Set with_ai_summary=true for a written AI monthly briefing. month format YYYY-MM.",
+      "Monthly Solar Energy Summary for one SEMS+ plant: generated units, consumed units, units exported to grid, MoM comparison, 6-month trend, and alerts. Set with_ai_summary=true for a written AI monthly briefing. month format YYYY-MM. Use site_id (e.g. kafi-commodities, nizam-energy) when multiple plants are configured.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
+        site_id: {
+          type: SchemaType.STRING,
+          description:
+            "Solar site slug (defaults to the first configured site). Examples: kafi-commodities, nizam-energy.",
+        },
         month: {
           type: SchemaType.STRING,
           description: "YYYY-MM (defaults to current site month)",
@@ -184,10 +189,16 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "solar_live_get",
     description:
-      "Get the latest SEMS+ live plant snapshot (PV/load/grid/battery power, SOC, today generation/consumption). Does not call SEMS directly — reads the last polled snapshot from the database.",
+      "Get the latest SEMS+ live plant snapshot (PV/load/grid/battery power, SOC, today generation/consumption) for one configured solar site. Does not call SEMS directly — reads the last polled snapshot from the database. Use site_id when multiple plants exist.",
     parameters: {
       type: SchemaType.OBJECT,
-      properties: {},
+      properties: {
+        site_id: {
+          type: SchemaType.STRING,
+          description:
+            "Solar site slug (defaults to first site). Examples: kafi-commodities, nizam-energy.",
+        },
+      },
     },
   },
   {

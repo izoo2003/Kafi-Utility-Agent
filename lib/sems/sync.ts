@@ -6,7 +6,8 @@ import {
   type SemsAlertFinding,
 } from "@/lib/sems/alert-rules";
 import { SemsClient } from "@/lib/sems/client";
-import { getSemsConfig } from "@/lib/sems/config";
+import type { SolarSiteConfig } from "@/lib/sems/sites";
+import { listSolarSites, requireSolarSite } from "@/lib/sems/sites";
 import { fetchDayEnergy } from "@/lib/sems/day-energy";
 import {
   fetchConsumptionStats,
@@ -24,6 +25,8 @@ function formatLocalDate(timeZone: string, at: Date = new Date()): string {
 }
 
 export type SemsSyncResult = {
+  site_id: string;
+  site_label: string;
   configured: boolean;
   snapshot: SolarLiveSnapshot | null;
   monitoringLogId: string | null;
@@ -31,33 +34,10 @@ export type SemsSyncResult = {
   error: string | null;
 };
 
-export async function syncSemsLive(
+export async function syncSemsLiveForSite(
   supabase: SupabaseClient,
+  config: SolarSiteConfig,
 ): Promise<SemsSyncResult> {
-  let config;
-  try {
-    config = getSemsConfig();
-  } catch (error) {
-    return {
-      configured: false,
-      snapshot: null,
-      monitoringLogId: null,
-      alerts: [],
-      error: error instanceof Error ? error.message : "Invalid SEMS config",
-    };
-  }
-
-  if (!config) {
-    return {
-      configured: false,
-      snapshot: null,
-      monitoringLogId: null,
-      alerts: [],
-      error:
-        "SEMS+ is not configured (set SEMS_EMAIL, SEMS_PASSWORD, SEMS_STATION_ID)",
-    };
-  }
-
   const thresholds = getSemsAlertThresholds(config.timeZone);
 
   try {
@@ -67,7 +47,6 @@ export async function syncSemsLive(
       config.password,
     );
     const flow = await fetchLiveFlow(client, config.stationId);
-    // Flow is instantaneous power; daily kWh usually comes from telecounting.
     const dayEnergy = await fetchDayEnergy(client, config.stationId);
     const logDate = formatLocalDate(config.timeZone);
 
@@ -109,7 +88,7 @@ export async function syncSemsLive(
       supabase,
       {
         station_id: config.stationId,
-        station_name: config.stationName,
+        station_name: config.stationName ?? config.label,
         fetched_at: fetchedAt,
         pv_power_kw: flow.pSystem ?? null,
         load_power_kw: flow.pConsum ?? null,
@@ -120,6 +99,8 @@ export async function syncSemsLive(
         consumption_today_kwh: consumptionToday,
         raw: {
           ...flow.raw,
+          _siteId: config.id,
+          _siteLabel: config.label,
           _dayEnergySource:
             dayEnergy.generationTodayKwh != null ||
             dayEnergy.consumptionTodayKwh != null
@@ -148,6 +129,7 @@ export async function syncSemsLive(
 
     const { data: logRow, error: logError } =
       await upsertSolarMonitoringLogByDate(supabase, {
+        station_id: config.stationId,
         log_date: logDate,
         generation_kwh: generationToday,
         consumption_kwh: consumptionToday,
@@ -169,6 +151,8 @@ export async function syncSemsLive(
     monitoringLogId = logRow?.id ?? null;
 
     return {
+      site_id: config.id,
+      site_label: config.label,
       configured: true,
       snapshot: snapshot as SolarLiveSnapshot,
       monitoringLogId,
@@ -184,10 +168,9 @@ export async function syncSemsLive(
       thresholds,
     );
 
-    // Only stamp the error — do not wipe last good telemetry columns.
     await upsertSolarLiveSnapshot(supabase, {
       station_id: config.stationId,
-      station_name: config.stationName,
+      station_name: config.stationName ?? config.label,
       last_error: message,
     });
 
@@ -195,6 +178,7 @@ export async function syncSemsLive(
     const existingLog = await supabase
       .from("solar_monitoring_log")
       .select("id, generation_kwh, consumption_kwh, battery_soc_pct")
+      .eq("station_id", config.stationId)
       .eq("log_date", logDate)
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -210,6 +194,7 @@ export async function syncSemsLive(
         .eq("id", existingLog.data.id);
     } else {
       await upsertSolarMonitoringLogByDate(supabase, {
+        station_id: config.stationId,
         log_date: logDate,
         generation_kwh: null,
         consumption_kwh: null,
@@ -220,6 +205,8 @@ export async function syncSemsLive(
     }
 
     return {
+      site_id: config.id,
+      site_label: config.label,
       configured: true,
       snapshot: null,
       monitoringLogId: existingLog.data?.id ?? null,
@@ -227,4 +214,54 @@ export async function syncSemsLive(
       error: message,
     };
   }
+}
+
+/** Sync one site by slug/id, or the first configured site when omitted. */
+export async function syncSemsLive(
+  supabase: SupabaseClient,
+  siteId?: string | null,
+): Promise<SemsSyncResult> {
+  let config: SolarSiteConfig;
+  try {
+    config = requireSolarSite(siteId);
+  } catch (error) {
+    return {
+      site_id: siteId?.trim() ?? "",
+      site_label: siteId?.trim() ?? "",
+      configured: false,
+      snapshot: null,
+      monitoringLogId: null,
+      alerts: [],
+      error: error instanceof Error ? error.message : "Invalid SEMS config",
+    };
+  }
+
+  return syncSemsLiveForSite(supabase, config);
+}
+
+/** Sync every configured SEMS site (cron / bulk refresh). */
+export async function syncAllSemsLive(
+  supabase: SupabaseClient,
+): Promise<SemsSyncResult[]> {
+  const sites = listSolarSites();
+  if (!sites.length) {
+    return [
+      {
+        site_id: "",
+        site_label: "",
+        configured: false,
+        snapshot: null,
+        monitoringLogId: null,
+        alerts: [],
+        error:
+          "SEMS+ is not configured (set SEMS_SITES or legacy SEMS_* env vars)",
+      },
+    ];
+  }
+
+  const results: SemsSyncResult[] = [];
+  for (const site of sites) {
+    results.push(await syncSemsLiveForSite(supabase, site));
+  }
+  return results;
 }

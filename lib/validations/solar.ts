@@ -27,6 +27,7 @@ export const solarSpecsUpdateSchema = solarSpecsInsertSchema.partial().extend({
 });
 
 export const solarMonitoringLogInsertSchema = z.object({
+  station_id: z.string().trim().min(1).optional(),
   log_date: requiredDate,
   generation_kwh: optionalNumber.pipe(
     z.union([z.number().nonnegative(), z.null()]),

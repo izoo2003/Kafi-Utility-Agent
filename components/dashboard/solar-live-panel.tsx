@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import type { SemsAlertFinding } from "@/lib/sems/alert-rules";
+import { evaluateSnapshotAlerts } from "@/lib/sems/alert-rules";
 import type { SolarLiveSnapshot } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
-import { Button } from "@/components/ui/button";
+import type { SolarSitePublic } from "@/lib/sems/sites";
+import { SolarSiteSelect } from "@/components/dashboard/solar-site-select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 function fmtKw(value: number | null | undefined) {
   if (value == null || Number.isNaN(value)) return "—";
@@ -45,21 +48,57 @@ function formatFetchedAt(iso: string | null | undefined) {
 }
 
 export function SolarLivePanel({
+  sites,
+  initialSiteId,
   initialSnapshot,
   initialAlerts = [],
   configured,
 }: {
+  sites: SolarSitePublic[];
+  initialSiteId: string;
   initialSnapshot: SolarLiveSnapshot | null;
   initialAlerts?: SemsAlertFinding[];
   configured: boolean;
 }) {
   const router = useRouter();
+  const [siteId, setSiteId] = useState(initialSiteId);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [alerts, setAlerts] = useState(initialAlerts);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(
     initialSnapshot?.last_error ?? null,
   );
+  const [loading, setLoading] = useState(false);
+
+  const loadSite = useCallback(async (nextSiteId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await apiFetch<{
+        data: SolarLiveSnapshot | null;
+      }>(`/api/solar/live?site=${encodeURIComponent(nextSiteId)}`);
+      const nextSnapshot = result.data ?? null;
+      setSnapshot(nextSnapshot);
+      setAlerts(evaluateSnapshotAlerts(nextSnapshot));
+      setError(nextSnapshot?.last_error ?? null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load snapshot");
+      setSnapshot(null);
+      setAlerts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (siteId === initialSiteId) {
+      setSnapshot(initialSnapshot);
+      setAlerts(initialAlerts);
+      setError(initialSnapshot?.last_error ?? null);
+      return;
+    }
+    void loadSite(siteId);
+  }, [siteId, initialSiteId, initialSnapshot, initialAlerts, loadSite]);
 
   async function syncNow() {
     setSyncing(true);
@@ -67,10 +106,13 @@ export function SolarLivePanel({
     try {
       const result = await apiFetch<{
         configured: boolean;
+        site_id?: string;
         snapshot: SolarLiveSnapshot | null;
         alerts?: SemsAlertFinding[];
         error: string | null;
-      }>("/api/solar/sync", { method: "POST" });
+      }>(`/api/solar/sync?site=${encodeURIComponent(siteId)}`, {
+        method: "POST",
+      });
 
       if (result.snapshot) {
         setSnapshot(result.snapshot);
@@ -155,18 +197,20 @@ export function SolarLivePanel({
               under Records and auto-flags baseline breaches.
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={syncNow}
-            disabled={syncing}
-            className="self-start"
-          >
-            <RefreshCw
-              className={`size-4 ${syncing ? "animate-spin" : ""}`}
-            />
-            {syncing ? "Syncing…" : "Sync now"}
-          </Button>
+          <div className="flex flex-wrap items-end gap-2 self-start">
+            <SolarSiteSelect sites={sites} value={siteId} onChange={setSiteId} />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={syncNow}
+              disabled={syncing || loading}
+            >
+              <RefreshCw
+                className={`size-4 ${syncing ? "animate-spin" : ""}`}
+              />
+              {syncing ? "Syncing…" : "Sync now"}
+            </Button>
+          </div>
         </div>
 
         {error ? (

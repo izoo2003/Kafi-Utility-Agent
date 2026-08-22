@@ -3,7 +3,7 @@ import { authorizeCron } from "@/lib/api/authorize-cron";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { applyDailyKitchenConsumption } from "@/lib/kitchen/apply-daily-consumption";
 import { runAlertDigest } from "@/lib/notifications/run-alert-digest";
-import { syncSemsLive } from "@/lib/sems/sync";
+import { syncAllSemsLive } from "@/lib/sems/sync";
 
 async function handle(request: Request) {
   const auth = authorizeCron(request);
@@ -17,7 +17,7 @@ async function handle(request: Request) {
     const supabase = createAdminClient();
     // Hobby plan allows one daily cron — kitchen burn, SEMS, then digest.
     const kitchen = await applyDailyKitchenConsumption(supabase);
-    const solar = await syncSemsLive(supabase);
+    const solar = await syncAllSemsLive(supabase);
     const result = await runAlertDigest(supabase, { force });
     return NextResponse.json({
       ok: true,

@@ -13,6 +13,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { SolarSitePublic } from "@/lib/sems/sites";
+import { SolarSiteSelect } from "@/components/dashboard/solar-site-select";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import type { SolarEnergySummary } from "@/lib/solar/energy-summary";
 import { Badge } from "@/components/ui/badge";
@@ -63,10 +65,15 @@ function currentMonthValue() {
 }
 
 export function SolarEnergySummaryPanel({
+  sites,
+  initialSiteId,
   initialMonth,
 }: {
+  sites: SolarSitePublic[];
+  initialSiteId: string;
   initialMonth?: string;
 }) {
+  const [siteId, setSiteId] = useState(initialSiteId);
   const [month, setMonth] = useState(initialMonth || currentMonthValue());
   const [summary, setSummary] = useState<SolarEnergySummary | null>(null);
   const [aiText, setAiText] = useState<string | null>(null);
@@ -79,7 +86,7 @@ export function SolarEnergySummaryPanel({
     setError(null);
     try {
       const data = await apiFetch<{ summary: SolarEnergySummary }>(
-        `/api/solar/energy-summary?month=${encodeURIComponent(month)}`,
+        `/api/solar/energy-summary?site=${encodeURIComponent(siteId)}&month=${encodeURIComponent(month)}`,
       );
       setSummary(data.summary);
     } catch (e) {
@@ -88,7 +95,7 @@ export function SolarEnergySummaryPanel({
     } finally {
       setLoading(false);
     }
-  }, [month]);
+  }, [siteId, month]);
 
   useEffect(() => {
     void load();
@@ -103,7 +110,7 @@ export function SolarEnergySummaryPanel({
         ai: { summary: string };
       }>("/api/solar/energy-summary", {
         method: "POST",
-        body: JSON.stringify({ month }),
+        body: JSON.stringify({ month, site: siteId }),
       });
       setSummary(data.summary);
       setAiText(data.ai.summary);
@@ -126,7 +133,8 @@ export function SolarEnergySummaryPanel({
             comparison charts and AI briefing.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <SolarSiteSelect sites={sites} value={siteId} onChange={setSiteId} />
           <Input
             type="month"
             className="h-9 w-[10.5rem] bg-white"

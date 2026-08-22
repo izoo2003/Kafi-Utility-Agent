@@ -92,6 +92,7 @@ export function TenantsPanel({ initialItems }: { initialItems: Tenant[] }) {
   const [editing, setEditing] = useState<Tenant | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const sorted = useMemo(() => sortNewestFirst(items), [items]);
@@ -101,21 +102,25 @@ export function TenantsPanel({ initialItems }: { initialItems: Tenant[] }) {
     setEditing(null);
     setForm(emptyForm());
     setError(null);
+    setSuccess(null);
   }
 
   function startEdit(item: Tenant) {
     setEditing(item);
     setForm(toForm(item));
     setError(null);
+    setSuccess(null);
   }
 
   async function save() {
     if (!form.tenant_name.trim()) {
       setError("Tenant name is required.");
+      setSuccess(null);
       return;
     }
     setSaving(true);
     setError(null);
+    setSuccess(null);
     try {
       const payload = toPayload(form);
       if (editing) {
@@ -124,20 +129,27 @@ export function TenantsPanel({ initialItems }: { initialItems: Tenant[] }) {
           body: JSON.stringify(payload),
         });
         setItems((prev) => prev.map((i) => (i.id === data.id ? data : i)));
+        setSuccess(`${data.tenant_name} saved.`);
       } else {
         const data = await apiFetch<Tenant>("/api/tenants", {
           method: "POST",
           body: JSON.stringify(payload),
         });
         setItems((prev) => upsertById(prev, data));
+        setSuccess(`${data.tenant_name} saved — see the table below and Rent records.`);
+        setForm(emptyForm());
       }
-      startCreate();
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    void save();
   }
 
   async function remove(id: string) {
@@ -164,22 +176,42 @@ export function TenantsPanel({ initialItems }: { initialItems: Tenant[] }) {
 
       <TenantSectionNav active="create" />
 
-      <section className="space-y-4 rounded-xl border border-[oklch(0.88_0.02_290)] bg-white/70 px-4 py-4 sm:px-5">
-        <div className="flex items-start justify-between gap-3">
+      <form
+        className="space-y-4 rounded-xl border border-[oklch(0.88_0.02_290)] bg-white/70 px-4 py-4 sm:px-5"
+        onSubmit={handleSubmit}
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-medium">
               {editing ? `Edit ${editing.tenant_name}` : "New tenant account"}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Dates use DD/MM/YYYY on screen. Saving also writes a rent log for
+              Fill in the details, then click Save tenant. Dates use DD/MM/YYYY on screen. Saving also writes a rent log for
               this due date.
             </p>
           </div>
-          {editing ? (
-            <Button variant="outline" onClick={startCreate}>
-              Cancel edit
+          <div className="flex shrink-0 flex-wrap gap-2 self-start">
+            {editing ? (
+              <Button type="button" variant="outline" onClick={startCreate}>
+                Cancel edit
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setForm(emptyForm());
+                  setError(null);
+                  setSuccess(null);
+                }}
+              >
+                Clear form
+              </Button>
+            )}
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : editing ? "Save changes" : "Save tenant"}
             </Button>
-          ) : null}
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -267,16 +299,21 @@ export function TenantsPanel({ initialItems }: { initialItems: Tenant[] }) {
           </p>
         ) : null}
 
-        <div className="flex justify-end">
-          <Button onClick={() => void save()} disabled={saving}>
-            {saving
-              ? "Saving…"
-              : editing
-                ? "Save changes"
-                : "Create tenant"}
+        {success ? (
+          <p
+            className="rounded-lg border border-[oklch(0.88_0.04_145)] bg-[oklch(0.97_0.02_145)] px-3 py-2 text-sm text-[oklch(0.35_0.08_145)]"
+            role="status"
+          >
+            {success}
+          </p>
+        ) : null}
+
+        <div className="flex justify-end border-t border-[oklch(0.92_0.01_290)] pt-4">
+          <Button type="submit" disabled={saving}>
+            {saving ? "Saving…" : editing ? "Save changes" : "Save tenant"}
           </Button>
         </div>
-      </section>
+      </form>
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Tenant accounts</h2>

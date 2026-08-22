@@ -93,9 +93,7 @@ export async function collectOpsAlerts(
       supabase
         .from("solar_live_snapshot")
         .select("*")
-        .order("fetched_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .order("fetched_at", { ascending: false }),
       supabase.from("utility_accounts").select("*"),
       supabase
         .from("utility_payment_logs")
@@ -291,8 +289,18 @@ export async function collectOpsAlerts(
       live.error.message,
     )
   ) {
-    const snapshot = (live.data ?? null) as SolarLiveSnapshot | null;
-    alerts.push(...findingsToOpsAlerts(evaluateSnapshotAlerts(snapshot)));
+    for (const snapshot of (live.data ?? []) as SolarLiveSnapshot[]) {
+      alerts.push(
+        ...findingsToOpsAlerts(evaluateSnapshotAlerts(snapshot)).map(
+          (alert) => ({
+            ...alert,
+            title: snapshot.station_name
+              ? `${snapshot.station_name}: ${alert.title}`
+              : alert.title,
+          }),
+        ),
+      );
+    }
   }
 
   for (const row of (solar.data ?? []) as SolarMonitoringLog[]) {

@@ -24,6 +24,9 @@ export type SolarEnergySummary = {
   month: string;
   start_date: string;
   end_date: string;
+  site_id: string;
+  site_label: string;
+  station_id: string;
   station_name: string | null;
   /** Primary month KPIs (prefer SEMS). */
   generated_kwh: number | null;
@@ -265,7 +268,10 @@ export async function buildSolarEnergySummary(
     semsPrev = null;
   }
 
-  const { data: logs, error: logsErr } = await listSolarMonitoringLog(supabase);
+  const { data: logs, error: logsErr } = await listSolarMonitoringLog(
+    supabase,
+    config.stationId,
+  );
   if (logsErr) throw new Error(logsErr.message);
   const allLogs = (logs ?? []) as SolarMonitoringLog[];
 
@@ -347,7 +353,10 @@ export async function buildSolarEnergySummary(
     month,
     start_date: start,
     end_date: end,
-    station_name: config.stationName,
+    site_id: config.id,
+    site_label: config.label,
+    station_id: config.stationId,
+    station_name: config.stationName ?? config.label,
     generated_kwh: current.generated_kwh > 0 ? current.generated_kwh : null,
     consumed_kwh: current.consumed_kwh > 0 ? current.consumed_kwh : null,
     exported_kwh: current.exported_kwh >= 0 ? current.exported_kwh : null,

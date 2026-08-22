@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { SemsClient } from "@/lib/sems/client";
-import { getSemsConfig } from "@/lib/sems/config";
+import { getSemsConfig, requireSolarSite } from "@/lib/sems/config";
 import {
   fetchConsumptionStats,
   formatSiteDate,
@@ -20,6 +20,7 @@ export async function GET(request: Request) {
   if (errorResponse) return errorResponse;
 
   const url = new URL(request.url);
+  const siteParam = url.searchParams.get("site")?.trim() || null;
   const periodParam = url.searchParams.get("period") ?? "day";
   if (!isPeriod(periodParam)) {
     return NextResponse.json(
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
 
   let config;
   try {
-    config = getSemsConfig();
+    config = siteParam ? requireSolarSite(siteParam) : getSemsConfig();
   } catch (error) {
     return NextResponse.json(
       {
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
       timeZone: config.timeZone,
     });
 
-    const logs = await listSolarMonitoringLog(supabase);
+    const logs = await listSolarMonitoringLog(supabase, config.stationId);
     const inRange = (logs.data ?? []).filter(
       (r) => r.log_date >= stats.start_date && r.log_date <= stats.end_date,
     );
@@ -73,7 +74,13 @@ export async function GET(request: Request) {
       data: {
         stats,
         logs: inRange,
-        station_name: config.stationName,
+        site: {
+          id: config.id,
+          label: config.label,
+          stationId: config.stationId,
+          stationName: config.stationName ?? config.label,
+        },
+        station_name: config.stationName ?? config.label,
       },
     });
   } catch (error) {

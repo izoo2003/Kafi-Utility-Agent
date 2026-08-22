@@ -21,7 +21,7 @@ import { nextDueFromMaintenanceRows } from "@/lib/generator/maintenance";
 import { evaluateSnapshotAlerts } from "@/lib/sems/alert-rules";
 import { isSemsConfigured } from "@/lib/sems/config";
 import {
-  getLatestSolarLiveSnapshot,
+  getSolarLiveSnapshot,
   listSolarMonitoringLog,
   listSolarSpecs,
 } from "@/lib/supabase/solar";
@@ -281,14 +281,20 @@ export async function executeAgentTool(
     }
 
     case "solar_energy_summary": {
-      const { getSemsConfig, isSemsConfigured } = await import(
+      const { getSolarSite, isSemsConfigured } = await import(
         "@/lib/sems/config"
       );
-      const config = getSemsConfig();
+      const siteId =
+        typeof input.site_id === "string" && input.site_id.trim()
+          ? input.site_id.trim()
+          : null;
+      const config = getSolarSite(siteId);
       if (!config) {
         return {
           configured: isSemsConfigured(),
-          error: "SEMS+ is not configured",
+          error: siteId
+            ? `Unknown solar site "${siteId}"`
+            : "SEMS+ is not configured",
         };
       }
       const { buildSolarEnergySummary, currentSiteMonth } = await import(
@@ -306,6 +312,10 @@ export async function executeAgentTool(
         const ai = await generateSolarEnergySummaryAi(summary);
         return {
           summary: {
+            site_id: summary.site_id,
+            site_label: summary.site_label,
+            station_id: summary.station_id,
+            station_name: summary.station_name,
             month: summary.month,
             generated_kwh: summary.generated_kwh,
             consumed_kwh: summary.consumed_kwh,
@@ -326,6 +336,10 @@ export async function executeAgentTool(
       }
       return {
         summary: {
+          site_id: summary.site_id,
+          site_label: summary.site_label,
+          station_id: summary.station_id,
+          station_name: summary.station_name,
           month: summary.month,
           generated_kwh: summary.generated_kwh,
           consumed_kwh: summary.consumed_kwh,
@@ -344,7 +358,28 @@ export async function executeAgentTool(
     }
 
     case "solar_live_get": {
-      const { data, error } = await getLatestSolarLiveSnapshot(supabase);
+      const { getSolarSite, isSemsConfigured, listSolarSitesPublic } =
+        await import("@/lib/sems/config");
+      const siteId =
+        typeof input.site_id === "string" && input.site_id.trim()
+          ? input.site_id.trim()
+          : null;
+      const site = getSolarSite(siteId);
+      if (!site) {
+        return {
+          configured: isSemsConfigured(),
+          sites: listSolarSitesPublic(),
+          snapshot: null,
+          error: siteId
+            ? `Unknown solar site "${siteId}"`
+            : "SEMS+ is not configured",
+        };
+      }
+
+      const { data, error } = await getSolarLiveSnapshot(
+        supabase,
+        site.stationId,
+      );
       if (error) {
         if (/solar_live_snapshot|does not exist|schema cache/i.test(error.message)) {
           return {
@@ -358,13 +393,17 @@ export async function executeAgentTool(
       if (!data) {
         return {
           configured: isSemsConfigured(),
+          site_id: site.id,
+          site_label: site.label,
           snapshot: null,
           auto_alerts: evaluateSnapshotAlerts(null),
-          note: "No live snapshot yet. Sync from the Solar dashboard or wait for cron.",
+          note: "No live snapshot yet for this site. Sync from the Solar dashboard or wait for cron.",
         };
       }
       return {
         configured: isSemsConfigured(),
+        site_id: site.id,
+        site_label: site.label,
         station_id: data.station_id,
         station_name: data.station_name,
         fetched_at: data.fetched_at,

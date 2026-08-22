@@ -122,6 +122,7 @@ export type SolarSpecs = AuditColumns & {
 };
 
 export type SolarMonitoringLog = AuditColumns & {
+  station_id: string;
   log_date: IsoDate;
   generation_kwh: number | null;
   consumption_kwh: number | null;

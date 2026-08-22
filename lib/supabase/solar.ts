@@ -15,6 +15,7 @@ import {
   normalizeKeyPart,
 } from "@/lib/dashboard/dedupe";
 import { writeErr, writeOk, type DomainWriteResult } from "@/lib/supabase/write-result";
+import { getSolarSite } from "@/lib/sems/sites";
 
 const SPECS = "solar_specs" as const;
 const LOG = "solar_monitoring_log" as const;
@@ -95,11 +96,16 @@ export async function deleteSolarSpecs(supabase: SupabaseClient, id: string) {
   return supabase.from(SPECS).delete().eq("id", id);
 }
 
-export async function listSolarMonitoringLog(supabase: SupabaseClient) {
-  return supabase
-    .from(LOG)
-    .select("*")
-    .order("created_at", { ascending: false })
+export async function listSolarMonitoringLog(
+  supabase: SupabaseClient,
+  stationId?: string,
+) {
+  let query = supabase.from(LOG).select("*");
+  if (stationId) {
+    query = query.eq("station_id", stationId);
+  }
+  return query
+    .order("log_date", { ascending: false })
     .returns<SolarMonitoringLog[]>();
 }
 
@@ -107,20 +113,28 @@ export async function createSolarMonitoringLog(
   supabase: SupabaseClient,
   input: SolarMonitoringLogInsert,
 ): Promise<DomainWriteResult<SolarMonitoringLog>> {
+  const stationId =
+    input.station_id?.trim() || getSolarSite()?.stationId || null;
+  if (!stationId) {
+    return writeErr("station_id is required (no default solar site configured)");
+  }
+
+  const payload = { ...input, station_id: stationId };
+
   const { data: matches, error: findError } = await supabase
     .from(LOG)
     .select("*")
-    .eq("log_date", input.log_date)
+    .eq("station_id", stationId)
+    .eq("log_date", payload.log_date)
     .order("updated_at", { ascending: false })
     .returns<SolarMonitoringLog[]>();
   if (findError) return writeErr(findError.message);
 
   const existing = matches?.[0] ?? null;
   if (existing) {
-    // Same calendar day → always update that row (never create a duplicate log).
     const { data, error } = await supabase
       .from(LOG)
-      .update(input)
+      .update(payload)
       .eq("id", existing.id)
       .select("*")
       .single<SolarMonitoringLog>();
@@ -130,7 +144,7 @@ export async function createSolarMonitoringLog(
 
   const { data, error } = await supabase
     .from(LOG)
-    .insert(input)
+    .insert(payload)
     .select("*")
     .single<SolarMonitoringLog>();
   if (error) return writeErr(error.message);
@@ -161,6 +175,25 @@ export async function getLatestSolarLiveSnapshot(supabase: SupabaseClient) {
     .maybeSingle<SolarLiveSnapshot>();
 }
 
+export async function getSolarLiveSnapshot(
+  supabase: SupabaseClient,
+  stationId: string,
+) {
+  return supabase
+    .from(LIVE)
+    .select("*")
+    .eq("station_id", stationId)
+    .maybeSingle<SolarLiveSnapshot>();
+}
+
+export async function listSolarLiveSnapshots(supabase: SupabaseClient) {
+  return supabase
+    .from(LIVE)
+    .select("*")
+    .order("fetched_at", { ascending: false })
+    .returns<SolarLiveSnapshot[]>();
+}
+
 export async function upsertSolarLiveSnapshot(
   supabase: SupabaseClient,
   input: SolarLiveSnapshotUpsert,
@@ -176,6 +209,7 @@ export async function upsertSolarLiveSnapshot(
 export async function upsertSolarMonitoringLogByDate(
   supabase: SupabaseClient,
   input: {
+    station_id: string;
     log_date: string;
     generation_kwh: number | null;
     consumption_kwh: number | null;
@@ -191,6 +225,7 @@ export async function upsertSolarMonitoringLogByDate(
   const existing = await supabase
     .from(LOG)
     .select("*")
+    .eq("station_id", input.station_id)
     .eq("log_date", input.log_date)
     .order("updated_at", { ascending: false })
     .limit(1)
@@ -235,6 +270,7 @@ export async function upsertSolarMonitoringLogByDate(
   return supabase
     .from(LOG)
     .insert({
+      station_id: input.station_id,
       log_date: input.log_date,
       ...patch,
     } satisfies SolarMonitoringLogInsert)
