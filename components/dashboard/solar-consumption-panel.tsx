@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import type { SolarSitePublic } from "@/lib/sems/sites";
-import { SolarSiteSelect } from "@/components/dashboard/solar-site-select";
+import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import type { ConsumptionPeriod, ConsumptionStats } from "@/lib/sems/consumption-stats";
 import { Button } from "@/components/ui/button";
 
@@ -151,7 +151,25 @@ function SplitCard({
   );
 }
 
-export function SolarConsumptionPanel({
+export function SolarConsumptionPanel(
+  props: {
+    sites: SolarSitePublic[];
+    initialSiteId: string;
+    initialDate: string;
+  },
+) {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-48 animate-pulse rounded-xl border border-[oklch(0.9_0.02_185)] bg-[oklch(0.99_0.01_185)]" />
+      }
+    >
+      <SolarConsumptionPanelInner {...props} />
+    </Suspense>
+  );
+}
+
+function SolarConsumptionPanelInner({
   sites,
   initialSiteId,
   initialDate,
@@ -160,7 +178,7 @@ export function SolarConsumptionPanel({
   initialSiteId: string;
   initialDate: string;
 }) {
-  const [siteId, setSiteId] = useState(initialSiteId);
+  const { siteId } = useSolarSiteId(sites, initialSiteId);
   const [period, setPeriod] = useState<ConsumptionPeriod>("day");
   const [anchor, setAnchor] = useState(initialDate);
   const [stats, setStats] = useState<ConsumptionStats | null>(null);
@@ -214,7 +232,6 @@ export function SolarConsumptionPanel({
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <SolarSiteSelect sites={sites} value={siteId} onChange={setSiteId} />
           <div className="flex items-center gap-1 rounded-lg border bg-background px-1">
             <Button
               type="button"

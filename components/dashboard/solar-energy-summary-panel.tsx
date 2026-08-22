@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -14,7 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import type { SolarSitePublic } from "@/lib/sems/sites";
-import { SolarSiteSelect } from "@/components/dashboard/solar-site-select";
+import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import type { SolarEnergySummary } from "@/lib/solar/energy-summary";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +64,25 @@ function currentMonthValue() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function SolarEnergySummaryPanel({
+export function SolarEnergySummaryPanel(
+  props: {
+    sites: SolarSitePublic[];
+    initialSiteId: string;
+    initialMonth?: string;
+  },
+) {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-48 animate-pulse rounded-xl border border-teal-100 bg-teal-50/30" />
+      }
+    >
+      <SolarEnergySummaryPanelInner {...props} />
+    </Suspense>
+  );
+}
+
+function SolarEnergySummaryPanelInner({
   sites,
   initialSiteId,
   initialMonth,
@@ -73,7 +91,7 @@ export function SolarEnergySummaryPanel({
   initialSiteId: string;
   initialMonth?: string;
 }) {
-  const [siteId, setSiteId] = useState(initialSiteId);
+  const { siteId } = useSolarSiteId(sites, initialSiteId);
   const [month, setMonth] = useState(initialMonth || currentMonthValue());
   const [summary, setSummary] = useState<SolarEnergySummary | null>(null);
   const [aiText, setAiText] = useState<string | null>(null);
@@ -134,7 +152,6 @@ export function SolarEnergySummaryPanel({
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <SolarSiteSelect sites={sites} value={siteId} onChange={setSiteId} />
           <Input
             type="month"
             className="h-9 w-[10.5rem] bg-white"

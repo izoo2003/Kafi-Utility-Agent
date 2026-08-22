@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Upload, Calculator, RefreshCw } from "lucide-react";
 import type { SolarSitePublic } from "@/lib/sems/sites";
 import type { KeBillExtraction } from "@/lib/solar/net-metering-ai";
@@ -8,7 +8,7 @@ import type { NetMeteringRowResult } from "@/lib/solar/net-metering-calc";
 import { formatRs } from "@/lib/solar/net-metering-calc";
 import type { SolarNetMeteringLog } from "@/lib/supabase/solar-net-metering";
 import { apiFetch } from "@/lib/dashboard/api-client";
-import { SolarSiteSelect } from "@/components/dashboard/solar-site-select";
+import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,25 @@ type AnalysisResult = {
   ledger: SolarNetMeteringLog[];
 };
 
-export function SolarNetMeteringPanel({
+export function SolarNetMeteringPanel(
+  props: {
+    sites: SolarSitePublic[];
+    initialSiteId: string;
+    initialLogs: SolarNetMeteringLog[];
+  },
+) {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-48 animate-pulse rounded-xl border border-[oklch(0.9_0.02_185)] bg-[oklch(0.99_0.01_185)]" />
+      }
+    >
+      <SolarNetMeteringPanelInner {...props} />
+    </Suspense>
+  );
+}
+
+function SolarNetMeteringPanelInner({
   sites,
   initialSiteId,
   initialLogs,
@@ -43,7 +61,7 @@ export function SolarNetMeteringPanel({
   initialSiteId: string;
   initialLogs: SolarNetMeteringLog[];
 }) {
-  const [siteId, setSiteId] = useState(initialSiteId);
+  const { siteId } = useSolarSiteId(sites, initialSiteId);
   const [file, setFile] = useState<File | null>(null);
   const [previousBalance, setPreviousBalance] = useState("");
   const [logs, setLogs] = useState(initialLogs);
@@ -125,7 +143,7 @@ export function SolarNetMeteringPanel({
         accent="teal"
       />
 
-      <SolarSectionNav active="net-metering" />
+      <SolarSectionNav active="net-metering" sites={sites} />
 
       <section className="space-y-4 rounded-xl border border-[oklch(0.88_0.04_145)] bg-[oklch(0.98_0.02_145)] px-4 py-4 sm:px-5">
         <div className="flex items-start gap-3">
@@ -148,12 +166,6 @@ export function SolarNetMeteringPanel({
       <section className="space-y-4 rounded-xl border border-[oklch(0.9_0.02_185)] bg-white/80 px-4 py-4 sm:px-5">
         <h2 className="text-lg font-medium">Upload KE bill</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <SolarSiteSelect
-            sites={sites}
-            value={siteId}
-            onChange={setSiteId}
-            label="Solar site (for SEMS cross-check)"
-          />
           <div className="space-y-2">
             <Label htmlFor="previous-balance">Previous balance (Rs)</Label>
             <Input

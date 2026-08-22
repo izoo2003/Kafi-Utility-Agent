@@ -8,6 +8,7 @@ import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
+import type { SolarSitePublic } from "@/lib/sems/sites";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { TablePagination } from "@/components/dashboard/table-pagination";
@@ -102,9 +103,12 @@ function fileNameFromPath(path: string | null) {
 }
 
 export function SolarPanel({
+  sites,
   initialSpecs,
   initialLogs,
 }: {
+  sites: SolarSitePublic[];
+  initialSiteId?: string;
   initialSpecs: SolarSpecs[];
   initialLogs: SolarMonitoringLog[];
 }) {
@@ -249,7 +253,7 @@ export function SolarPanel({
         accent="teal"
       />
 
-      <SolarSectionNav active="records" />
+      <SolarSectionNav active="records" sites={sites} />
 
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

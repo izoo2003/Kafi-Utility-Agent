@@ -1,13 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { listSolarSitesPublic } from "@/lib/sems/config";
+import { resolveSolarSiteId } from "@/lib/dashboard/solar-site-nav";
 import { listSolarNetMeteringLogs } from "@/lib/supabase/solar-net-metering";
 import { SolarNetMeteringPanel } from "@/components/dashboard/solar-net-metering-panel";
 import type { SolarNetMeteringLog } from "@/lib/supabase/solar-net-metering";
 
-export default async function SolarNetMeteringPage() {
+export default async function SolarNetMeteringPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ site?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
   const sites = listSolarSitesPublic();
   const defaultSite = sites[0]?.id ?? "";
+  const initialSiteId = resolveSolarSiteId(params.site, sites, defaultSite);
 
   const { data, error } = await listSolarNetMeteringLogs(supabase);
 
@@ -34,7 +41,7 @@ export default async function SolarNetMeteringPage() {
   return (
     <SolarNetMeteringPanel
       sites={sites}
-      initialSiteId={defaultSite}
+      initialSiteId={initialSiteId}
       initialLogs={(data ?? []) as SolarNetMeteringLog[]}
     />
   );

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { resolveSolarSiteId } from "@/lib/dashboard/solar-site-nav";
 import {
   getSolarSite,
   isSemsConfigured,
@@ -9,12 +10,18 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
 import { SolarEnergySummaryPanel } from "@/components/dashboard/solar-energy-summary-panel";
 
-export default async function SolarEnergySummaryPage() {
+export default async function SolarEnergySummaryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ site?: string }>;
+}) {
+  const params = await searchParams;
   const sites = listSolarSitesPublic();
   const defaultSite = sites[0]?.id ?? "";
+  const initialSiteId = resolveSolarSiteId(params.site, sites, defaultSite);
   let initialMonth = new Date().toISOString().slice(0, 7);
   try {
-    const config = getSolarSite(defaultSite);
+    const config = getSolarSite(initialSiteId);
     if (config) initialMonth = currentSiteMonth(config.timeZone);
   } catch {
     /* keep UTC month */
@@ -31,12 +38,12 @@ export default async function SolarEnergySummaryPage() {
         accent="teal"
       />
 
-      <SolarSectionNav active="summary" />
+      <SolarSectionNav active="summary" sites={sites} />
 
       {isSemsConfigured() ? (
         <SolarEnergySummaryPanel
           sites={sites}
-          initialSiteId={defaultSite}
+          initialSiteId={initialSiteId}
           initialMonth={initialMonth}
         />
       ) : (

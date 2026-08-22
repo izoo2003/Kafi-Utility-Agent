@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import type { SemsAlertFinding } from "@/lib/sems/alert-rules";
@@ -8,7 +8,7 @@ import { evaluateSnapshotAlerts } from "@/lib/sems/alert-rules";
 import type { SolarLiveSnapshot } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import type { SolarSitePublic } from "@/lib/sems/sites";
-import { SolarSiteSelect } from "@/components/dashboard/solar-site-select";
+import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -47,7 +47,27 @@ function formatFetchedAt(iso: string | null | undefined) {
   }
 }
 
-export function SolarLivePanel({
+export function SolarLivePanel(
+  props: {
+    sites: SolarSitePublic[];
+    initialSiteId: string;
+    initialSnapshot: SolarLiveSnapshot | null;
+    initialAlerts?: SemsAlertFinding[];
+    configured: boolean;
+  },
+) {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-48 animate-pulse rounded-xl border border-[oklch(0.9_0.02_185)] bg-[oklch(0.99_0.01_185)]" />
+      }
+    >
+      <SolarLivePanelInner {...props} />
+    </Suspense>
+  );
+}
+
+function SolarLivePanelInner({
   sites,
   initialSiteId,
   initialSnapshot,
@@ -61,7 +81,7 @@ export function SolarLivePanel({
   configured: boolean;
 }) {
   const router = useRouter();
-  const [siteId, setSiteId] = useState(initialSiteId);
+  const { siteId } = useSolarSiteId(sites, initialSiteId);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [alerts, setAlerts] = useState(initialAlerts);
   const [syncing, setSyncing] = useState(false);
@@ -198,7 +218,6 @@ export function SolarLivePanel({
             </p>
           </div>
           <div className="flex flex-wrap items-end gap-2 self-start">
-            <SolarSiteSelect sites={sites} value={siteId} onChange={setSiteId} />
             <Button
               type="button"
               variant="outline"

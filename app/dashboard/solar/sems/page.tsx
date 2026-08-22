@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { resolveSolarSiteId } from "@/lib/dashboard/solar-site-nav";
 import {
   getSolarSite,
   isSemsConfigured,
@@ -11,11 +12,17 @@ import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
 import { SolarLivePanel } from "@/components/dashboard/solar-live-panel";
 import type { SolarLiveSnapshot } from "@/lib/types/database";
 
-export default async function SolarSemsPage() {
+export default async function SolarSemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ site?: string }>;
+}) {
+  const params = await searchParams;
   const sites = listSolarSitesPublic();
   const defaultSite = sites[0]?.id ?? "";
+  const initialSiteId = resolveSolarSiteId(params.site, sites, defaultSite);
   const supabase = await createClient();
-  const site = getSolarSite(defaultSite);
+  const site = getSolarSite(initialSiteId);
   const live = site
     ? await getSolarLiveSnapshot(supabase, site.stationId)
     : { data: null, error: null };
@@ -48,11 +55,11 @@ export default async function SolarSemsPage() {
         accent="teal"
       />
 
-      <SolarSectionNav active="sems" />
+      <SolarSectionNav active="sems" sites={sites} />
 
       <SolarLivePanel
         sites={sites}
-        initialSiteId={defaultSite}
+        initialSiteId={initialSiteId}
         initialSnapshot={liveSnapshot}
         initialAlerts={alerts}
         configured={isSemsConfigured()}
