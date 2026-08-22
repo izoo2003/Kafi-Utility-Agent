@@ -7,7 +7,7 @@ import {
 
 export type SemsConfig = SolarSiteConfig;
 
-export { listSolarSites, listSolarSitesPublic, requireSolarSite, getSolarSite } from "@/lib/sems/sites";
+export { listSolarSites, listSolarSitesPublic, requireSolarSite, getSolarSite, getSolarSitesConfigError } from "@/lib/sems/sites";
 export type { SolarSiteConfig, SolarSitePublic } from "@/lib/sems/sites";
 
 /** Resolve one configured SEMS site (defaults to the first). */

@@ -59,6 +59,21 @@ export type SolarSitePublic = {
   static: boolean;
 };
 
+type SolarSitesLoadResult = {
+  sites: SolarSiteConfig[];
+  configError: string | null;
+};
+
+let loadCache: SolarSitesLoadResult | null = null;
+
+function formatLoadError(error: unknown): string {
+  if (error instanceof z.ZodError) {
+    return error.issues.map((issue) => issue.message).join("; ");
+  }
+  if (error instanceof Error) return error.message;
+  return "Invalid SEMS_SITES configuration";
+}
+
 function resolveSite(raw: z.infer<typeof siteInputSchema>): SolarSiteConfig {
   const isStatic = raw.static === true;
   const region = resolveRegion(
@@ -113,9 +128,7 @@ function legacySiteFromEnv(): SolarSiteConfig | null {
   }
 
   if (!stationId) {
-    throw new Error(
-      "SEMS credentials are set but SEMS_STATION_ID (or SEMS_STATION_DETAIL) is missing",
-    );
+    return null;
   }
 
   return resolveSite({
@@ -128,21 +141,11 @@ function legacySiteFromEnv(): SolarSiteConfig | null {
   });
 }
 
-export function listSolarSites(): SolarSiteConfig[] {
-  const json = process.env.SEMS_SITES?.trim();
-  let fromEnv: SolarSiteConfig[] = [];
-  if (json) {
-    const parsed = JSON.parse(json) as unknown;
-    const arr = z.array(siteInputSchema).parse(parsed);
-    fromEnv = arr.map(resolveSite);
-  } else {
-    const legacy = legacySiteFromEnv();
-    fromEnv = legacy ? [legacy] : [];
-  }
-
-  const envIds = new Set(fromEnv.map((site) => site.id.toLowerCase()));
-  const builtins = BUILTIN_STATIC_SOLAR_SITES.filter(
-    (site) => !envIds.has(site.id.toLowerCase()),
+function loadBuiltinStaticSites(
+  excludeIds: Set<string>,
+): SolarSiteConfig[] {
+  return BUILTIN_STATIC_SOLAR_SITES.filter(
+    (site) => !excludeIds.has(site.id.toLowerCase()),
   ).map((site) =>
     resolveSite({
       id: site.id,
@@ -153,8 +156,54 @@ export function listSolarSites(): SolarSiteConfig[] {
       timeZone: site.timeZone,
     }),
   );
+}
 
-  return [...fromEnv, ...builtins];
+function loadSolarSitesFromEnv(): {
+  fromEnv: SolarSiteConfig[];
+  configError: string | null;
+} {
+  const json = process.env.SEMS_SITES?.trim();
+  if (!json) {
+    const legacy = legacySiteFromEnv();
+    return { fromEnv: legacy ? [legacy] : [], configError: null };
+  }
+
+  try {
+    const parsed = JSON.parse(json) as unknown;
+    const arr = z.array(siteInputSchema).parse(parsed);
+    return { fromEnv: arr.map(resolveSite), configError: null };
+  } catch (error) {
+    const detail = formatLoadError(error);
+    console.error("[solar] SEMS_SITES failed to load:", detail);
+    const legacy = legacySiteFromEnv();
+    return {
+      fromEnv: legacy ? [legacy] : [],
+      configError: `SEMS_SITES is invalid (${detail}). Built-in static sites still load; fix the env var on Vercel.`,
+    };
+  }
+}
+
+function loadSolarSitesCached(): SolarSitesLoadResult {
+  if (loadCache) return loadCache;
+
+  const { fromEnv, configError } = loadSolarSitesFromEnv();
+  const envIds = new Set(fromEnv.map((site) => site.id.toLowerCase()));
+  const builtins = loadBuiltinStaticSites(envIds);
+
+  loadCache = {
+    sites: [...fromEnv, ...builtins],
+    configError,
+  };
+  return loadCache;
+}
+
+/** Non-fatal SEMS_SITES parse/validation error (page can still render built-in sites). */
+export function getSolarSitesConfigError(): string | null {
+  return loadSolarSitesCached().configError;
+}
+
+export function listSolarSites(): SolarSiteConfig[] {
+  return loadSolarSitesCached().sites;
 }
 
 export function getSolarSite(id?: string | null): SolarSiteConfig | null {
