@@ -8,6 +8,10 @@ import {
   itEquipmentUpdateSchema,
 } from "@/lib/validations/it-equipment";
 import {
+  applianceInsertSchema,
+  applianceUpdateSchema,
+} from "@/lib/validations/appliances";
+import {
   generatorExpenseInsertSchema,
   generatorExpenseUpdateSchema,
   generatorFuelLogInsertSchema,
@@ -47,6 +51,9 @@ export const WRITE_TOOL_NAMES = [
   "it_equipment_create",
   "it_equipment_update",
   "it_equipment_delete",
+  "appliances_create",
+  "appliances_update",
+  "appliances_delete",
   "generator_maintenance_create",
   "generator_maintenance_update",
   "generator_maintenance_delete",
@@ -101,6 +108,15 @@ export const kitchenAdjustQtySchema = z.object({
 
 export const itCreateSchema = itEquipmentInsertSchema;
 export const itUpdateSchema = itEquipmentUpdateSchema
+  .extend({
+    asset_tag_lookup: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => Boolean(v.id || v.asset_tag_lookup), {
+    message: "Provide id or asset_tag_lookup to find the row",
+  });
+
+export const applianceCreateSchema = applianceInsertSchema;
+export const applianceUpdateSchemaAgent = applianceUpdateSchema
   .extend({
     asset_tag_lookup: z.string().trim().min(1).optional(),
   })

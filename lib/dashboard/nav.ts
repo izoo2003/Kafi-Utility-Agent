@@ -40,6 +40,13 @@ export const dashboardNav = [
     accent: "violet",
   },
   {
+    href: "/dashboard/appliances",
+    label: "Appliances",
+    description: "Site appliances and warranty cards",
+    icon: "appliances",
+    accent: "amber",
+  },
+  {
     href: "/dashboard/generator",
     label: "Generator",
     description: "Maintenance schedule and fuel log",

@@ -13,6 +13,10 @@ import {
   listItEquipment,
 } from "@/lib/supabase/it-equipment";
 import {
+  getAppliance,
+  listAppliances,
+} from "@/lib/supabase/appliances";
+import {
   listGeneratorExpenses,
   listGeneratorFuelLog,
   listGeneratorMaintenance,
@@ -47,6 +51,7 @@ import {
 } from "@/lib/utilities/billing";
 import { providerByLabel, isActiveSiteUtilityProvider } from "@/lib/utilities/providers";
 import type {
+  Appliance,
   ItEquipment,
   KitchenInventory,
   Tenant,
@@ -220,6 +225,34 @@ export async function executeAgentTool(
       if (typeof input.asset_tag === "string" && input.asset_tag) {
         const { data, error } = await supabase
           .from("it_equipment")
+          .select("*")
+          .eq("asset_tag", input.asset_tag)
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        return data ?? { error: "Not found" };
+      }
+      return { error: "Provide id or asset_tag" };
+    }
+
+    case "appliances_list": {
+      const { data, error } = await listAppliances(supabase);
+      if (error) throw new Error(error.message);
+      let rows = (data ?? []) as Appliance[];
+      if (typeof input.status === "string") {
+        rows = rows.filter((r) => r.status === input.status);
+      }
+      return rows;
+    }
+
+    case "appliances_get": {
+      if (typeof input.id === "string" && input.id) {
+        const { data, error } = await getAppliance(supabase, input.id);
+        if (error) throw new Error(error.message);
+        return data ?? { error: "Not found" };
+      }
+      if (typeof input.asset_tag === "string" && input.asset_tag) {
+        const { data, error } = await supabase
+          .from("appliances")
           .select("*")
           .eq("asset_tag", input.asset_tag)
           .maybeSingle();

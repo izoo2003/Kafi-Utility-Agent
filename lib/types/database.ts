@@ -62,6 +62,25 @@ export type ItEquipment = AuditColumns & {
   status: ItEquipmentStatus;
   location: string | null;
   notes: string | null;
+  /** Supabase Storage path for the warranty card photo/PDF */
+  warranty_card_url: string | null;
+};
+
+export type ApplianceStatus = ItEquipmentStatus;
+
+export type Appliance = AuditColumns & {
+  asset_tag: string;
+  item_name: string;
+  category: string | null;
+  assigned_to: string | null;
+  serial_number: string | null;
+  purchase_date: IsoDate | null;
+  warranty_expiry: IsoDate | null;
+  status: ApplianceStatus;
+  location: string | null;
+  notes: string | null;
+  /** Supabase Storage path for the warranty card photo/PDF */
+  warranty_card_url: string | null;
 };
 
 export type GeneratorCheckupStatus = "done" | "not_done";
@@ -256,7 +275,14 @@ export type AlertNotificationChannel = "email" | "console";
 
 export type AlertNotification = {
   alert_id: string;
-  domain: "kitchen" | "it" | "generator" | "solar" | "utilities" | "tenants";
+  domain:
+    | "kitchen"
+    | "it"
+    | "appliances"
+    | "generator"
+    | "solar"
+    | "utilities"
+    | "tenants";
   severity: "critical" | "warning" | "info";
   title: string;
   detail: string;
@@ -282,6 +308,7 @@ export type Database = {
     Tables: {
       kitchen_inventory: { Row: KitchenInventory; Insert: KitchenInventoryInsert; Update: KitchenInventoryUpdate };
       it_equipment: { Row: ItEquipment; Insert: ItEquipmentInsert; Update: ItEquipmentUpdate };
+      appliances: { Row: Appliance; Insert: ApplianceInsert; Update: ApplianceUpdate };
       generator_maintenance: { Row: GeneratorMaintenance; Insert: GeneratorMaintenanceInsert; Update: GeneratorMaintenanceUpdate };
       generator_fuel_log: { Row: GeneratorFuelLog; Insert: GeneratorFuelLogInsert; Update: GeneratorFuelLogUpdate };
       generator_run_log: {
@@ -340,6 +367,12 @@ export type ItEquipmentInsert = Partial<OmitAuditOnWrite<ItEquipment>> & {
   item_name: string;
 };
 export type ItEquipmentUpdate = Partial<OmitAuditOnWrite<ItEquipment>>;
+
+export type ApplianceInsert = Partial<OmitAuditOnWrite<Appliance>> & {
+  asset_tag: string;
+  item_name: string;
+};
+export type ApplianceUpdate = Partial<OmitAuditOnWrite<Appliance>>;
 
 export type GeneratorMaintenanceInsert = Partial<OmitAuditOnWrite<GeneratorMaintenance>> & {
   service_date: IsoDate;
@@ -416,3 +449,4 @@ export type TenantElectricBillUpdate = Partial<
 
 export const SOLAR_SPECS_BUCKET = "solar-specs" as const;
 export const UTILITY_BILLS_BUCKET = "utility-bills" as const;
+export const WARRANTY_CARDS_BUCKET = "warranty-cards" as const;

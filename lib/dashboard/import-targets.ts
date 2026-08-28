@@ -1,6 +1,7 @@
 export const IMPORT_TARGETS = [
   "kitchen-inventory",
   "it-equipment",
+  "appliances",
   "generator-maintenance",
   "generator-fuel",
   "generator-expenses",
@@ -40,6 +41,14 @@ export function importPromptFor(target: ImportTarget): string {
         "For EACH row call it_equipment_create with confirmed=false (one tool call per row).",
         "Map: asset tag → asset_tag; item/name → item_name; category; assigned to → assigned_to; serial; purchase date; warranty expiry; status; location; notes.",
         "Dates are DD/MM/YYYY. Skip headers/blank lines. Do not write to other domains.",
+      ].join(" ");
+    case "appliances":
+      return [
+        "IMPORT TARGET: Appliances register ONLY.",
+        "Read every page/photo carefully. Extract EVERY distinct appliance row.",
+        "For EACH row call appliances_create with confirmed=false (one tool call per row).",
+        "Map: asset tag → asset_tag; item/name → item_name; category (AC, fridge, microwave, etc.); assigned to → assigned_to; serial; purchase date; warranty expiry; status; location; notes.",
+        "Dates are DD/MM/YYYY. Skip headers/blank lines. Do not write to other domains. Do not upload warranty card photos — dashboard only.",
       ].join(" ");
     case "generator-maintenance":
       return [

@@ -1,12 +1,12 @@
 # Kafi Utility Agent (Facility Ops Agent)
 
-Single-site facility operations dashboard and Gemini chat assistant. One Next.js app replaces scattered spreadsheets for kitchen inventory, IT equipment, generator maintenance/fuel, solar specs/monitoring, and utility accounts.
+Single-site facility operations dashboard and Gemini chat assistant. One Next.js app replaces scattered spreadsheets for kitchen inventory, IT equipment, appliances, generator maintenance/fuel, solar specs/monitoring, and utility accounts.
 
 **Stack:** Next.js (App Router) · Supabase (Postgres, Auth, Storage) · Tailwind + shadcn/ui · Google Gemini (tool calling + vision)
 
 ## Features
 
-- **Dashboard CRUD** for all domains (solar supports PDF/Word/image uploads)
+- **Dashboard CRUD** for all domains (solar supports PDF/Word/image uploads; IT and appliances support warranty card photos)
 - **Chat agent** — read/write via the same typed data layer (writes require Confirm)
 - **Photo analysis** — attach multiple images in chat; Gemini extracts specs/logs and proposes writes
 - **Alerts** — low stock, warranty expiry, generator service due, solar alert flags
@@ -19,7 +19,8 @@ Single-site facility operations dashboard and Gemini chat assistant. One Next.js
 | Domain | What’s tracked |
 |--------|----------------|
 | Kitchen inventory | Stock, reorder levels |
-| IT equipment | Assets, status, warranties |
+| IT equipment | Assets, status, warranties, warranty card photo |
+| Appliances | Site appliances, warranties, warranty card photo |
 | Generator | Maintenance schedule + fuel log |
 | Solar | Specs, monitoring logs, file uploads |
 | Utilities | Internet / electricity / gas / water accounts (no passwords) |

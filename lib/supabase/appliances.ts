@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
-  ItEquipment,
-  ItEquipmentInsert,
-  ItEquipmentUpdate,
+  Appliance,
+  ApplianceInsert,
+  ApplianceUpdate,
 } from "@/lib/types/database";
 import {
   incomingShouldOverwrite,
@@ -11,47 +11,47 @@ import {
 import { writeErr, writeOk, type DomainWriteResult } from "@/lib/supabase/write-result";
 import { removeWarrantyCard } from "@/lib/supabase/warranty-storage";
 
-const TABLE = "it_equipment" as const;
+const TABLE = "appliances" as const;
 
-export async function listItEquipment(supabase: SupabaseClient) {
+export async function listAppliances(supabase: SupabaseClient) {
   return supabase
     .from(TABLE)
     .select("*")
     .order("created_at", { ascending: false })
-    .returns<ItEquipment[]>();
+    .returns<Appliance[]>();
 }
 
-export async function getItEquipment(supabase: SupabaseClient, id: string) {
+export async function getAppliance(supabase: SupabaseClient, id: string) {
   return supabase
     .from(TABLE)
     .select("*")
     .eq("id", id)
     .maybeSingle()
-    .returns<ItEquipment>();
+    .returns<Appliance>();
 }
 
-async function findItDuplicate(
+async function findApplianceDuplicate(
   supabase: SupabaseClient,
   assetTag: string,
-): Promise<ItEquipment | null> {
+): Promise<Appliance | null> {
   const key = normalizeKeyPart(assetTag);
   if (!key) return null;
   const { data, error } = await supabase
     .from(TABLE)
     .select("*")
     .ilike("asset_tag", assetTag.trim())
-    .returns<ItEquipment[]>();
+    .returns<Appliance[]>();
   if (error || !data?.length) return null;
   return (
     data.find((r) => normalizeKeyPart(r.asset_tag) === key) ?? data[0] ?? null
   );
 }
 
-export async function createItEquipment(
+export async function createAppliance(
   supabase: SupabaseClient,
-  input: ItEquipmentInsert,
-): Promise<DomainWriteResult<ItEquipment>> {
-  const existing = await findItDuplicate(supabase, input.asset_tag);
+  input: ApplianceInsert,
+): Promise<DomainWriteResult<Appliance>> {
+  const existing = await findApplianceDuplicate(supabase, input.asset_tag);
   if (existing) {
     const overwrite = incomingShouldOverwrite({
       incomingDate: input.purchase_date ?? input.warranty_expiry ?? null,
@@ -66,7 +66,7 @@ export async function createItEquipment(
       .update(input)
       .eq("id", existing.id)
       .select("*")
-      .single<ItEquipment>();
+      .single<Appliance>();
     if (error) return writeErr(error.message);
     return writeOk(data, "updated");
   }
@@ -75,20 +75,20 @@ export async function createItEquipment(
     .from(TABLE)
     .insert(input)
     .select("*")
-    .single<ItEquipment>();
+    .single<Appliance>();
   if (error) return writeErr(error.message);
   return writeOk(data, "created");
 }
 
-export async function updateItEquipment(
+export async function updateAppliance(
   supabase: SupabaseClient,
   id: string,
-  input: ItEquipmentUpdate,
+  input: ApplianceUpdate,
 ) {
   return supabase.from(TABLE).update(input).eq("id", id).select("*").single();
 }
 
-export async function deleteItEquipment(supabase: SupabaseClient, id: string) {
+export async function deleteAppliance(supabase: SupabaseClient, id: string) {
   const { data: existing } = await supabase
     .from(TABLE)
     .select("warranty_card_url")

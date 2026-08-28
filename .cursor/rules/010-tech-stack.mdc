@@ -19,12 +19,14 @@ alwaysApply: true
   /dashboard
     /kitchen-inventory
     /it-equipment
+    /appliances
     /generator
     /solar
     /utilities
   /api
     /kitchen-inventory
     /it-equipment
+    /appliances
     /generator
     /solar
     /utilities

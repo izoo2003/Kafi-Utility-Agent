@@ -170,6 +170,73 @@ export const agentWriteTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "appliances_create",
+    description: "Create a site appliance record. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        asset_tag: { type: SchemaType.STRING },
+        item_name: { type: SchemaType.STRING },
+        category: { type: SchemaType.STRING },
+        assigned_to: { type: SchemaType.STRING },
+        serial_number: { type: SchemaType.STRING },
+        purchase_date: { type: SchemaType.STRING },
+        warranty_expiry: { type: SchemaType.STRING },
+        status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["active", "in_repair", "retired"],
+        },
+        location: { type: SchemaType.STRING },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["asset_tag", "item_name"],
+    },
+  },
+  {
+    name: "appliances_update",
+    description:
+      "Update an appliance by id (or asset_tag_lookup). Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        asset_tag_lookup: {
+          type: SchemaType.STRING,
+          description: "Find row by current asset tag when id unknown",
+        },
+        asset_tag: { type: SchemaType.STRING },
+        item_name: { type: SchemaType.STRING },
+        category: { type: SchemaType.STRING },
+        assigned_to: { type: SchemaType.STRING },
+        serial_number: { type: SchemaType.STRING },
+        purchase_date: { type: SchemaType.STRING },
+        warranty_expiry: { type: SchemaType.STRING },
+        status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["active", "in_repair", "retired"],
+        },
+        location: { type: SchemaType.STRING },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+    },
+  },
+  {
+    name: "appliances_delete",
+    description: "Delete an appliance by id or asset_tag. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        asset_tag: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+    },
+  },
+  {
     name: "generator_maintenance_create",
     description:
       "Create a generator maintenance/checkup/oil-change record. For oil changes set service_type to 'Oil change' and hour_meter to the current hour reading. Oil change is due every 200 running hours. If next_service_due is omitted for regular checkups, defaults to +1 month. Requires confirmation.",

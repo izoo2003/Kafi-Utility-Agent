@@ -3,6 +3,7 @@ export type AlertSeverity = "critical" | "warning" | "info";
 export type AlertDomain =
   | "kitchen"
   | "it"
+  | "appliances"
   | "generator"
   | "solar"
   | "utilities"

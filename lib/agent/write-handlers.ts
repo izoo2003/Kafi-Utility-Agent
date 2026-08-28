@@ -15,6 +15,12 @@ import {
   updateItEquipment,
 } from "@/lib/supabase/it-equipment";
 import {
+  createAppliance,
+  deleteAppliance,
+  getAppliance,
+  updateAppliance,
+} from "@/lib/supabase/appliances";
+import {
   createGeneratorExpense,
   createGeneratorFuelLog,
   createGeneratorMaintenance,
@@ -77,6 +83,7 @@ import { chartOfAccountsSectionMeta } from "@/lib/dashboard/chart-of-accounts-se
 import { nextDueFromLastPaid } from "@/lib/utilities/billing";
 import { formatDate } from "@/lib/format/datetime";
 import type {
+  Appliance,
   ItEquipment,
   KitchenInventory,
   SolarSpecs,
@@ -93,6 +100,8 @@ import {
   idOnlySchema,
   itCreateSchema,
   itUpdateSchema,
+  applianceCreateSchema,
+  applianceUpdateSchemaAgent,
   kitchenCreateSchema,
   kitchenUpdateSchema,
   kitchenAdjustQtySchema,
@@ -393,6 +402,95 @@ export async function executeWriteTool(
       const { error } = await deleteItEquipment(supabase, equipment.id);
       if (error) throw new Error(error.message);
       return { status: "ok", summary, deleted_id: equipment.id };
+    }
+
+    case "appliances_create": {
+      const parsed = applianceCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const payload = parsed.data;
+      const summary = `Create appliance ${payload.asset_tag} ("${payload.item_name}") with status ${payload.status ?? "active"}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { ...payload });
+      }
+      const { data, error, outcome } = await createAppliance(
+        supabase,
+        withUpdatedBy({ ...payload }, user),
+      );
+      if (error) throw new Error(error.message);
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
+    }
+
+    case "appliances_update": {
+      const parsed = applianceUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, asset_tag_lookup, ...fields } = parsed.data;
+      let appliance: Appliance | null = null;
+      if (id) {
+        const res = await getAppliance(supabase, id);
+        if (res.error) throw new Error(res.error.message);
+        appliance = (res.data as Appliance | null) ?? null;
+      } else if (asset_tag_lookup) {
+        const res = await supabase
+          .from("appliances")
+          .select("*")
+          .eq("asset_tag", asset_tag_lookup)
+          .maybeSingle();
+        if (res.error) throw new Error(res.error.message);
+        appliance = (res.data as Appliance | null) ?? null;
+      }
+      if (!appliance) return { error: "Appliance not found" };
+      const patch = stripUndefined(fields as Record<string, unknown>);
+      if (Object.keys(patch).length === 0) {
+        return { error: "Provide at least one field to update" };
+      }
+      const summary = `Update appliance ${appliance.asset_tag} ("${appliance.item_name}"): set ${summarizeFields(patch)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, {
+          id: appliance.id,
+          ...patch,
+        });
+      }
+      const { data, error } = await updateAppliance(
+        supabase,
+        appliance.id,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "appliances_delete": {
+      let appliance: Appliance | null = null;
+      if (typeof input.id === "string" && input.id) {
+        const idParse = idOnlySchema.safeParse(input);
+        if (!idParse.success) return { error: zodErrorMessage(idParse.error) };
+        const res = await getAppliance(supabase, idParse.data.id);
+        if (res.error) throw new Error(res.error.message);
+        appliance = (res.data as Appliance | null) ?? null;
+      } else if (typeof input.asset_tag === "string" && input.asset_tag) {
+        const res = await supabase
+          .from("appliances")
+          .select("*")
+          .eq("asset_tag", input.asset_tag)
+          .maybeSingle();
+        if (res.error) throw new Error(res.error.message);
+        appliance = (res.data as Appliance | null) ?? null;
+      } else {
+        return { error: "Provide id or asset_tag" };
+      }
+      if (!appliance) return { error: "Appliance not found" };
+      const summary = `DELETE appliance ${appliance.asset_tag} ("${appliance.item_name}"). This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id: appliance.id });
+      }
+      const { error } = await deleteAppliance(supabase, appliance.id);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: appliance.id };
     }
 
     case "generator_maintenance_create": {

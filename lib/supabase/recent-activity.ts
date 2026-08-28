@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type RecentActivityItem = {
   id: string;
-  domain: "kitchen" | "it" | "generator" | "solar" | "utilities" | "tenants";
+  domain: "kitchen" | "it" | "appliances" | "generator" | "solar" | "utilities" | "tenants";
   label: string;
   detail: string;
   href: string;
@@ -35,6 +35,7 @@ export async function collectRecentActivity(
   const [
     kitchen,
     it,
+    appliances,
     maintenance,
     fuel,
     solarSpecs,
@@ -50,6 +51,11 @@ export async function collectRecentActivity(
         .limit(8),
       supabase
         .from("it_equipment")
+        .select("id, asset_tag, item_name, status, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(8),
+      supabase
+        .from("appliances")
         .select("id, asset_tag, item_name, status, updated_at")
         .order("updated_at", { ascending: false })
         .limit(8),
@@ -99,6 +105,13 @@ export async function collectRecentActivity(
       label: `${r.asset_tag} · ${r.item_name}`,
       detail: `Status ${r.status}`,
       href: "/dashboard/it-equipment",
+    })),
+    ...pickUpdated(appliances.data as Array<Record<string, unknown>> | null, (r) => ({
+      id: `appliance-${r.id}`,
+      domain: "appliances",
+      label: `${r.asset_tag} · ${r.item_name}`,
+      detail: `Status ${r.status}`,
+      href: "/dashboard/appliances",
     })),
     ...pickUpdated(
       maintenance.data as Array<Record<string, unknown>> | null,

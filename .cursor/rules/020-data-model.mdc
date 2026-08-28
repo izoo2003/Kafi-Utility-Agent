@@ -33,6 +33,13 @@ Derived state: `status = current_qty <= reorder_level ? 'low' : 'ok'` — comput
 - status text (active, in_repair, retired)
 - location text
 - notes text
+- warranty_card_url text (Supabase Storage path — warranty card photo/PDF)
+
+## 2b. Appliances register (`appliances`)
+Same shape as IT equipment (asset tag, name, category, assignment, serial, purchase/warranty dates, status, location, notes) plus:
+- warranty_card_url text (Supabase Storage path — warranty card photo/PDF)
+
+Categories are site appliances (AC, fridge, microwave, etc.). One warranty card file per item. Uploads go to the `warranty-cards` bucket (dashboard only; the chat agent cannot attach files).
 
 ## 3. Generator (`generator_maintenance`, `generator_fuel_log`)
 `generator_maintenance`:

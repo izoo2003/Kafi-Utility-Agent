@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
+  Appliance,
   GeneratorMaintenance,
   GeneratorRunLog,
   ItEquipment,
@@ -66,6 +67,7 @@ export async function collectOpsAlerts(
   const [
     kitchen,
     it,
+    appliances,
     maintenance,
     runs,
     solar,
@@ -78,6 +80,7 @@ export async function collectOpsAlerts(
     await Promise.all([
       supabase.from("kitchen_inventory").select("*"),
       supabase.from("it_equipment").select("*"),
+      supabase.from("appliances").select("*"),
       supabase
         .from("generator_maintenance")
         .select("*")
@@ -181,6 +184,27 @@ export async function collectOpsAlerts(
         ? `${item.item_name} warranty ended on ${item.warranty_expiry}.`
         : `${item.item_name} warranty ends on ${item.warranty_expiry} (${remaining} day${remaining === 1 ? "" : "s"}).`,
       href: "/dashboard/it-equipment",
+    });
+  }
+
+  for (const item of (appliances.data ?? []) as Appliance[]) {
+    if (!item.warranty_expiry) continue;
+    if (item.status === "retired") continue;
+    if (item.warranty_expiry > warrantyHorizon) continue;
+
+    const remaining = daysUntil(item.warranty_expiry);
+    const overdue = item.warranty_expiry < today;
+    alerts.push({
+      id: `appliance-warranty-${item.id}`,
+      domain: "appliances",
+      severity: overdue ? "critical" : "warning",
+      title: overdue
+        ? `Warranty expired: ${item.asset_tag}`
+        : `Warranty expiring: ${item.asset_tag}`,
+      detail: overdue
+        ? `${item.item_name} warranty ended on ${item.warranty_expiry}.`
+        : `${item.item_name} warranty ends on ${item.warranty_expiry} (${remaining} day${remaining === 1 ? "" : "s"}).`,
+      href: "/dashboard/appliances",
     });
   }
 
@@ -479,10 +503,11 @@ export async function collectOpsAlerts(
   const domainRank: Record<OpsAlert["domain"], number> = {
     kitchen: 0,
     it: 1,
-    generator: 2,
-    solar: 3,
-    utilities: 4,
-    tenants: 5,
+    appliances: 2,
+    generator: 3,
+    solar: 4,
+    utilities: 5,
+    tenants: 6,
   };
 
   return alerts.sort((a, b) => {

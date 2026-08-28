@@ -3,6 +3,7 @@ import type { CsvColumn } from "@/lib/export/csv";
 import { listKitchenInventory } from "@/lib/supabase/kitchen-inventory";
 import { kitchenReorderNotice } from "@/lib/kitchen/reorder-statement";
 import { listItEquipment } from "@/lib/supabase/it-equipment";
+import { listAppliances } from "@/lib/supabase/appliances";
 import {
   listGeneratorExpenses,
   listGeneratorFuelLog,
@@ -25,6 +26,7 @@ import type {
   GeneratorFuelLog,
   GeneratorMaintenance,
   ItEquipment,
+  Appliance,
   KitchenInventory,
   SolarMonitoringLog,
   SolarSpecs,
@@ -37,6 +39,7 @@ import type {
 export const EXPORT_RESOURCES = [
   "kitchen-inventory",
   "it-equipment",
+  "appliances",
   "generator-maintenance",
   "generator-fuel",
   "generator-expenses",
@@ -131,6 +134,38 @@ export async function loadExportBundle(
           { key: "location", header: "Location", value: (r) => r.location },
           { key: "purchase_date", header: "Purchase date", value: (r) => r.purchase_date },
           { key: "warranty_expiry", header: "Warranty expiry", value: (r) => r.warranty_expiry },
+          {
+            key: "warranty_card_url",
+            header: "Warranty card",
+            value: (r) => (r.warranty_card_url ? "yes" : ""),
+          },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(data),
+      };
+    }
+    case "appliances": {
+      const { data, error } = await listAppliances(supabase);
+      if (error) throw new Error(error.message);
+      return {
+        title: "Appliances",
+        filename: "appliances",
+        columns: cols<Appliance>([
+          { key: "asset_tag", header: "Asset tag", value: (r) => r.asset_tag },
+          { key: "item_name", header: "Item", value: (r) => r.item_name },
+          { key: "category", header: "Category", value: (r) => r.category },
+          { key: "status", header: "Status", value: (r) => r.status },
+          { key: "assigned_to", header: "Assigned to", value: (r) => r.assigned_to },
+          { key: "serial_number", header: "Serial", value: (r) => r.serial_number },
+          { key: "location", header: "Location", value: (r) => r.location },
+          { key: "purchase_date", header: "Purchase date", value: (r) => r.purchase_date },
+          { key: "warranty_expiry", header: "Warranty expiry", value: (r) => r.warranty_expiry },
+          {
+            key: "warranty_card_url",
+            header: "Warranty card",
+            value: (r) => (r.warranty_card_url ? "yes" : ""),
+          },
           { key: "notes", header: "Notes", value: (r) => r.notes },
           { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
         ]),

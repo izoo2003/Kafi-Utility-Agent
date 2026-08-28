@@ -8,7 +8,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "ops_alerts_list",
     description:
-      "List current site alerts: kitchen out/low/projected-empty stock, IT warranty expiry, generator service due, solar alert flags, utility bills, tenant rent and tenant electricity dues. Use for status summaries.",
+      "List current site alerts: kitchen out/low/projected-empty stock, IT and appliance warranty expiry, generator service due, solar alert flags, utility bills, tenant rent and tenant electricity dues. Use for status summaries.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {},
@@ -88,6 +88,39 @@ const agentReadTools: FunctionDeclaration[] = [
         id: {
           type: SchemaType.STRING,
           description: "Equipment row UUID",
+        },
+        asset_tag: {
+          type: SchemaType.STRING,
+          description: "Unique asset tag",
+        },
+      },
+    },
+  },
+  {
+    name: "appliances_list",
+    description:
+      "List site appliances (asset tag, status, assignment, warranty). warranty_card_url is a storage path when a card photo exists (dashboard upload only).",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        status: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["active", "in_repair", "retired"],
+          description: "Optional status filter",
+        },
+      },
+    },
+  },
+  {
+    name: "appliances_get",
+    description: "Get one appliance record by id or asset_tag.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        id: {
+          type: SchemaType.STRING,
+          description: "Appliance row UUID",
         },
         asset_tag: {
           type: SchemaType.STRING,

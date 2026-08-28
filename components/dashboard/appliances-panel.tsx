@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ItEquipment, ItEquipmentStatus } from "@/lib/types/database";
+import type { Appliance, ApplianceStatus } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
@@ -52,7 +52,7 @@ type FormState = {
   serial_number: string;
   purchase_date: string;
   warranty_expiry: string;
-  status: ItEquipmentStatus;
+  status: ApplianceStatus;
   location: string;
   notes: string;
 };
@@ -70,7 +70,7 @@ const emptyForm = (): FormState => ({
   notes: "",
 });
 
-function toForm(item: ItEquipment): FormState {
+function toForm(item: Appliance): FormState {
   return {
     asset_tag: item.asset_tag,
     item_name: item.item_name,
@@ -100,15 +100,15 @@ function toPayload(form: FormState) {
   };
 }
 
-export function ItEquipmentPanel({
+export function AppliancesPanel({
   initialItems,
 }: {
-  initialItems: ItEquipment[];
+  initialItems: Appliance[];
 }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<ItEquipment | null>(null);
+  const [editing, setEditing] = useState<Appliance | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +125,7 @@ export function ItEquipmentPanel({
     setOpen(true);
   }
 
-  function openEdit(item: ItEquipment) {
+  function openEdit(item: Appliance) {
     setEditing(item);
     setForm(toForm(item));
     setUploadFile(null);
@@ -138,21 +138,21 @@ export function ItEquipmentPanel({
     setError(null);
     try {
       const payload = toPayload(form);
-      let saved: ItEquipment;
+      let saved: Appliance;
       if (editing) {
-        saved = await apiFetch<ItEquipment>(`/api/it-equipment/${editing.id}`, {
+        saved = await apiFetch<Appliance>(`/api/appliances/${editing.id}`, {
           method: "PATCH",
           body: JSON.stringify(payload),
         });
       } else {
-        saved = await apiFetch<ItEquipment>("/api/it-equipment", {
+        saved = await apiFetch<Appliance>("/api/appliances", {
           method: "POST",
           body: JSON.stringify(payload),
         });
       }
       if (uploadFile) {
-        saved = await uploadWarrantyCardFile<ItEquipment>(
-          "it-equipment",
+        saved = await uploadWarrantyCardFile<Appliance>(
+          "appliances",
           saved.id,
           uploadFile,
         );
@@ -173,7 +173,7 @@ export function ItEquipmentPanel({
   }
 
   async function remove(id: string) {
-    await apiFetch(`/api/it-equipment/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/appliances/${id}`, { method: "DELETE" });
     setItems((prev) => prev.filter((i) => i.id !== id));
     router.refresh();
   }
@@ -186,15 +186,15 @@ export function ItEquipmentPanel({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
-          title="IT equipment"
-          description="Asset register for site hardware."
-          icon="it"
-          accent="sky"
+          title="Appliances"
+          description="Site appliances register."
+          icon="appliances"
+          accent="amber"
         />
         <div className="flex shrink-0 flex-col items-stretch gap-2 self-start sm:items-end">
-          <ExportButtons resource="it-equipment" />
-          <ImportFilesButton target="it-equipment" />
-          <Button onClick={openCreate}>Add asset</Button>
+          <ExportButtons resource="appliances" />
+          <ImportFilesButton target="appliances" />
+          <Button onClick={openCreate}>Add appliance</Button>
         </div>
       </div>
 
@@ -219,15 +219,15 @@ export function ItEquipmentPanel({
                   colSpan={8}
                   className="max-w-none py-8 text-center text-muted-foreground"
                 >
-                  No equipment yet. Add your first asset.
+                  No appliances yet. Add your first appliance.
                 </TableCell>
               </TableRow>
             ) : (
               pageRows.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <CellPrimary
-                        title={item.asset_tag}
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <CellPrimary
+                      title={item.asset_tag}
                       subtitle={`${item.item_name}${item.category ? ` · ${item.category}` : ""}`}
                     />
                   </TableCell>
@@ -251,7 +251,7 @@ export function ItEquipmentPanel({
                         variant="link"
                         size="sm"
                         className="h-auto px-0"
-                        onClick={() => openWarrantyCard("it-equipment", item.id)}
+                        onClick={() => openWarrantyCard("appliances", item.id)}
                       >
                         View card
                       </Button>
@@ -291,7 +291,7 @@ export function ItEquipmentPanel({
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Edit asset" : "Add IT asset"}
+              {editing ? "Edit appliance" : "Add appliance"}
             </DialogTitle>
           </DialogHeader>
           <div className="grid max-h-[60vh] gap-3 overflow-y-auto py-1 sm:grid-cols-2">
@@ -315,7 +315,7 @@ export function ItEquipmentPanel({
               <Label htmlFor="category">Category</Label>
               <Input
                 id="category"
-                placeholder="laptop, monitor…"
+                placeholder="AC, fridge, microwave…"
                 value={form.category}
                 onChange={(e) => field("category", e.target.value)}
               />
@@ -327,7 +327,7 @@ export function ItEquipmentPanel({
                 className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
                 value={form.status}
                 onChange={(e) =>
-                  field("status", e.target.value as ItEquipmentStatus)
+                  field("status", e.target.value as ApplianceStatus)
                 }
               >
                 <option value="active">active</option>
@@ -382,7 +382,7 @@ export function ItEquipmentPanel({
               onFileChange={setUploadFile}
               onView={
                 editing?.warranty_card_url
-                  ? () => openWarrantyCard("it-equipment", editing.id)
+                  ? () => openWarrantyCard("appliances", editing.id)
                   : undefined
               }
             />

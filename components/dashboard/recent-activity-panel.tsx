@@ -6,6 +6,7 @@ import { formatDateTime } from "@/lib/format/datetime";
 const domainLabel: Record<RecentActivityItem["domain"], string> = {
   kitchen: "Kitchen",
   it: "IT",
+  appliances: "Appliances",
   generator: "Generator",
   solar: "Solar",
   utilities: "Utilities",

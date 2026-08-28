@@ -6,6 +6,7 @@ import {
   CookingPot,
   Cpu,
   Fuel,
+  Refrigerator,
   SunMedium,
   Wifi,
   Building2,
@@ -24,6 +25,11 @@ const domainMeta = {
     label: "IT",
     icon: Cpu,
     chip: "bg-[oklch(0.93_0.04_230)] text-[oklch(0.42_0.1_240)]",
+  },
+  appliances: {
+    label: "Appliances",
+    icon: Refrigerator,
+    chip: "bg-[oklch(0.94_0.05_85)] text-[oklch(0.45_0.12_60)]",
   },
   generator: {
     label: "Generator",

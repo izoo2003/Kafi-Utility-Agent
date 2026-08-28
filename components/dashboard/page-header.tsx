@@ -14,6 +14,7 @@ export function PageHeader({
     | "chat"
     | "kitchen"
     | "it"
+    | "appliances"
     | "generator"
     | "solar"
     | "utilities"
