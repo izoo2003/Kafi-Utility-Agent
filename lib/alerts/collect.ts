@@ -17,6 +17,7 @@ import {
   findingsToOpsAlerts,
 } from "@/lib/sems/alert-rules";
 import type { OpsAlert } from "@/lib/alerts/types";
+import { applianceSiteHref } from "@/lib/dashboard/appliance-sites";
 import {
   billStatus,
   latestPayment,
@@ -202,9 +203,9 @@ export async function collectOpsAlerts(
         ? `Warranty expired: ${item.asset_tag}`
         : `Warranty expiring: ${item.asset_tag}`,
       detail: overdue
-        ? `${item.item_name} warranty ended on ${item.warranty_expiry}.`
-        : `${item.item_name} warranty ends on ${item.warranty_expiry} (${remaining} day${remaining === 1 ? "" : "s"}).`,
-      href: "/dashboard/appliances",
+        ? `${item.item_name} (${item.site === "gondpass_mill" ? "GondPass Mill" : "Clifton Office"}) warranty ended on ${item.warranty_expiry}.`
+        : `${item.item_name} (${item.site === "gondpass_mill" ? "GondPass Mill" : "Clifton Office"}) warranty ends on ${item.warranty_expiry} (${remaining} day${remaining === 1 ? "" : "s"}).`,
+      href: applianceSiteHref(item.site),
     });
   }
 

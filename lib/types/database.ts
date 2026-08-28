@@ -68,7 +68,10 @@ export type ItEquipment = AuditColumns & {
 
 export type ApplianceStatus = ItEquipmentStatus;
 
+export type ApplianceSite = "clifton_office" | "gondpass_mill";
+
 export type Appliance = AuditColumns & {
+  site: ApplianceSite;
   asset_tag: string;
   item_name: string;
   category: string | null;
@@ -123,6 +126,13 @@ export type GeneratorExpense = AuditColumns & {
   description: string | null;
   debit: number;
   credit: number | null;
+  notes: string | null;
+};
+
+/** Person responsible for generator maintenance. */
+export type GeneratorVendor = AuditColumns & {
+  name: string;
+  phone: string | null;
   notes: string | null;
 };
 
@@ -317,6 +327,7 @@ export type Database = {
         Update: GeneratorRunLogUpdate;
       };
       generator_expenses: { Row: GeneratorExpense; Insert: GeneratorExpenseInsert; Update: GeneratorExpenseUpdate };
+      generator_vendors: { Row: GeneratorVendor; Insert: GeneratorVendorInsert; Update: GeneratorVendorUpdate };
       chart_of_accounts_entries: {
         Row: ChartOfAccountsEntry;
         Insert: ChartOfAccountsEntryInsert;
@@ -371,6 +382,7 @@ export type ItEquipmentUpdate = Partial<OmitAuditOnWrite<ItEquipment>>;
 export type ApplianceInsert = Partial<OmitAuditOnWrite<Appliance>> & {
   asset_tag: string;
   item_name: string;
+  site: ApplianceSite;
 };
 export type ApplianceUpdate = Partial<OmitAuditOnWrite<Appliance>>;
 
@@ -394,6 +406,11 @@ export type GeneratorExpenseInsert = Partial<OmitAuditOnWrite<GeneratorExpense>>
   expense_date: IsoDate;
 };
 export type GeneratorExpenseUpdate = Partial<OmitAuditOnWrite<GeneratorExpense>>;
+
+export type GeneratorVendorInsert = Partial<OmitAuditOnWrite<GeneratorVendor>> & {
+  name: string;
+};
+export type GeneratorVendorUpdate = Partial<OmitAuditOnWrite<GeneratorVendor>>;
 
 export type ChartOfAccountsEntryInsert = Partial<
   OmitAuditOnWrite<ChartOfAccountsEntry>

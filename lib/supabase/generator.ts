@@ -12,6 +12,9 @@ import type {
   GeneratorRunLog,
   GeneratorRunLogInsert,
   GeneratorRunLogUpdate,
+  GeneratorVendor,
+  GeneratorVendorInsert,
+  GeneratorVendorUpdate,
 } from "@/lib/types/database";
 import {
   incomingShouldOverwrite,
@@ -23,6 +26,7 @@ const MAINTENANCE = "generator_maintenance" as const;
 const FUEL = "generator_fuel_log" as const;
 const RUNS = "generator_run_log" as const;
 const EXPENSES = "generator_expenses" as const;
+const VENDORS = "generator_vendors" as const;
 
 export async function listGeneratorMaintenance(supabase: SupabaseClient) {
   return supabase
@@ -291,4 +295,104 @@ export async function deleteGeneratorExpense(
   id: string,
 ) {
   return supabase.from(EXPENSES).delete().eq("id", id);
+}
+
+export async function listGeneratorVendors(supabase: SupabaseClient) {
+  return supabase
+    .from(VENDORS)
+    .select("*")
+    .order("name", { ascending: true })
+    .returns<GeneratorVendor[]>();
+}
+
+export async function getGeneratorVendor(
+  supabase: SupabaseClient,
+  id: string,
+) {
+  const { data, error } = await supabase
+    .from(VENDORS)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return { data: (data as GeneratorVendor | null) ?? null, error };
+}
+
+export async function findGeneratorVendorByName(
+  supabase: SupabaseClient,
+  name: string,
+): Promise<GeneratorVendor | null> {
+  const key = normalizeKeyPart(name);
+  if (!key) return null;
+  const { data, error } = await supabase
+    .from(VENDORS)
+    .select("*")
+    .ilike("name", name.trim())
+    .returns<GeneratorVendor[]>();
+  if (error || !data?.length) {
+    const all = await listGeneratorVendors(supabase);
+    if (all.error || !all.data?.length) return null;
+    return (
+      all.data.find((r) => normalizeKeyPart(r.name) === key) ?? null
+    );
+  }
+  return (
+    data.find((r) => normalizeKeyPart(r.name) === key) ?? data[0] ?? null
+  );
+}
+
+export async function createGeneratorVendor(
+  supabase: SupabaseClient,
+  input: GeneratorVendorInsert,
+): Promise<DomainWriteResult<GeneratorVendor>> {
+  const existing = await findGeneratorVendorByName(supabase, input.name);
+  if (existing) {
+    const { data, error } = await supabase
+      .from(VENDORS)
+      .update(input)
+      .eq("id", existing.id)
+      .select("*")
+      .single<GeneratorVendor>();
+    if (error) return writeErr(error.message);
+    return writeOk(data, "updated");
+  }
+
+  const { data, error } = await supabase
+    .from(VENDORS)
+    .insert(input)
+    .select("*")
+    .single<GeneratorVendor>();
+  if (error) return writeErr(error.message);
+  return writeOk(data, "created");
+}
+
+export async function updateGeneratorVendor(
+  supabase: SupabaseClient,
+  id: string,
+  input: GeneratorVendorUpdate,
+) {
+  return supabase
+    .from(VENDORS)
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .single();
+}
+
+export async function deleteGeneratorVendor(
+  supabase: SupabaseClient,
+  id: string,
+) {
+  return supabase.from(VENDORS).delete().eq("id", id);
+}
+
+export async function getGeneratorRunLog(
+  supabase: SupabaseClient,
+  id: string,
+) {
+  const { data, error } = await supabase
+    .from(RUNS)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return { data: (data as GeneratorRunLog | null) ?? null, error };
 }

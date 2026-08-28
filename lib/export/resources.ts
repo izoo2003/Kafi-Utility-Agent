@@ -8,6 +8,8 @@ import {
   listGeneratorExpenses,
   listGeneratorFuelLog,
   listGeneratorMaintenance,
+  listGeneratorRunLog,
+  listGeneratorVendors,
 } from "@/lib/supabase/generator";
 import {
   listSolarMonitoringLog,
@@ -25,8 +27,11 @@ import type {
   GeneratorExpense,
   GeneratorFuelLog,
   GeneratorMaintenance,
+  GeneratorRunLog,
+  GeneratorVendor,
   ItEquipment,
   Appliance,
+  ApplianceSite,
   KitchenInventory,
   SolarMonitoringLog,
   SolarSpecs,
@@ -40,9 +45,13 @@ export const EXPORT_RESOURCES = [
   "kitchen-inventory",
   "it-equipment",
   "appliances",
+  "appliances-clifton-office",
+  "appliances-gondpass-mill",
   "generator-maintenance",
   "generator-fuel",
   "generator-expenses",
+  "generator-runs",
+  "generator-vendors",
   "solar-specs",
   "solar-monitoring",
   "utilities",
@@ -145,13 +154,28 @@ export async function loadExportBundle(
         rows: asRows(data),
       };
     }
-    case "appliances": {
-      const { data, error } = await listAppliances(supabase);
+    case "appliances":
+    case "appliances-clifton-office":
+    case "appliances-gondpass-mill": {
+      const site: ApplianceSite | null =
+        resource === "appliances-clifton-office"
+          ? "clifton_office"
+          : resource === "appliances-gondpass-mill"
+            ? "gondpass_mill"
+            : null;
+      const { data, error } = await listAppliances(supabase, site);
       if (error) throw new Error(error.message);
+      const title =
+        site === "clifton_office"
+          ? "Appliances — Clifton Office"
+          : site === "gondpass_mill"
+            ? "Appliances — GondPass Mill"
+            : "Appliances";
       return {
-        title: "Appliances",
-        filename: "appliances",
+        title,
+        filename: resource,
         columns: cols<Appliance>([
+          { key: "site", header: "Site", value: (r) => r.site },
           { key: "asset_tag", header: "Asset tag", value: (r) => r.asset_tag },
           { key: "item_name", header: "Item", value: (r) => r.item_name },
           { key: "category", header: "Category", value: (r) => r.category },
@@ -222,6 +246,38 @@ export async function loadExportBundle(
           { key: "running_hours", header: "Running hours", value: (r) => r.running_hours },
           { key: "fuel_level_pct", header: "Fuel %", value: (r) => r.fuel_level_pct },
           { key: "cost", header: "Cost", value: (r) => r.cost },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(data),
+      };
+    }
+    case "generator-runs": {
+      const { data, error } = await listGeneratorRunLog(supabase);
+      if (error) throw new Error(error.message);
+      return {
+        title: "Generator outage / run log",
+        filename: "generator-runs",
+        columns: cols<GeneratorRunLog>([
+          { key: "run_date", header: "Run date", value: (r) => r.run_date },
+          { key: "hours_run", header: "Hours run", value: (r) => r.hours_run },
+          { key: "started_at", header: "Started", value: (r) => r.started_at },
+          { key: "ended_at", header: "Ended", value: (r) => r.ended_at },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(data),
+      };
+    }
+    case "generator-vendors": {
+      const { data, error } = await listGeneratorVendors(supabase);
+      if (error) throw new Error(error.message);
+      return {
+        title: "Generator vendors",
+        filename: "generator-vendors",
+        columns: cols<GeneratorVendor>([
+          { key: "name", header: "Name", value: (r) => r.name },
+          { key: "phone", header: "Phone", value: (r) => r.phone },
           { key: "notes", header: "Notes", value: (r) => r.notes },
           { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
         ]),

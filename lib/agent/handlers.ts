@@ -13,13 +13,18 @@ import {
   listItEquipment,
 } from "@/lib/supabase/it-equipment";
 import {
+  findAppliancesByAssetTag,
   getAppliance,
   listAppliances,
 } from "@/lib/supabase/appliances";
 import {
+  findGeneratorVendorByName,
+  getGeneratorVendor,
   listGeneratorExpenses,
   listGeneratorFuelLog,
   listGeneratorMaintenance,
+  listGeneratorRunLog,
+  listGeneratorVendors,
 } from "@/lib/supabase/generator";
 import { nextDueFromMaintenanceRows } from "@/lib/generator/maintenance";
 import { evaluateSnapshotAlerts } from "@/lib/sems/alert-rules";
@@ -52,6 +57,7 @@ import {
 import { providerByLabel, isActiveSiteUtilityProvider } from "@/lib/utilities/providers";
 import type {
   Appliance,
+  ApplianceSite,
   ItEquipment,
   KitchenInventory,
   Tenant,
@@ -235,7 +241,11 @@ export async function executeAgentTool(
     }
 
     case "appliances_list": {
-      const { data, error } = await listAppliances(supabase);
+      const site =
+        input.site === "clifton_office" || input.site === "gondpass_mill"
+          ? (input.site as ApplianceSite)
+          : null;
+      const { data, error } = await listAppliances(supabase, site);
       if (error) throw new Error(error.message);
       let rows = (data ?? []) as Appliance[];
       if (typeof input.status === "string") {
@@ -251,13 +261,30 @@ export async function executeAgentTool(
         return data ?? { error: "Not found" };
       }
       if (typeof input.asset_tag === "string" && input.asset_tag) {
-        const { data, error } = await supabase
-          .from("appliances")
-          .select("*")
-          .eq("asset_tag", input.asset_tag)
-          .maybeSingle();
-        if (error) throw new Error(error.message);
-        return data ?? { error: "Not found" };
+        const site =
+          input.site === "clifton_office" || input.site === "gondpass_mill"
+            ? (input.site as ApplianceSite)
+            : null;
+        const { data, error } = await findAppliancesByAssetTag(
+          supabase,
+          input.asset_tag,
+          site,
+        );
+        if (error) throw new Error(error);
+        if (data.length === 0) return { error: "Not found" };
+        if (data.length > 1) {
+          return {
+            error:
+              "Multiple appliances match that asset tag. Pass site: clifton_office or gondpass_mill.",
+            matches: data.map((r) => ({
+              id: r.id,
+              site: r.site,
+              asset_tag: r.asset_tag,
+              item_name: r.item_name,
+            })),
+          };
+        }
+        return data[0];
       }
       return { error: "Provide id or asset_tag" };
     }
@@ -299,6 +326,46 @@ export async function executeAgentTool(
         total_debit: totalDebit,
         currency_note: "Sum of debit column (all rows, not just returned)",
       });
+    }
+
+    case "generator_run_log_list": {
+      const limit = clampLimit(input.limit);
+      const { data, error } = await listGeneratorRunLog(supabase);
+      if (error) throw new Error(error.message);
+      return truncatedList(data ?? [], limit);
+    }
+
+    case "generator_vendors_list": {
+      const { data, error } = await listGeneratorVendors(supabase);
+      if (error) throw new Error(error.message);
+      let rows = data ?? [];
+      if (typeof input.name_contains === "string" && input.name_contains.trim()) {
+        const q = normalizeKeyPart(input.name_contains);
+        rows = rows.filter((r) => normalizeKeyPart(r.name).includes(q));
+      }
+      return rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        phone: r.phone,
+        notes: r.notes,
+      }));
+    }
+
+    case "generator_vendors_get": {
+      const id = typeof input.id === "string" ? input.id : "";
+      const name = typeof input.name === "string" ? input.name : "";
+      let row = null;
+      if (id) {
+        const found = await getGeneratorVendor(supabase, id);
+        if (found.error) throw new Error(found.error.message);
+        row = found.data;
+      } else if (name) {
+        row = await findGeneratorVendorByName(supabase, name);
+      } else {
+        return { error: "Provide id or name" };
+      }
+      if (!row) return { error: "Vendor not found" };
+      return row;
     }
 
     case "solar_specs_list": {

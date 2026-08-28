@@ -37,19 +37,29 @@ Derived state: `status = current_qty <= reorder_level ? 'low' : 'ok'` — comput
 
 ## 2b. Appliances register (`appliances`)
 Same shape as IT equipment (asset tag, name, category, assignment, serial, purchase/warranty dates, status, location, notes) plus:
+- site text (`clifton_office` | `gondpass_mill`) — two registers: Clifton Office and GondPass Mill. Unique on (site, asset_tag).
 - warranty_card_url text (Supabase Storage path — warranty card photo/PDF)
 
-Categories are site appliances (AC, fridge, microwave, etc.). One warranty card file per item. Uploads go to the `warranty-cards` bucket (dashboard only; the chat agent cannot attach files).
+Categories are site appliances (AC, fridge, microwave, etc.). One warranty card file per item. Uploads go to the `warranty-cards` bucket (dashboard only; the chat agent cannot attach files). Chat can create/update/delete appliances via `appliances_*` tools and must set `site`.
 
-## 3. Generator (`generator_maintenance`, `generator_fuel_log`)
+## 3. Generator (`generator_maintenance`, `generator_fuel_log`, `generator_run_log`, `generator_expenses`, `generator_vendors`)
+Dashboard subsections: Maintenance, Outage/Generator Runs, Expenses, Fuel, Vendor.
+
 `generator_maintenance`:
 - service_date date
 - next_service_due date (default: service_date + 1 month — monthly checkup cadence)
 - service_type text
-- vendor text
+- vendor text (display name; not a FK — pick from `generator_vendors` or type freely)
 - cost numeric
 - notes text
 - checkup_status text (`done` | `not_done`) — whether this checkup was completed
+
+`generator_run_log` (manual outage runs — not live telemetry):
+- run_date date
+- hours_run numeric
+- started_at timestamptz
+- ended_at timestamptz
+- notes text
 
 `generator_fuel_log`:
 - log_date date
@@ -65,6 +75,11 @@ Categories are site appliances (AC, fridge, microwave, etc.). One warranty card 
 - description text
 - debit numeric (summed for total expense)
 - credit numeric (optional)
+- notes text
+
+`generator_vendors` (people responsible for generator maintenance):
+- name text (unique, case-insensitive)
+- phone text
 - notes text
 
 Site date display/parse convention: DD/MM/YYYY (stored as ISO dates).

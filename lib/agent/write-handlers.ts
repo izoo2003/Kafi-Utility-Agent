@@ -17,6 +17,7 @@ import {
 import {
   createAppliance,
   deleteAppliance,
+  findAppliancesByAssetTag,
   getAppliance,
   updateAppliance,
 } from "@/lib/supabase/appliances";
@@ -24,12 +25,21 @@ import {
   createGeneratorExpense,
   createGeneratorFuelLog,
   createGeneratorMaintenance,
+  createGeneratorRunLog,
+  createGeneratorVendor,
   deleteGeneratorExpense,
   deleteGeneratorFuelLog,
   deleteGeneratorMaintenance,
+  deleteGeneratorRunLog,
+  deleteGeneratorVendor,
+  findGeneratorVendorByName,
+  getGeneratorRunLog,
+  getGeneratorVendor,
   updateGeneratorExpense,
   updateGeneratorFuelLog,
   updateGeneratorMaintenance,
+  updateGeneratorRunLog,
+  updateGeneratorVendor,
 } from "@/lib/supabase/generator";
 import { withDefaultNextServiceDue } from "@/lib/generator/maintenance";
 import { outcomeSummary, type DedupeOutcome } from "@/lib/dashboard/dedupe";
@@ -84,6 +94,7 @@ import { nextDueFromLastPaid } from "@/lib/utilities/billing";
 import { formatDate } from "@/lib/format/datetime";
 import type {
   Appliance,
+  ApplianceSite,
   ItEquipment,
   KitchenInventory,
   SolarSpecs,
@@ -97,6 +108,11 @@ import {
   generatorFuelUpdateSchemaAgent,
   generatorMaintenanceCreateSchema,
   generatorMaintenanceUpdateSchemaAgent,
+  generatorRunLogCreateSchema,
+  generatorRunLogUpdateSchemaAgent,
+  generatorVendorCreateSchema,
+  generatorVendorDeleteSchema,
+  generatorVendorUpdateSchemaAgent,
   idOnlySchema,
   itCreateSchema,
   itUpdateSchema,
@@ -125,6 +141,28 @@ import {
 } from "@/lib/validations/agent-writes";
 
 type Ctx = { supabase: SupabaseClient; user: User };
+
+async function resolveApplianceByTag(
+  supabase: SupabaseClient,
+  assetTag: string,
+  site?: ApplianceSite | null,
+): Promise<{ appliance: Appliance | null; error?: string }> {
+  const { data, error } = await findAppliancesByAssetTag(
+    supabase,
+    assetTag,
+    site,
+  );
+  if (error) throw new Error(error);
+  if (data.length === 0) return { appliance: null };
+  if (data.length > 1) {
+    return {
+      appliance: null,
+      error:
+        "Multiple appliances match that asset tag. Provide site: clifton_office or gondpass_mill.",
+    };
+  }
+  return { appliance: data[0] };
+}
 
 function zodErrorMessage(error: {
   issues: Array<{ path: PropertyKey[]; message: string }>;
@@ -408,7 +446,9 @@ export async function executeWriteTool(
       const parsed = applianceCreateSchema.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
       const payload = parsed.data;
-      const summary = `Create appliance ${payload.asset_tag} ("${payload.item_name}") with status ${payload.status ?? "active"}.`;
+      const siteLabel =
+        payload.site === "gondpass_mill" ? "GondPass Mill" : "Clifton Office";
+      const summary = `Create appliance ${payload.asset_tag} ("${payload.item_name}") at ${siteLabel} with status ${payload.status ?? "active"}.`;
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { ...payload });
       }
@@ -428,27 +468,29 @@ export async function executeWriteTool(
     case "appliances_update": {
       const parsed = applianceUpdateSchemaAgent.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
-      const { id, asset_tag_lookup, ...fields } = parsed.data;
+      const { id, asset_tag_lookup, site_lookup, ...fields } = parsed.data;
       let appliance: Appliance | null = null;
       if (id) {
         const res = await getAppliance(supabase, id);
         if (res.error) throw new Error(res.error.message);
         appliance = (res.data as Appliance | null) ?? null;
       } else if (asset_tag_lookup) {
-        const res = await supabase
-          .from("appliances")
-          .select("*")
-          .eq("asset_tag", asset_tag_lookup)
-          .maybeSingle();
-        if (res.error) throw new Error(res.error.message);
-        appliance = (res.data as Appliance | null) ?? null;
+        const found = await resolveApplianceByTag(
+          supabase,
+          asset_tag_lookup,
+          site_lookup ?? null,
+        );
+        if (found.error) return { error: found.error };
+        appliance = found.appliance;
       }
       if (!appliance) return { error: "Appliance not found" };
       const patch = stripUndefined(fields as Record<string, unknown>);
       if (Object.keys(patch).length === 0) {
         return { error: "Provide at least one field to update" };
       }
-      const summary = `Update appliance ${appliance.asset_tag} ("${appliance.item_name}"): set ${summarizeFields(patch)}.`;
+      const siteLabel =
+        appliance.site === "gondpass_mill" ? "GondPass Mill" : "Clifton Office";
+      const summary = `Update appliance ${appliance.asset_tag} ("${appliance.item_name}") at ${siteLabel}: set ${summarizeFields(patch)}.`;
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, {
           id: appliance.id,
@@ -473,18 +515,24 @@ export async function executeWriteTool(
         if (res.error) throw new Error(res.error.message);
         appliance = (res.data as Appliance | null) ?? null;
       } else if (typeof input.asset_tag === "string" && input.asset_tag) {
-        const res = await supabase
-          .from("appliances")
-          .select("*")
-          .eq("asset_tag", input.asset_tag)
-          .maybeSingle();
-        if (res.error) throw new Error(res.error.message);
-        appliance = (res.data as Appliance | null) ?? null;
+        const site =
+          input.site === "clifton_office" || input.site === "gondpass_mill"
+            ? (input.site as ApplianceSite)
+            : null;
+        const found = await resolveApplianceByTag(
+          supabase,
+          input.asset_tag,
+          site,
+        );
+        if (found.error) return { error: found.error };
+        appliance = found.appliance;
       } else {
         return { error: "Provide id or asset_tag" };
       }
       if (!appliance) return { error: "Appliance not found" };
-      const summary = `DELETE appliance ${appliance.asset_tag} ("${appliance.item_name}"). This cannot be undone.`;
+      const siteLabel =
+        appliance.site === "gondpass_mill" ? "GondPass Mill" : "Clifton Office";
+      const summary = `DELETE appliance ${appliance.asset_tag} ("${appliance.item_name}") at ${siteLabel}. This cannot be undone.`;
       if (!isConfirmed(input)) {
         return needsConfirmation(name, summary, { id: appliance.id });
       }
@@ -685,6 +733,142 @@ export async function executeWriteTool(
       const { error } = await deleteGeneratorExpense(supabase, id);
       if (error) throw new Error(error.message);
       return { status: "ok", summary, deleted_id: id };
+    }
+
+    case "generator_run_log_create": {
+      const parsed = generatorRunLogCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const payload = parsed.data;
+      const summary = `Log generator outage run on ${payload.run_date} for ${payload.hours_run} hours${payload.notes ? ` (${payload.notes})` : ""}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { ...payload });
+      }
+      const { data, error, outcome } = await createGeneratorRunLog(
+        supabase,
+        withUpdatedBy({ ...payload }, user),
+      );
+      if (error) throw new Error(error.message);
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
+    }
+
+    case "generator_run_log_update": {
+      const parsed = generatorRunLogUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, ...fields } = parsed.data;
+      const patch = stripUndefined(fields as Record<string, unknown>);
+      if (Object.keys(patch).length === 0) {
+        return { error: "Provide at least one field to update" };
+      }
+      const existing = await getGeneratorRunLog(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Run log not found" };
+      const summary = `Update generator run ${id} (${existing.data.run_date}): set ${summarizeFields(patch)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id, ...patch });
+      }
+      const { data, error } = await updateGeneratorRunLog(
+        supabase,
+        id,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "generator_run_log_delete": {
+      const parsed = idOnlySchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id } = parsed.data;
+      const existing = await getGeneratorRunLog(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Run log not found" };
+      const summary = `DELETE generator run on ${existing.data.run_date} (${existing.data.hours_run} h). This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id });
+      }
+      const { error } = await deleteGeneratorRunLog(supabase, id);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: id };
+    }
+
+    case "generator_vendors_create": {
+      const parsed = generatorVendorCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const payload = parsed.data;
+      const summary = `Add generator vendor "${payload.name}"${payload.phone ? ` (${payload.phone})` : ""}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { ...payload });
+      }
+      const { data, error, outcome } = await createGeneratorVendor(
+        supabase,
+        withUpdatedBy({ ...payload }, user),
+      );
+      if (error) throw new Error(error.message);
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
+    }
+
+    case "generator_vendors_update": {
+      const parsed = generatorVendorUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, name_lookup, ...fields } = parsed.data;
+      const patch = stripUndefined(fields as Record<string, unknown>);
+      if (Object.keys(patch).length === 0) {
+        return { error: "Provide at least one field to update" };
+      }
+      let vendorId = id;
+      if (!vendorId && name_lookup) {
+        const found = await findGeneratorVendorByName(supabase, name_lookup);
+        vendorId = found?.id;
+      }
+      if (!vendorId) return { error: "Vendor not found" };
+      const existing = await getGeneratorVendor(supabase, vendorId);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Vendor not found" };
+      const summary = `Update generator vendor "${existing.data.name}": set ${summarizeFields(patch)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id: vendorId, ...patch });
+      }
+      const { data, error } = await updateGeneratorVendor(
+        supabase,
+        vendorId,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "generator_vendors_delete": {
+      const parsed = generatorVendorDeleteSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      let vendorId = parsed.data.id;
+      if (!vendorId && parsed.data.name_lookup) {
+        const found = await findGeneratorVendorByName(
+          supabase,
+          parsed.data.name_lookup,
+        );
+        vendorId = found?.id;
+      }
+      if (!vendorId) return { error: "Vendor not found" };
+      const existing = await getGeneratorVendor(supabase, vendorId);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Vendor not found" };
+      const summary = `DELETE generator vendor "${existing.data.name}"${existing.data.phone ? ` (${existing.data.phone})` : ""}. This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id: vendorId });
+      }
+      const { error } = await deleteGeneratorVendor(supabase, vendorId);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: vendorId };
     }
 
     case "solar_specs_create": {

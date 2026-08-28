@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Appliance, ApplianceStatus } from "@/lib/types/database";
+import type { Appliance, ApplianceSite, ApplianceStatus } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
@@ -10,7 +10,9 @@ import {
   openWarrantyCard,
   uploadWarrantyCardFile,
 } from "@/lib/dashboard/warranty-card";
+import { applianceSiteMeta } from "@/lib/dashboard/appliance-sites";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { AppliancesSectionNav } from "@/components/dashboard/appliances-section-nav";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { TablePagination } from "@/components/dashboard/table-pagination";
@@ -85,8 +87,9 @@ function toForm(item: Appliance): FormState {
   };
 }
 
-function toPayload(form: FormState) {
+function toPayload(form: FormState, site: ApplianceSite) {
   return {
+    site,
     asset_tag: form.asset_tag,
     item_name: form.item_name,
     category: form.category,
@@ -101,10 +104,13 @@ function toPayload(form: FormState) {
 }
 
 export function AppliancesPanel({
+  site,
   initialItems,
 }: {
+  site: ApplianceSite;
   initialItems: Appliance[];
 }) {
+  const meta = applianceSiteMeta(site);
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [open, setOpen] = useState(false);
@@ -137,7 +143,7 @@ export function AppliancesPanel({
     setSaving(true);
     setError(null);
     try {
-      const payload = toPayload(form);
+      const payload = toPayload(form, site);
       let saved: Appliance;
       if (editing) {
         saved = await apiFetch<Appliance>(`/api/appliances/${editing.id}`, {
@@ -186,17 +192,19 @@ export function AppliancesPanel({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
-          title="Appliances"
-          description="Site appliances register."
+          title={meta.label}
+          description={`${meta.description}. Warranty card photos are stored with each appliance.`}
           icon="appliances"
           accent="amber"
         />
         <div className="flex shrink-0 flex-col items-stretch gap-2 self-start sm:items-end">
-          <ExportButtons resource="appliances" />
-          <ImportFilesButton target="appliances" />
+          <ExportButtons resource={meta.exportResource} />
+          <ImportFilesButton target={meta.importTarget} />
           <Button onClick={openCreate}>Add appliance</Button>
         </div>
       </div>
+
+      <AppliancesSectionNav active={site} />
 
       <TableShell>
         <Table>
@@ -219,7 +227,7 @@ export function AppliancesPanel({
                   colSpan={8}
                   className="max-w-none py-8 text-center text-muted-foreground"
                 >
-                  No appliances yet. Add your first appliance.
+                  No appliances yet at {meta.label}. Add your first appliance.
                 </TableCell>
               </TableRow>
             ) : (
@@ -291,7 +299,7 @@ export function AppliancesPanel({
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Edit appliance" : "Add appliance"}
+              {editing ? `Edit appliance · ${meta.label}` : `Add appliance · ${meta.label}`}
             </DialogTitle>
           </DialogHeader>
           <div className="grid max-h-[60vh] gap-3 overflow-y-auto py-1 sm:grid-cols-2">

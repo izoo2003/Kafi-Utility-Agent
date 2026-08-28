@@ -2,30 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import {
   listGeneratorMaintenance,
   listGeneratorRunLog,
-  listGeneratorVendors,
 } from "@/lib/supabase/generator";
 import { GeneratorPanel } from "@/components/dashboard/generator-panel";
 import type {
   GeneratorMaintenance,
   GeneratorRunLog,
-  GeneratorVendor,
 } from "@/lib/types/database";
 
-export default async function GeneratorMaintenancePage() {
+export default async function GeneratorRunsPage() {
   const supabase = await createClient();
-  const [maintenance, runs, vendors] = await Promise.all([
-    listGeneratorMaintenance(supabase),
+  const [runs, maintenance] = await Promise.all([
     listGeneratorRunLog(supabase),
-    listGeneratorVendors(supabase),
+    listGeneratorMaintenance(supabase),
   ]);
-
-  if (maintenance.error) {
-    return (
-      <p className="text-sm text-destructive">
-        Failed to load generator maintenance: {maintenance.error.message}
-      </p>
-    );
-  }
 
   if (runs.error) {
     return (
@@ -38,10 +27,9 @@ export default async function GeneratorMaintenancePage() {
 
   return (
     <GeneratorPanel
-      section="maintenance"
-      initialMaintenance={(maintenance.data ?? []) as GeneratorMaintenance[]}
+      section="runs"
       initialRuns={(runs.data ?? []) as GeneratorRunLog[]}
-      initialVendors={(vendors.data ?? []) as GeneratorVendor[]}
+      initialMaintenance={(maintenance.data ?? []) as GeneratorMaintenance[]}
     />
   );
 }

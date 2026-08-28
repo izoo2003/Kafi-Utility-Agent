@@ -2,9 +2,13 @@ export const IMPORT_TARGETS = [
   "kitchen-inventory",
   "it-equipment",
   "appliances",
+  "appliances-clifton-office",
+  "appliances-gondpass-mill",
   "generator-maintenance",
   "generator-fuel",
   "generator-expenses",
+  "generator-runs",
+  "generator-vendors",
   "solar-specs",
   "solar-monitoring",
   "utilities",
@@ -43,13 +47,25 @@ export function importPromptFor(target: ImportTarget): string {
         "Dates are DD/MM/YYYY. Skip headers/blank lines. Do not write to other domains.",
       ].join(" ");
     case "appliances":
+    case "appliances-clifton-office":
+    case "appliances-gondpass-mill": {
+      const site =
+        target === "appliances-gondpass-mill"
+          ? "gondpass_mill (GondPass Mill)"
+          : target === "appliances-clifton-office"
+            ? "clifton_office (Clifton Office)"
+            : "clifton_office or gondpass_mill (required — infer from the document or user wording)";
       return [
-        "IMPORT TARGET: Appliances register ONLY.",
+        target === "appliances"
+          ? "IMPORT TARGET: Appliances register."
+          : `IMPORT TARGET: Appliances register for ${site} ONLY.`,
         "Read every page/photo carefully. Extract EVERY distinct appliance row.",
         "For EACH row call appliances_create with confirmed=false (one tool call per row).",
+        `ALWAYS set site to ${site}.`,
         "Map: asset tag → asset_tag; item/name → item_name; category (AC, fridge, microwave, etc.); assigned to → assigned_to; serial; purchase date; warranty expiry; status; location; notes.",
         "Dates are DD/MM/YYYY. Skip headers/blank lines. Do not write to other domains. Do not upload warranty card photos — dashboard only.",
       ].join(" ");
+    }
     case "generator-maintenance":
       return [
         "IMPORT TARGET: Generator maintenance ONLY.",
@@ -82,6 +98,22 @@ export function importPromptFor(target: ImportTarget): string {
         "Map: date → expense_date (DD/MM/YYYY); Accounts → account; Description → description; Debit → debit; Credit → credit if present.",
         "Skip headers, blank lines, and total-only summary lines. Total expense is sum of debit.",
         "Do not write fuel logs or maintenance.",
+      ].join(" ");
+    case "generator-runs":
+      return [
+        "IMPORT TARGET: Generator outage / run log ONLY.",
+        "Read every page/photo carefully. Extract EVERY distinct generator run / outage row.",
+        "For EACH row call generator_run_log_create with confirmed=false (one tool call per row).",
+        "Map: date → run_date (DD/MM/YYYY); hours / hrs / duration → hours_run; start/end times if present; remarks → notes.",
+        "Skip headers/totals/blank lines. Do not write fuel, expenses, or maintenance.",
+      ].join(" ");
+    case "generator-vendors":
+      return [
+        "IMPORT TARGET: Generator vendors ONLY.",
+        "Extract EVERY distinct vendor/contact row.",
+        "For EACH row call generator_vendors_create with confirmed=false (one tool call per row).",
+        "Map: name → name; phone / mobile / contact → phone; remarks → notes.",
+        "Skip headers/blank lines. Do not write maintenance or other generator logs.",
       ].join(" ");
     case "solar-specs":
       return [

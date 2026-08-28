@@ -42,16 +42,55 @@ export const dashboardNav = [
   {
     href: "/dashboard/appliances",
     label: "Appliances",
-    description: "Site appliances and warranty cards",
+    description: "Clifton Office and GondPass Mill registers",
     icon: "appliances",
     accent: "amber",
+    children: [
+      {
+        href: "/dashboard/appliances",
+        label: "Clifton Office",
+        match: "exact" as const,
+      },
+      {
+        href: "/dashboard/appliances/gondpass-mill",
+        label: "GondPass Mill",
+        match: "prefix" as const,
+      },
+    ],
   },
   {
     href: "/dashboard/generator",
     label: "Generator",
-    description: "Maintenance schedule and fuel log",
+    description: "Maintenance, outage runs, expenses, fuel, and vendors",
     icon: "generator",
     accent: "orange",
+    children: [
+      {
+        href: "/dashboard/generator",
+        label: "Maintenance",
+        match: "exact" as const,
+      },
+      {
+        href: "/dashboard/generator/runs",
+        label: "Outage/Generator Runs",
+        match: "prefix" as const,
+      },
+      {
+        href: "/dashboard/generator/expenses",
+        label: "Expenses",
+        match: "prefix" as const,
+      },
+      {
+        href: "/dashboard/generator/fuel",
+        label: "Fuel",
+        match: "prefix" as const,
+      },
+      {
+        href: "/dashboard/generator/vendors",
+        label: "Vendor",
+        match: "prefix" as const,
+      },
+    ],
   },
   {
     href: "/dashboard/solar",

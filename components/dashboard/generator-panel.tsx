@@ -4,11 +4,15 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
   GeneratorCheckupStatus,
-  GeneratorExpense,
   GeneratorFuelLog,
   GeneratorMaintenance,
   GeneratorRunLog,
+  GeneratorVendor,
 } from "@/lib/types/database";
+import {
+  generatorSectionMeta,
+  type GeneratorSectionValue,
+} from "@/lib/dashboard/generator-sections";
 import {
   defaultNextServiceDue,
   nextDueFromMaintenanceRows,
@@ -29,10 +33,10 @@ import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { GeneratorSectionNav } from "@/components/dashboard/generator-section-nav";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
-import { GeneratorExpensesSection } from "@/components/dashboard/generator-expenses-section";
 import { TablePagination } from "@/components/dashboard/table-pagination";
 import {
   CellText,
@@ -151,20 +155,31 @@ const emptyRun = (): RunForm => ({
 });
 
 export function GeneratorPanel({
-  initialMaintenance,
-  initialFuel,
-  initialExpenses,
-  initialRuns,
+  section,
+  initialMaintenance = [],
+  initialFuel = [],
+  initialRuns = [],
+  initialVendors = [],
 }: {
-  initialMaintenance: GeneratorMaintenance[];
-  initialFuel: GeneratorFuelLog[];
-  initialExpenses: GeneratorExpense[];
-  initialRuns: GeneratorRunLog[];
+  section: Extract<GeneratorSectionValue, "maintenance" | "runs" | "fuel">;
+  initialMaintenance?: GeneratorMaintenance[];
+  initialFuel?: GeneratorFuelLog[];
+  initialRuns?: GeneratorRunLog[];
+  initialVendors?: GeneratorVendor[];
 }) {
   const router = useRouter();
+  const copy = generatorSectionMeta(section);
   const [maintenance, setMaintenance] = useState(initialMaintenance);
   const [fuel, setFuel] = useState(initialFuel);
   const [runs, setRuns] = useState(initialRuns);
+  const vendorNames = useMemo(
+    () =>
+      [...initialVendors]
+        .map((v) => v.name)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })),
+    [initialVendors],
+  );
 
   const [maintOpen, setMaintOpen] = useState(false);
   const [fuelOpen, setFuelOpen] = useState(false);
@@ -407,12 +422,14 @@ export function GeneratorPanel({
   return (
     <div className="space-y-10">
       <PageHeader
-        title="Generator"
-        description="Log each outage run (not live). Oil change every 200 generator hours. Also monthly checkups, expenses, fuel. Dates: DD/MM/YYYY."
+        title={`Generator · ${copy.label}`}
+        description={copy.pageDescription}
         icon="generator"
         accent="orange"
       />
+      <GeneratorSectionNav active={section} />
 
+      {section === "maintenance" ? (
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium">Maintenance</h2>
@@ -650,25 +667,54 @@ export function GeneratorPanel({
           onPageChange={maintPage.setPage}
         />
       </section>
+      ) : null}
 
+      {section === "runs" ? (
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium">Outage / generator runs</h2>
-          <Button
-            onClick={() => {
-              setEditingRun(null);
-              setRunForm(emptyRun());
-              setError(null);
-              setRunOpen(true);
-            }}
-          >
-            Log run
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportButtons resource="generator-runs" />
+            <ImportFilesButton target="generator-runs" />
+            <Button
+              onClick={() => {
+                setEditingRun(null);
+                setRunForm(emptyRun());
+                setError(null);
+                setRunOpen(true);
+              }}
+            >
+              Log run
+            </Button>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           When the lights go out and the generator starts, log how long it ran.
           Those hours add up toward the {OIL_CHANGE_INTERVAL_HOURS} h oil change.
         </p>
+        <div
+          className={cn(
+            "rounded-xl border px-4 py-3 sm:px-5",
+            oilInfo.due
+              ? "border-[oklch(0.82_0.08_25)] bg-[oklch(0.97_0.02_25)]"
+              : "border-[oklch(0.88_0.02_220)] bg-[oklch(0.985_0.01_220)]",
+          )}
+        >
+          <p className="text-sm font-medium text-foreground">
+            {oilInfo.due ? "Oil change needed" : "Oil change (outage hours)"}
+            {" · "}
+            every {OIL_CHANGE_INTERVAL_HOURS} h of generator run time
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Hours since last oil change: {oilInfo.since} h
+            {oilInfo.lastOil
+              ? ` (last oil change ${formatDate(oilInfo.lastOil.service_date)})`
+              : " (no oil change logged yet)"}
+            {!oilInfo.due && oilInfo.remaining != null
+              ? ` · ~${oilInfo.remaining} h remaining`
+              : null}
+          </p>
+        </div>
         <TableShell>
           <Table>
             <TableHeader>
@@ -760,9 +806,9 @@ export function GeneratorPanel({
           onPageChange={runsPage.setPage}
         />
       </section>
+      ) : null}
 
-      <GeneratorExpensesSection initialExpenses={initialExpenses} />
-
+      {section === "fuel" ? (
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg font-medium">Fuel log</h2>
@@ -950,7 +996,9 @@ export function GeneratorPanel({
           onPageChange={fuelPage.setPage}
         />
       </section>
+      ) : null}
 
+      {section === "maintenance" ? (
       <Dialog open={maintOpen} onOpenChange={setMaintOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -1053,11 +1101,18 @@ export function GeneratorPanel({
             <div className="space-y-2">
               <Label>Vendor</Label>
               <Input
+                list="generator-vendor-names"
                 value={maintForm.vendor}
                 onChange={(e) =>
                   setMaintForm((p) => ({ ...p, vendor: e.target.value }))
                 }
+                placeholder="Select or type a name"
               />
+              <datalist id="generator-vendor-names">
+                {vendorNames.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
             </div>
             <div className="space-y-2">
               <Label>Cost</Label>
@@ -1099,7 +1154,9 @@ export function GeneratorPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      ) : null}
 
+      {section === "runs" ? (
       <Dialog open={runOpen} onOpenChange={setRunOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -1193,7 +1250,9 @@ export function GeneratorPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      ) : null}
 
+      {section === "fuel" ? (
       <Dialog open={fuelOpen} onOpenChange={setFuelOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -1292,6 +1351,7 @@ export function GeneratorPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      ) : null}
     </div>
   );
 }

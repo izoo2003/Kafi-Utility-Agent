@@ -9,6 +9,7 @@ import {
 } from "@/lib/validations/it-equipment";
 import {
   applianceInsertSchema,
+  applianceSiteSchema,
   applianceUpdateSchema,
 } from "@/lib/validations/appliances";
 import {
@@ -18,6 +19,10 @@ import {
   generatorFuelLogUpdateSchema,
   generatorMaintenanceInsertSchema,
   generatorMaintenanceUpdateSchema,
+  generatorRunLogInsertSchema,
+  generatorRunLogUpdateSchema,
+  generatorVendorInsertSchema,
+  generatorVendorUpdateSchema,
 } from "@/lib/validations/generator";
 import {
   solarMonitoringLogInsertSchema,
@@ -63,6 +68,12 @@ export const WRITE_TOOL_NAMES = [
   "generator_expense_create",
   "generator_expense_update",
   "generator_expense_delete",
+  "generator_run_log_create",
+  "generator_run_log_update",
+  "generator_run_log_delete",
+  "generator_vendors_create",
+  "generator_vendors_update",
+  "generator_vendors_delete",
   "solar_specs_create",
   "solar_specs_update",
   "solar_specs_delete",
@@ -119,6 +130,7 @@ export const applianceCreateSchema = applianceInsertSchema;
 export const applianceUpdateSchemaAgent = applianceUpdateSchema
   .extend({
     asset_tag_lookup: z.string().trim().min(1).optional(),
+    site_lookup: applianceSiteSchema.optional(),
   })
   .refine((v) => Boolean(v.id || v.asset_tag_lookup), {
     message: "Provide id or asset_tag_lookup to find the row",
@@ -202,6 +214,28 @@ export const generatorFuelUpdateSchemaAgent = z.preprocess(
 export const generatorExpenseCreateSchema = generatorExpenseInsertSchema;
 export const generatorExpenseUpdateSchemaAgent =
   generatorExpenseUpdateSchema.required({ id: true });
+
+export const generatorRunLogCreateSchema = generatorRunLogInsertSchema;
+export const generatorRunLogUpdateSchemaAgent =
+  generatorRunLogUpdateSchema.required({ id: true });
+
+export const generatorVendorCreateSchema = generatorVendorInsertSchema;
+export const generatorVendorUpdateSchemaAgent = generatorVendorUpdateSchema
+  .extend({
+    name_lookup: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => Boolean(v.id || v.name_lookup), {
+    message: "Provide id or name_lookup to find the vendor",
+  });
+
+export const generatorVendorDeleteSchema = z
+  .object({
+    id: z.string().uuid().optional(),
+    name_lookup: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => Boolean(v.id || v.name_lookup), {
+    message: "Provide id or name_lookup to find the vendor",
+  });
 
 /** Chat cannot set/upload spec files — dashboard only */
 export const solarSpecsCreateSchema = solarSpecsInsertSchema.omit({

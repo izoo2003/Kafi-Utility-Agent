@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { applianceSiteHref } from "@/lib/dashboard/appliance-sites";
 
 export type RecentActivityItem = {
   id: string;
@@ -38,6 +39,9 @@ export async function collectRecentActivity(
     appliances,
     maintenance,
     fuel,
+    expenses,
+    runs,
+    vendors,
     solarSpecs,
     solarLog,
     utilities,
@@ -56,7 +60,7 @@ export async function collectRecentActivity(
         .limit(8),
       supabase
         .from("appliances")
-        .select("id, asset_tag, item_name, status, updated_at")
+        .select("id, asset_tag, item_name, status, site, updated_at")
         .order("updated_at", { ascending: false })
         .limit(8),
       supabase
@@ -69,6 +73,21 @@ export async function collectRecentActivity(
         .select("id, log_date, liters_added, updated_at")
         .order("updated_at", { ascending: false })
         .limit(6),
+      supabase
+        .from("generator_expenses")
+        .select("id, expense_date, debit, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(4),
+      supabase
+        .from("generator_run_log")
+        .select("id, run_date, hours_run, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(4),
+      supabase
+        .from("generator_vendors")
+        .select("id, name, phone, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(4),
       supabase
         .from("solar_specs")
         .select("id, panel_capacity_kw, inverter_model, updated_at")
@@ -110,8 +129,10 @@ export async function collectRecentActivity(
       id: `appliance-${r.id}`,
       domain: "appliances",
       label: `${r.asset_tag} · ${r.item_name}`,
-      detail: `Status ${r.status}`,
-      href: "/dashboard/appliances",
+      detail: `Status ${r.status} · ${r.site === "gondpass_mill" ? "GondPass Mill" : "Clifton Office"}`,
+      href: applianceSiteHref(
+        r.site === "gondpass_mill" ? "gondpass_mill" : "clifton_office",
+      ),
     })),
     ...pickUpdated(
       maintenance.data as Array<Record<string, unknown>> | null,
@@ -128,8 +149,35 @@ export async function collectRecentActivity(
       domain: "generator",
       label: "Generator fuel log",
       detail: `${r.log_date}${r.liters_added != null ? ` · ${r.liters_added} L` : ""}`,
-      href: "/dashboard/generator",
+      href: "/dashboard/generator/fuel",
     })),
+    ...pickUpdated(
+      expenses.data as Array<Record<string, unknown>> | null,
+      (r) => ({
+        id: `gen-e-${r.id}`,
+        domain: "generator",
+        label: "Generator expense",
+        detail: `${r.expense_date}${r.debit != null ? ` · debit ${r.debit}` : ""}`,
+        href: "/dashboard/generator/expenses",
+      }),
+    ),
+    ...pickUpdated(runs.data as Array<Record<string, unknown>> | null, (r) => ({
+      id: `gen-r-${r.id}`,
+      domain: "generator",
+      label: "Generator run",
+      detail: `${r.run_date}${r.hours_run != null ? ` · ${r.hours_run} h` : ""}`,
+      href: "/dashboard/generator/runs",
+    })),
+    ...pickUpdated(
+      vendors.data as Array<Record<string, unknown>> | null,
+      (r) => ({
+        id: `gen-v-${r.id}`,
+        domain: "generator",
+        label: "Generator vendor",
+        detail: `${r.name}${r.phone ? ` · ${r.phone}` : ""}`,
+        href: "/dashboard/generator/vendors",
+      }),
+    ),
     ...pickUpdated(
       solarSpecs.data as Array<Record<string, unknown>> | null,
       (r) => ({

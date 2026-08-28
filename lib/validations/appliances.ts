@@ -7,7 +7,13 @@ export const applianceStatusSchema = z.enum([
   "retired",
 ]);
 
+export const applianceSiteSchema = z.enum([
+  "clifton_office",
+  "gondpass_mill",
+]);
+
 export const applianceInsertSchema = z.object({
+  site: applianceSiteSchema,
   asset_tag: z.string().trim().min(1, "Asset tag is required"),
   item_name: z.string().trim().min(1, "Item name is required"),
   category: optionalText,

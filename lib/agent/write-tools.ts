@@ -171,10 +171,18 @@ export const agentWriteTools: FunctionDeclaration[] = [
   },
   {
     name: "appliances_create",
-    description: "Create a site appliance record. Requires confirmation.",
+    description:
+      "Create an appliance at Clifton Office or GondPass Mill. Requires site and confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
+        site: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["clifton_office", "gondpass_mill"],
+          description:
+            "clifton_office = Clifton Office; gondpass_mill = GondPass Mill",
+        },
         asset_tag: { type: SchemaType.STRING },
         item_name: { type: SchemaType.STRING },
         category: { type: SchemaType.STRING },
@@ -191,13 +199,13 @@ export const agentWriteTools: FunctionDeclaration[] = [
         notes: { type: SchemaType.STRING },
         ...confirmedProperty,
       },
-      required: ["asset_tag", "item_name"],
+      required: ["site", "asset_tag", "item_name"],
     },
   },
   {
     name: "appliances_update",
     description:
-      "Update an appliance by id (or asset_tag_lookup). Requires confirmation.",
+      "Update an appliance by id (or asset_tag_lookup + site_lookup). Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -205,6 +213,18 @@ export const agentWriteTools: FunctionDeclaration[] = [
         asset_tag_lookup: {
           type: SchemaType.STRING,
           description: "Find row by current asset tag when id unknown",
+        },
+        site_lookup: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["clifton_office", "gondpass_mill"],
+          description: "Site to search when using asset_tag_lookup",
+        },
+        site: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["clifton_office", "gondpass_mill"],
+          description: "Move the appliance to this site",
         },
         asset_tag: { type: SchemaType.STRING },
         item_name: { type: SchemaType.STRING },
@@ -226,12 +246,18 @@ export const agentWriteTools: FunctionDeclaration[] = [
   },
   {
     name: "appliances_delete",
-    description: "Delete an appliance by id or asset_tag. Requires confirmation.",
+    description:
+      "Delete an appliance by id or asset_tag (pass site if the tag exists at both locations). Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         ...idProp,
         asset_tag: { type: SchemaType.STRING },
+        site: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["clifton_office", "gondpass_mill"],
+        },
         ...confirmedProperty,
       },
     },
@@ -423,6 +449,103 @@ export const agentWriteTools: FunctionDeclaration[] = [
       type: SchemaType.OBJECT,
       properties: { ...idProp, ...confirmedProperty },
       required: ["id"],
+    },
+  },
+  {
+    name: "generator_run_log_create",
+    description:
+      "Log a generator outage run (not live telemetry). hours_run is required; started_at/ended_at optional. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        run_date: {
+          type: SchemaType.STRING,
+          description: "YYYY-MM-DD or DD/MM/YYYY",
+        },
+        hours_run: {
+          type: SchemaType.NUMBER,
+          description: "Hours the generator ran during this outage",
+        },
+        started_at: { type: SchemaType.STRING },
+        ended_at: { type: SchemaType.STRING },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["run_date", "hours_run"],
+    },
+  },
+  {
+    name: "generator_run_log_update",
+    description:
+      "Update a generator outage run log (hours_run, times, notes). Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        run_date: { type: SchemaType.STRING },
+        hours_run: { type: SchemaType.NUMBER },
+        started_at: { type: SchemaType.STRING },
+        ended_at: { type: SchemaType.STRING },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "generator_run_log_delete",
+    description: "Delete a generator outage run log. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: { ...idProp, ...confirmedProperty },
+      required: ["id"],
+    },
+  },
+  {
+    name: "generator_vendors_create",
+    description:
+      "Add a generator maintenance vendor (name, phone, notes). Matching names update the existing vendor. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        name: { type: SchemaType.STRING },
+        phone: { type: SchemaType.STRING },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "generator_vendors_update",
+    description:
+      "Update a generator vendor by id or name_lookup (name, phone, notes). Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        name_lookup: {
+          type: SchemaType.STRING,
+          description: "Find vendor by current name when id unknown",
+        },
+        name: { type: SchemaType.STRING },
+        phone: { type: SchemaType.STRING },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+    },
+  },
+  {
+    name: "generator_vendors_delete",
+    description:
+      "Delete a generator vendor by id or name_lookup. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        name_lookup: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
     },
   },
   {

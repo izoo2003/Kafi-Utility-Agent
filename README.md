@@ -20,7 +20,7 @@ Single-site facility operations dashboard and Gemini chat assistant. One Next.js
 |--------|----------------|
 | Kitchen inventory | Stock, reorder levels |
 | IT equipment | Assets, status, warranties, warranty card photo |
-| Appliances | Site appliances, warranties, warranty card photo |
+| Appliances | Clifton Office and GondPass Mill registers, warranties, warranty card photo |
 | Generator | Maintenance schedule + fuel log |
 | Solar | Specs, monitoring logs, file uploads |
 | Utilities | Internet / electricity / gas / water accounts (no passwords) |

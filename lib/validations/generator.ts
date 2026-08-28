@@ -80,3 +80,15 @@ export const generatorExpenseUpdateSchema = generatorExpenseInsertSchema
   .extend({
     id: z.string().uuid().optional(),
   });
+
+export const generatorVendorInsertSchema = z.object({
+  name: z.string().trim().min(1, "Vendor name is required"),
+  phone: optionalText,
+  notes: optionalText,
+});
+
+export const generatorVendorUpdateSchema = generatorVendorInsertSchema
+  .partial()
+  .extend({
+    id: z.string().uuid().optional(),
+  });

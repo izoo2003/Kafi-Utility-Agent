@@ -99,10 +99,17 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "appliances_list",
     description:
-      "List site appliances (asset tag, status, assignment, warranty). warranty_card_url is a storage path when a card photo exists (dashboard upload only).",
+      "List appliances at Clifton Office (clifton_office) and/or GondPass Mill (gondpass_mill). Filter by site. warranty_card_url is a storage path when a card photo exists (dashboard upload only).",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
+        site: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["clifton_office", "gondpass_mill"],
+          description:
+            "Required when asking about one location. Clifton Office → clifton_office; GondPass Mill → gondpass_mill.",
+        },
         status: {
           type: SchemaType.STRING,
           format: "enum",
@@ -114,7 +121,8 @@ const agentReadTools: FunctionDeclaration[] = [
   },
   {
     name: "appliances_get",
-    description: "Get one appliance record by id or asset_tag.",
+    description:
+      "Get one appliance by id, or by asset_tag (pass site when the tag might exist at both locations).",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -124,7 +132,13 @@ const agentReadTools: FunctionDeclaration[] = [
         },
         asset_tag: {
           type: SchemaType.STRING,
-          description: "Unique asset tag",
+          description: "Asset tag",
+        },
+        site: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: ["clifton_office", "gondpass_mill"],
+          description: "clifton_office (Clifton Office) or gondpass_mill (GondPass Mill)",
         },
       },
     },
@@ -166,6 +180,48 @@ const agentReadTools: FunctionDeclaration[] = [
         limit: {
           type: SchemaType.NUMBER,
           description: "Max rows to return (default 50)",
+        },
+      },
+    },
+  },
+  {
+    name: "generator_run_log_list",
+    description:
+      "List generator outage/run log entries (manual, not live), newest first. Hours from these runs add up toward the 200 h oil change.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        limit: {
+          type: SchemaType.NUMBER,
+          description: "Max rows to return (default 40, max 200).",
+        },
+      },
+    },
+  },
+  {
+    name: "generator_vendors_list",
+    description:
+      "List people responsible for generator maintenance (name, phone, notes). Call before assigning a vendor on a maintenance record.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        name_contains: {
+          type: SchemaType.STRING,
+          description: "Optional case-insensitive name filter",
+        },
+      },
+    },
+  },
+  {
+    name: "generator_vendors_get",
+    description: "Get one generator vendor by id or name.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        id: { type: SchemaType.STRING, description: "Vendor UUID" },
+        name: {
+          type: SchemaType.STRING,
+          description: "Exact or close vendor name",
         },
       },
     },
