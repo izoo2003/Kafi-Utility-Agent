@@ -111,6 +111,36 @@ export const dashboardNav = [
       },
     ],
   },
+  {
+    href: "/dashboard/chart-of-accounts",
+    label: "Chart of Accounts",
+    description:
+      "Solar Panel Clifton, E.O.B.I, K-Electric Gondpass, KWSB Clifton ledgers",
+    icon: "accounts",
+    accent: "amber",
+    children: [
+      {
+        href: "/dashboard/chart-of-accounts",
+        label: "Solar Panel Clifton Office",
+        match: "exact" as const,
+      },
+      {
+        href: "/dashboard/chart-of-accounts/eobi",
+        label: "E.O.B.I",
+        match: "prefix" as const,
+      },
+      {
+        href: "/dashboard/chart-of-accounts/k-electric-gondpass",
+        label: "K-Electric Gondpass",
+        match: "prefix" as const,
+      },
+      {
+        href: "/dashboard/chart-of-accounts/kwsb-clifton",
+        label: "KWSB Clifton Office",
+        match: "prefix" as const,
+      },
+    ],
+  },
 ] as const;
 
 export type DashboardNavItem = (typeof dashboardNav)[number];

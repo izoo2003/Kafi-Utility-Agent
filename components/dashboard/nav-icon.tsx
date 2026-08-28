@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Building2,
   ChefHat,
   Home,
@@ -21,6 +22,7 @@ const icons = {
   solar: SunMedium,
   utilities: PlugZap,
   tenants: Building2,
+  accounts: BookOpen,
 } as const;
 
 /** Soft rounded tiles — matches Domains card icons on the home screen. */

@@ -67,6 +67,13 @@ import {
   updateTenantElectricBill,
   updateTenantRentLog,
 } from "@/lib/supabase/tenants";
+import {
+  createChartOfAccountsEntry,
+  deleteChartOfAccountsEntry,
+  getChartOfAccountsEntry,
+  updateChartOfAccountsEntry,
+} from "@/lib/supabase/chart-of-accounts";
+import { chartOfAccountsSectionMeta } from "@/lib/dashboard/chart-of-accounts-sections";
 import { nextDueFromLastPaid } from "@/lib/utilities/billing";
 import { formatDate } from "@/lib/format/datetime";
 import type {
@@ -103,6 +110,8 @@ import {
   utilityCreateSchema,
   utilityPaymentCreateSchema,
   utilityUpdateSchemaAgent,
+  chartOfAccountsEntryCreateSchema,
+  chartOfAccountsEntryUpdateSchemaAgent,
   type WriteToolName,
 } from "@/lib/validations/agent-writes";
 
@@ -1062,6 +1071,70 @@ export async function executeWriteTool(
         return needsConfirmation(name, summary, { id });
       }
       const { error } = await deleteTenantElectricBill(supabase, id);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: id };
+    }
+
+    case "chart_of_accounts_entry_create": {
+      const parsed = chartOfAccountsEntryCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const payload = parsed.data;
+      const label = chartOfAccountsSectionMeta(payload.ledger).label;
+      const summary = `Create ${label} ledger entry on ${payload.entry_date}${payload.ref_no ? ` (${payload.ref_no})` : ""}${payload.account_description ? ` — ${payload.account_description}` : ""}${payload.document_no ? `: ${payload.document_no}` : ""}, debit ${payload.debit}, credit ${payload.credit}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { ...payload });
+      }
+      const { data, error, outcome } = await createChartOfAccountsEntry(
+        supabase,
+        withUpdatedBy({ ...payload }, user),
+      );
+      if (error) throw new Error(error.message);
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
+    }
+
+    case "chart_of_accounts_entry_update": {
+      const parsed = chartOfAccountsEntryUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, ...fields } = parsed.data;
+      const patch = stripUndefined(fields as Record<string, unknown>);
+      if (Object.keys(patch).length === 0) {
+        return { error: "Provide at least one field to update" };
+      }
+      const existing = await getChartOfAccountsEntry(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Ledger entry not found" };
+      const label = chartOfAccountsSectionMeta(existing.data.ledger).label;
+      const summary = `Update ${label} entry ${id} (${existing.data.entry_date}): set ${summarizeFields(patch)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id, ...patch });
+      }
+      const { data, error } = await updateChartOfAccountsEntry(
+        supabase,
+        id,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "chart_of_accounts_entry_delete": {
+      const parsed = idOnlySchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id } = parsed.data;
+      const existing = await getChartOfAccountsEntry(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Ledger entry not found" };
+      const label = chartOfAccountsSectionMeta(existing.data.ledger).label;
+      const summary = `DELETE ${label} entry on ${existing.data.entry_date}${existing.data.ref_no ? ` (${existing.data.ref_no})` : ""} debit ${existing.data.debit} / credit ${existing.data.credit}. This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id });
+      }
+      const { error } = await deleteChartOfAccountsEntry(supabase, id);
       if (error) throw new Error(error.message);
       return { status: "ok", summary, deleted_id: id };
     }

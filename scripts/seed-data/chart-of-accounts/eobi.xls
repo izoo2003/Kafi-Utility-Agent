@@ -1,0 +1,1279 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Ledger</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table><style>
+	@page  {
+		margin-top: 10mm;
+		margin-bottom: 10mm;
+		margin-left: 15mm;
+		margin-right: 15mm;
+		size:   A4 portrait;
+	} 
+	@media  print{
+		.page-break {
+            page-break-after: always;
+            display: block; 
+        }
+		/* .page-number {
+			position: fixed;
+			bottom: 0;
+			right: 0;
+			font-size: 8px;
+		} */
+		.no-print { display: none !important; }
+		h2 { font-size: 12px; }
+		h4 { font-size: 12px; }
+		p { font-size: 10px; }
+		.tablebordered th,.tablebordered td {
+			font-size: 8px !important;
+			border: 1px solid black !important;
+			border-collapse: collapse !important;
+			padding: 2px !important;
+		}
+		table td a{
+			font-size: 8px !important;
+		}
+		#account_book tr td {
+			border: none !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		#account_book tr th {
+			border:  1px solid #000 !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		.footer_table tr td{
+			font-size: 8px !important;
+			padding: 2px !important; 
+		}
+		.myborder0{
+			border-top: 1px solid #000 !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		.myborder{
+			border-top: 1px solid #000 !important;
+			border-bottom-style: double !important;
+		}
+	}
+	.bg-color{
+        background-color: #d9d9d9 !important;
+    }
+	.financial-period{
+		font-size: 14px !important;
+		padding: 0px !important;
+		text-align: center !important;
+	}
+	.financial-period table tr td{
+		padding: 5px;
+	}
+	.myheader {
+        margin-bottom: 10px;
+    }
+	.margin-bottom-20{
+		display: none;
+	} 
+</style><style class="darkreader darkreader--sync" media="screen"></style>
+
+        
+	<div class="page">
+
+		<div class="row myheader">
+		    <div class="col-xs-12">
+    	        <div class="d-flex" style="display: flex; justify-content: space-between; font-size: 8px;">
+        			<span class="pull-left ">27-08-2026 05:07 PM</span>
+        			<span class="text-center">Print By: syed moiz</span>
+        			<span class="pull-right page-number">Page 1 Of 1</span>
+        		</div>
+    	    </div>
+			<div class="col-md-8 col-xs-8" style="text-align: left">
+				<div style="display: flex;">
+					<div class="header_logo">
+						<img src="/uploads/business_logos/1720520063_Logo-KAFI.png" width="80" height="80" alt="Logo">
+					</div>
+					<div class="header_name">
+						<h4><b>Kafi Commodities (PVT.) LimITED</b></h4>
+						<h4>KAFI COMMODITIES (PVT.) LIMITED</h4>
+					</div>
+				</div>
+				
+				<p style="line-height: 25px">Account Name: <span><b>E-O-B-I (Due Date 15,)</b></span></p>
+				<p style="line-height: 25px">Account Type: 	<span class="account_type"> EXPENSES -  ADMINISTRATOR EXPENSE</span></p>
+				<p style="line-height: 25px">Account Number: 	<span>5040008</span></p>
+				<p style="line-height: 25px" class="header_balance">Balance: 		<span class="account_balance">Dr: 9,600.00</span></p>
+			</div>
+			<div class="col-md-4 col-xs-4 date_div" style="padding-top: 50px; padding-right: 20px;">
+				<h4><b>ACCOUNTS LEDGER</b></h4>
+				<h6>STATEMENT REPORTING PERIOD</h6>
+				<div class="border financial-period">
+					<table class="tablebordered" style="border: 1px solid rgb(0, 0, 0); width: 100%; --darkreader-inline-border-top: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-right: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-bottom: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-left: var(--darkreader-border-000000, #a39784);" data-darkreader-inline-border-top="" data-darkreader-inline-border-right="" data-darkreader-inline-border-bottom="" data-darkreader-inline-border-left="">
+						<tbody>
+							<tr class="bg-color" style="border-bottom: 1px solid rgb(191, 191, 191); --darkreader-inline-border-bottom: var(--darkreader-border-bfbfbf, #495153);" data-darkreader-inline-border-bottom="">
+								<td><span>Starting Date</span></td>
+								<td></td>
+								<td><span>Ending Date</span></td>
+							</tr>
+							<tr class="bg-color">
+								<td><span id="starting_date">2024-07-01</span></td>
+								<td><span>to</span></td>
+								<td><span id="ending_date">2026-08-27</span></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<table class="table table-bordered tablebordered table-striped" id="account_book" style="margin-bottom: 6px !important; margin-top: 6px !important;">
+			<thead>
+				<tr>
+					<th class="text-center">Date</th>
+					<th class="text-center">Ref No</th>
+					<th class="text-center" colspan="2">Accounts / Description</th>
+					
+					<th class="text-center">Document #</th>
+					<th class="text-center" width="10%">Debit</th>
+					<th class="text-center" width="10%">Credit</th>
+					<th class="text-center" width="10%">Balance</th> 
+					<th class="no-print">Action</th>
+				</tr>
+			</thead>
+			<tbody>
+															<tr>
+								<td>01-07-2026</td>
+								<td></td>
+								<td></td>
+								<td>Opening Balance</td>
+								<td></td>
+								<td id="opening_debit" class="text-right">0.00</td>
+								<td id="opening_credit" class="text-right">0.00</td>
+								<td class="text-right">0.00</td>
+								<td class="no-print"></td>
+							</tr>
+													
+													<tr>
+					<td>05-07-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-25" data-id="435" data-refno="CPV-25">CPV-25</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay to eobi contribution voucher # 1002051202 m/o june-2024 for 4 persons
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						7,680.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						7,680.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="435" data-refno="CPV-25">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>06-08-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-217" data-id="1535" data-refno="CPV-217">CPV-217</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay e-o-b-i contribution payment voucher # 1002091260 for m/o july-24
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						16,560.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="1535" data-refno="CPV-217">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>05-09-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-381" data-id="2605" data-refno="CPV-381">CPV-381</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY E-O-B-I CONTRIBUTION AGST VOUCHER # 1002126186 FOR M/O AUG-24 FOR 4 PERSONS
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						25,440.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="2605" data-refno="CPV-381">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>04-10-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-548" data-id="3748" data-refno="CPV-548">CPV-548</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay eobi contribution payment for m/o sep-24 voucher # 1002170388 due date : 15-10-2024
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						34,320.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="3748" data-refno="CPV-548">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>11-11-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-794" data-id="5090" data-refno="CPV-794">CPV-794</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay to e-o-b-i for oct-24 voucher # 1002208037 for 4 persn have due date : 15-11-2024
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						43,200.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="5090" data-refno="CPV-794">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>12-12-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-941" data-id="6136" data-refno="CPV-941">CPV-941</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay eobi for m/o nov-2024 agst voucher # 1002248438  employee reg no #  aaa04064
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						52,080.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="6136" data-refno="CPV-941">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>13-01-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1072" data-id="7153" data-refno="CPV-1072">CPV-1072</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay to eobi contribution for m/o dec-24 voucher # 1002289223 for 4 person
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						60,960.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="7153" data-refno="CPV-1072">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>12-02-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1197" data-id="7857" data-refno="CPV-1197">CPV-1197</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay eobi contribution payment voucher # 1002330580 for m/o jan-2025 for 4 person
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						69,840.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="7857" data-refno="CPV-1197">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>10-03-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1285" data-id="8627" data-refno="CPV-1285">CPV-1285</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay e-o-b-i contribution for m/o feb-2025 voucher # 1002371333 for 4 persons
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						78,720.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="8627" data-refno="CPV-1285">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>10-04-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1432" data-id="9526" data-refno="CPV-1432">CPV-1432</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY E-O-B-I CONTRIBUTION PAYMENT AGST VOUCHER # 1002412926 FOR THE MONTH OF MAR-25
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						87,600.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="9526" data-refno="CPV-1432">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>14-05-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1585" data-id="10786" data-refno="CPV-1585">CPV-1585</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY EOBI FOR M/O APRIL-2025 VOUCHER # 1002456804 DUE DATED : 15-05-2025 FOR 4 PEROSN
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						96,480.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="10786" data-refno="CPV-1585">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>12-06-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1726" data-id="11636" data-refno="CPV-1726">CPV-1726</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY EOBI FOR M/O MAY-2025 VOUCHER # 1002498566 DUE DATED : 16-06-25 FOR 4 PEROSN
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						105,360.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="11636" data-refno="CPV-1726">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>30-06-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-491" data-id="12461" data-refno="J-491">J-491</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						expense and revenue summary 2024-2025						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Close the Account for Tax Year - 2024-2025 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						105,360.00
+					</td>
+					<td class="text-right">
+						0.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="12461" data-refno="J-491">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>14-07-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1847" data-id="12922" data-refno="CPV-1847">CPV-1847</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY EOBI FOR M/O JUNE-2025 AGAINST VOUCHER # 1002546021
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						8,880.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="12922" data-refno="CPV-1847">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>15-08-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1994" data-id="13675" data-refno="CPV-1994">CPV-1994</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay e.o.b.i agst voucher # 1002586822 for m/o july-25
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						17,760.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="13675" data-refno="CPV-1994">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>15-09-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2141" data-id="14921" data-refno="CPV-2141">CPV-2141</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY EOBI AGAINST VOUCHER # 1002630667 FOR M/O AUG-2025
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td>VOUCHER # 1002630667</td>
+					<td class="text-right">
+						11,100.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						28,860.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="14921" data-refno="CPV-2141">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>03-10-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2218" data-id="15195" data-refno="CPV-2218">CPV-2218</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        "	PAY EOBI FOR M/O SEP-2025 VOUCHER # 1002674202 DUE DATED : 15-10-25 FOR 4 PEROSN"
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,880.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						37,740.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="15195" data-refno="CPV-2218">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>13-11-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2437" data-id="16154" data-refno="CPV-2437">CPV-2437</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY EOBI FOR M/O OCT-2025 VOUCHER # 1002716592 DUE DATED : 15-11-25 FOR 3 PEROSN
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						7,200.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						44,940.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="16154" data-refno="CPV-2437">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>03-12-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2518" data-id="16632" data-refno="CPV-2518">CPV-2518</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY EOBI FOR M/O NOV-2025 VOUCHER # 1002758557 DUE DATED : 15-02-2025 FOR 3 PEROSN
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td>VOUCHER # 1002758557</td>
+					<td class="text-right">
+						7,200.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						52,140.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="16632" data-refno="CPV-2518">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>07-01-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2681" data-id="17391" data-refno="CPV-2681">CPV-2681</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY EOBI FOR M/O DEC-2025 VOUCHER # 1002803733 DUE DATED : 15-01-2025 FOR 2 PEROSN
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						4,800.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						56,940.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="17391" data-refno="CPV-2681">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>11-02-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2837" data-id="18240" data-refno="CPV-2837">CPV-2837</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY EOBI FOR M/O JAN-2026 VOUCER # 1002847805 DUE DATE : 16-02-26 FOR 2 PERSONS
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						4,896.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						61,836.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="18240" data-refno="CPV-2837">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>18-03-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2978" data-id="18867" data-refno="CPV-2978">CPV-2978</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY TO EOBI AGAINST VOUCHER # 1002890445 2 PERSON
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						4,896.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						66,732.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="18867" data-refno="CPV-2978">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>15-04-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-3124" data-id="19509" data-refno="CPV-3124">CPV-3124</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY TO EOBI AGAINST VOUCHER # 1002936025 2 PERSON
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						4,800.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						71,532.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="19509" data-refno="CPV-3124">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>13-05-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-3278" data-id="20435" data-refno="CPV-3278">CPV-3278</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY TO EOBI AGAINST VOUCHER # 1002978957 2 PERSON FOR M/O APRIL-2026
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						4,800.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						76,332.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="20435" data-refno="CPV-3278">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>09-06-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-3368" data-id="21588" data-refno="CPV-3368">CPV-3368</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY TO EOBI AGAINST VOUCHER # 1003019576 2 PERSON FOR M/O MAY-2026
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						4,800.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						81,132.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="21588" data-refno="CPV-3368">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>30-06-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-1198" data-id="22513" data-refno="J-1198">J-1198</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						expense and revenue summary 2025-2026						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO  CLOSE THE ACCOUNT FOR THE TAX YEAR 2025-2026 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						81,132.00
+					</td>
+					<td class="text-right">
+						0.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="22513" data-refno="J-1198">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>13-07-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-3466" data-id="22969" data-refno="CPV-3466">CPV-3466</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY TO DANISH FOR EOBI OF 2 PERSON FOR M/O JUNE-26
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						4,800.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						4,800.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="22969" data-refno="CPV-3466">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>11-08-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-3605" data-id="23761" data-refno="CPV-3605">CPV-3605</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY TO ARSALAN FOR EOBI VOUCHER 1003109519 OF 2 PERSON FOR M/O JULY-26
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td>1003109519</td>
+					<td class="text-right">
+						4,800.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						9,600.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="23761" data-refno="CPV-3605">  Show </button>
+					</td>
+				</tr>
+							</tbody>
+			
+		</table>
+		
+		
+		<div class="row myfooter">
+			<div class="col-xs-12">
+								<table class="table footer_table" style="margin-bottom: 6px !important;">
+					<tbody>
+						<tr>
+							<td width="55%" colspan="4"></td>
+							<td width="10%">Total: </td>
+														<td width="10%" class="text-right myborder">196,092.00</td>
+							<td width="10%" class="text-right myborder">186,492.00</td>
+							<td width="10%" class="text-right myborder">
+								9,600.00
+							</td>
+							<td class="no-print" width="5%"></td>
+						</tr>
+						<tr>
+							<td width="55%" colspan="4"></td>
+							<td width="10%">Reporting Period Total: </td>
+							<td width="10%" class="text-right myborder0">196,092.00</td>
+							<td width="10%" class="text-right myborder0">186,492.00</td>
+							<td width="10%" class="text-right"></td>
+							<td class="no-print" width="5%"></td>
+						</tr>
+					</tbody>
+				</table>
+								<input type="hidden" id="last_balance" value="Dr: 9,600.00">
+				
+                
+
+			</div>
+		</div>
+
+	</div>
+	<div class="page-break"></div>
+</table></body></html>

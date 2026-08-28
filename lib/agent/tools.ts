@@ -276,6 +276,33 @@ const agentReadTools: FunctionDeclaration[] = [
       },
     },
   },
+  {
+    name: "chart_of_accounts_list",
+    description:
+      "List Chart of Accounts ledger entries. ledger is required: solar_panel_clifton | eobi | k_electric_gondpass | kwsb_clifton. Returns rows oldest-first with running balance, debit/credit totals, and closing balance.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ledger: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: [
+            "solar_panel_clifton",
+            "eobi",
+            "k_electric_gondpass",
+            "kwsb_clifton",
+          ],
+          description:
+            "solar_panel_clifton = Solar Panel Clifton Office; eobi = E.O.B.I; k_electric_gondpass = K-Electric Gondpass; kwsb_clifton = KWSB Clifton Office",
+        },
+        limit: {
+          type: SchemaType.NUMBER,
+          description: "Max rows to return (default 50, max 200)",
+        },
+      },
+      required: ["ledger"],
+    },
+  },
 ];
 
 /** Gemini function declarations — reads + full CRUD writes */

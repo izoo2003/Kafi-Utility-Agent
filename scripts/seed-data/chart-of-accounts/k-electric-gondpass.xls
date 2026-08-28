@@ -1,0 +1,1009 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Ledger</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table><style>
+	@page  {
+		margin-top: 10mm;
+		margin-bottom: 10mm;
+		margin-left: 15mm;
+		margin-right: 15mm;
+		size:   A4 portrait;
+	} 
+	@media  print{
+		.page-break {
+            page-break-after: always;
+            display: block; 
+        }
+		/* .page-number {
+			position: fixed;
+			bottom: 0;
+			right: 0;
+			font-size: 8px;
+		} */
+		.no-print { display: none !important; }
+		h2 { font-size: 12px; }
+		h4 { font-size: 12px; }
+		p { font-size: 10px; }
+		.tablebordered th,.tablebordered td {
+			font-size: 8px !important;
+			border: 1px solid black !important;
+			border-collapse: collapse !important;
+			padding: 2px !important;
+		}
+		table td a{
+			font-size: 8px !important;
+		}
+		#account_book tr td {
+			border: none !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		#account_book tr th {
+			border:  1px solid #000 !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		.footer_table tr td{
+			font-size: 8px !important;
+			padding: 2px !important; 
+		}
+		.myborder0{
+			border-top: 1px solid #000 !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		.myborder{
+			border-top: 1px solid #000 !important;
+			border-bottom-style: double !important;
+		}
+	}
+	.bg-color{
+        background-color: #d9d9d9 !important;
+    }
+	.financial-period{
+		font-size: 14px !important;
+		padding: 0px !important;
+		text-align: center !important;
+	}
+	.financial-period table tr td{
+		padding: 5px;
+	}
+	.myheader {
+        margin-bottom: 10px;
+    }
+	.margin-bottom-20{
+		display: none;
+	} 
+</style><style class="darkreader darkreader--sync" media="screen"></style>
+
+        
+	<div class="page">
+
+		<div class="row myheader">
+		    <div class="col-xs-12">
+    	        <div class="d-flex" style="display: flex; justify-content: space-between; font-size: 8px;">
+        			<span class="pull-left ">27-08-2026 05:10 PM</span>
+        			<span class="text-center">Print By: syed moiz</span>
+        			<span class="pull-right page-number">Page 1 Of 1</span>
+        		</div>
+    	    </div>
+			<div class="col-md-8 col-xs-8" style="text-align: left">
+				<div style="display: flex;">
+					<div class="header_logo">
+						<img src="/uploads/business_logos/1720520063_Logo-KAFI.png" width="80" height="80" alt="Logo">
+					</div>
+					<div class="header_name">
+						<h4><b>Kafi Commodities (PVT.) LimITED</b></h4>
+						<h4>KAFI COMMODITIES (PVT.) LIMITED</h4>
+					</div>
+				</div>
+				
+				<p style="line-height: 25px">Account Name: <span><b>K-Electric (Gond Pass) # 464886 (Old)</b></span></p>
+				<p style="line-height: 25px">Account Type: 	<span class="account_type"> EXPENSES -  ADMINISTRATOR EXPENSE</span></p>
+				<p style="line-height: 25px">Account Number: 	<span>5040023</span></p>
+				<p style="line-height: 25px" class="header_balance">Balance: 		<span class="account_balance">Dr: 65,221.00</span></p>
+			</div>
+			<div class="col-md-4 col-xs-4 date_div" style="padding-top: 50px; padding-right: 20px;">
+				<h4><b>ACCOUNTS LEDGER</b></h4>
+				<h6>STATEMENT REPORTING PERIOD</h6>
+				<div class="border financial-period">
+					<table class="tablebordered" style="border: 1px solid rgb(0, 0, 0); width: 100%; --darkreader-inline-border-top: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-right: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-bottom: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-left: var(--darkreader-border-000000, #a39784);" data-darkreader-inline-border-top="" data-darkreader-inline-border-right="" data-darkreader-inline-border-bottom="" data-darkreader-inline-border-left="">
+						<tbody>
+							<tr class="bg-color" style="border-bottom: 1px solid rgb(191, 191, 191); --darkreader-inline-border-bottom: var(--darkreader-border-bfbfbf, #495153);" data-darkreader-inline-border-bottom="">
+								<td><span>Starting Date</span></td>
+								<td></td>
+								<td><span>Ending Date</span></td>
+							</tr>
+							<tr class="bg-color">
+								<td><span id="starting_date">2024-07-01</span></td>
+								<td><span>to</span></td>
+								<td><span id="ending_date">2026-08-27</span></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<table class="table table-bordered tablebordered table-striped" id="account_book" style="margin-bottom: 6px !important; margin-top: 6px !important;">
+			<thead>
+				<tr>
+					<th class="text-center">Date</th>
+					<th class="text-center">Ref No</th>
+					<th class="text-center" colspan="2">Accounts / Description</th>
+					
+					<th class="text-center">Document #</th>
+					<th class="text-center" width="10%">Debit</th>
+					<th class="text-center" width="10%">Credit</th>
+					<th class="text-center" width="10%">Balance</th> 
+					<th class="no-print">Action</th>
+				</tr>
+			</thead>
+			<tbody>
+																						<tr>
+								<td>30-06-2024</td>
+								<td></td>
+								<td style="word-wrap: break-word;white-space: normal;"></td>
+								<td>Opening Balance</td>
+								
+								<td></td>
+								<td id="opening_debit" class="text-right"></td>
+								<td id="opening_credit" class="text-right"></td>
+								<td class="text-right">
+																		0.00
+								</td>
+								<td class="no-print"></td>
+							</tr>
+																				
+													<tr>
+					<td>03-07-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-10" data-id="887" data-refno="J-10">J-10</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass M/o June-2024 against A/C # 0400023464886 (681) Units 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						54,829.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						54,829.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="887" data-refno="J-10">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>29-07-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-17" data-id="3359" data-refno="J-17">J-17</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass M/o JULY-2024 against A/C # 0400023464886 (617) Units 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						47,056.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						101,885.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="3359" data-refno="J-17">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>04-09-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-56" data-id="3361" data-refno="J-56">J-56</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass M/o Aug-2024 Against A/C # 0400023464886 (63) Units 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						15,683.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						117,568.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="3361" data-refno="J-56">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>30-09-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-73" data-id="3448" data-refno="J-73">J-73</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass M/o Sep-2024 against A/C # 0400023464886 (617) Units 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						13,202.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						130,770.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="3448" data-refno="J-73">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>29-10-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-145" data-id="5929" data-refno="J-145">J-145</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass LAKDI GODOWN M/o SEP -2024 against A/C # 040023464886 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						13,378.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						144,148.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="5929" data-refno="J-145">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>29-11-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-115" data-id="4666" data-refno="J-115">J-115</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass LAKDI GODOWN M/o NOV-2024 against A/C # 040023464886 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						14,056.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						158,204.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="4666" data-refno="J-115">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>01-01-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-182" data-id="7562" data-refno="J-182">J-182</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record (K-Electric 2859/- ) &amp; (Sui Gas @ 1510/-) for M/o Jan-2025 against KMP HOME &amp; Gond Pass K.E Bill  = 13654/- (Surway No # 234) 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						13,654.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						171,858.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="7562" data-refno="J-182">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>06-02-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-213" data-id="8167" data-refno="J-213">J-213</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass LAKDI GODOWN M/o JAN-2025  against A/C # 040023464886To Record K Electric Bill for Gond Pass LAKDI GODOWN M/o JAN-2025  against A/C # 040023464886 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						11,111.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						182,969.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="8167" data-refno="J-213">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>04-03-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-250" data-id="9081" data-refno="J-250">J-250</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass LAKDI GODOWN M/o Mar -2025  against A/C # 040023464886 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						12,013.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						194,982.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="9081" data-refno="J-250">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>29-04-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1510" data-id="10253" data-refno="CPV-1510">CPV-1510</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY KE BILL FOR GOND PASS M/O APRIL-2025
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						8,130.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						203,112.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="10253" data-refno="CPV-1510">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>02-06-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1686" data-id="11290" data-refno="CPV-1686">CPV-1686</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY TO K-Electric Bill for Gond Pass LAKDI GODOWN M/o MAY -2025 against A/C # 040023464886
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						9,059.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						212,171.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="11290" data-refno="CPV-1686">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>30-06-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-504" data-id="12487" data-refno="J-504">J-504</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						expense and revenue summary 2024-2025						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Close the Account for Tax Year - 2024-2025 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						212,171.00
+					</td>
+					<td class="text-right">
+						0.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="12487" data-refno="J-504">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>07-07-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-635" data-id="13392" data-refno="J-635">J-635</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass M/o JUNE-2025 against A/C # 0400023464886 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						9,528.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						9,528.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="13392" data-refno="J-635">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>01-08-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-661" data-id="13845" data-refno="J-661">J-661</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record K Electric Bill for Gond Pass M/o JULY-2025 against A/C # 0400023464886 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						10,461.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						19,989.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="13845" data-refno="J-661">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>28-08-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-683" data-id="14363" data-refno="J-683">J-683</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record k-electric bill for gond pass old A/C # 0400023464886 M/O Aug-25 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						12,717.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						32,706.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="14363" data-refno="J-683">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>29-09-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-714" data-id="15115" data-refno="J-714">J-714</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record k-electric bill for gond pass old A/C # 0400023464886 SNO:234G M/O SEP -25 UNITS  38 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						11,693.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						44,399.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="15115" data-refno="J-714">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>02-10-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-720" data-id="15138" data-refno="J-720">J-720</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						NATIONAL PVC PIPE KE CHARGES # 234						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAYMENT RECVIED FROM TENANAT AGAINST KE CHARGES FOR M/O SEP-2025 FOR A/C # 464886 32 KW METER BILL 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						11,693.00
+					</td>
+					<td class="text-right">
+						32,706.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="15138" data-refno="J-720">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>06-11-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-758" data-id="15966" data-refno="J-758">J-758</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Record k-electric (Gond Pass) # 464886 ( Old) Month of OCT-25 Agst A/C # 0400023464886 SNO: 234G UNIT = 283unit 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						23,935.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						56,641.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="15966" data-refno="J-758">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>25-11-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-770" data-id="16381" data-refno="J-770">J-770</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						NATIONAL PVC PIPE KE CHARGES # 234						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        ENTRY REVERSAL TO NATIONAL PVC PIPE KE CHARGES # 234 AGST PG # 14 AGAINST KE CHARGES FOR M/O oct-2025 FOR A/C # 464886 32 KW METER BILL 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						23,935.00
+					</td>
+					<td class="text-right">
+						32,706.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="16381" data-refno="J-770">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>30-06-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-1208" data-id="22533" data-refno="J-1208">J-1208</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						expense and revenue summary 2025-2026						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO  CLOSE THE ACCOUNT FOR THE TAX YEAR 2025-2026 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						32,706.00
+					</td>
+					<td class="text-right">
+						0.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="22533" data-refno="J-1208">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>17-08-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-1378" data-id="23985" data-refno="J-1378">J-1378</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Utility Bill Payable						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO RECORD KE BILL FOR 32KW A/C # 0400023464886 M/O JUL-26 UNIT = 1099 @ 59.346 PER UNIT 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						65,221.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						65,221.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="23985" data-refno="J-1378">  Show </button>
+					</td>
+				</tr>
+							</tbody>
+			
+		</table>
+		
+		
+		<div class="row myfooter">
+			<div class="col-xs-12">
+								<table class="table footer_table" style="margin-bottom: 6px !important;">
+					<tbody>
+						<tr>
+							<td width="55%" colspan="4"></td>
+							<td width="10%">Total: </td>
+														<td width="10%" class="text-right myborder">345,726.00</td>
+							<td width="10%" class="text-right myborder">280,505.00</td>
+							<td width="10%" class="text-right myborder">
+								65,221.00
+							</td>
+							<td class="no-print" width="5%"></td>
+						</tr>
+						<tr>
+							<td width="55%" colspan="4"></td>
+							<td width="10%">Reporting Period Total: </td>
+							<td width="10%" class="text-right myborder0">345,726.00</td>
+							<td width="10%" class="text-right myborder0">280,505.00</td>
+							<td width="10%" class="text-right"></td>
+							<td class="no-print" width="5%"></td>
+						</tr>
+					</tbody>
+				</table>
+								<input type="hidden" id="last_balance" value="Dr: 65,221.00">
+				
+                
+
+			</div>
+		</div>
+
+	</div>
+	<div class="page-break"></div>
+</table></body></html>

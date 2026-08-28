@@ -1,0 +1,697 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Ledger</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table><style>
+	@page  {
+		margin-top: 10mm;
+		margin-bottom: 10mm;
+		margin-left: 15mm;
+		margin-right: 15mm;
+		size:   A4 portrait;
+	} 
+	@media  print{
+		.page-break {
+            page-break-after: always;
+            display: block; 
+        }
+		/* .page-number {
+			position: fixed;
+			bottom: 0;
+			right: 0;
+			font-size: 8px;
+		} */
+		.no-print { display: none !important; }
+		h2 { font-size: 12px; }
+		h4 { font-size: 12px; }
+		p { font-size: 10px; }
+		.tablebordered th,.tablebordered td {
+			font-size: 8px !important;
+			border: 1px solid black !important;
+			border-collapse: collapse !important;
+			padding: 2px !important;
+		}
+		table td a{
+			font-size: 8px !important;
+		}
+		#account_book tr td {
+			border: none !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		#account_book tr th {
+			border:  1px solid #000 !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		.footer_table tr td{
+			font-size: 8px !important;
+			padding: 2px !important; 
+		}
+		.myborder0{
+			border-top: 1px solid #000 !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		.myborder{
+			border-top: 1px solid #000 !important;
+			border-bottom-style: double !important;
+		}
+	}
+	.bg-color{
+        background-color: #d9d9d9 !important;
+    }
+	.financial-period{
+		font-size: 14px !important;
+		padding: 0px !important;
+		text-align: center !important;
+	}
+	.financial-period table tr td{
+		padding: 5px;
+	}
+	.myheader {
+        margin-bottom: 10px;
+    }
+	.margin-bottom-20{
+		display: none;
+	} 
+</style><style class="darkreader darkreader--sync" media="screen"></style>
+
+        
+	<div class="page">
+
+		<div class="row myheader">
+		    <div class="col-xs-12">
+    	        <div class="d-flex" style="display: flex; justify-content: space-between; font-size: 8px;">
+        			<span class="pull-left ">27-08-2026 04:57 PM</span>
+        			<span class="text-center">Print By: syed moiz</span>
+        			<span class="pull-right page-number">Page 1 Of 1</span>
+        		</div>
+    	    </div>
+			<div class="col-md-8 col-xs-8" style="text-align: left">
+				<div style="display: flex;">
+					<div class="header_logo">
+						<img src="/uploads/business_logos/1720520063_Logo-KAFI.png" width="80" height="80" alt="Logo">
+					</div>
+					<div class="header_name">
+						<h4><b>Kafi Commodities (PVT.) LimITED</b></h4>
+						<h4>KAFI COMMODITIES (PVT.) LIMITED</h4>
+					</div>
+				</div>
+				
+				<p style="line-height: 25px">Account Name: <span><b>solar panel clifton office</b></span></p>
+				<p style="line-height: 25px">Account Type: 	<span class="account_type"> EXPENSES -  ADMINISTRATOR EXPENSE</span></p>
+				<p style="line-height: 25px">Account Number: 	<span>10201020008</span></p>
+				<p style="line-height: 25px" class="header_balance">Balance: 		<span class="account_balance">Dr: 1,310,000.00</span></p>
+			</div>
+			<div class="col-md-4 col-xs-4 date_div" style="padding-top: 50px; padding-right: 20px;">
+				<h4><b>ACCOUNTS LEDGER</b></h4>
+				<h6>STATEMENT REPORTING PERIOD</h6>
+				<div class="border financial-period">
+					<table class="tablebordered" style="border: 1px solid rgb(0, 0, 0); width: 100%; --darkreader-inline-border-top: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-right: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-bottom: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-left: var(--darkreader-border-000000, #a39784);" data-darkreader-inline-border-top="" data-darkreader-inline-border-right="" data-darkreader-inline-border-bottom="" data-darkreader-inline-border-left="">
+						<tbody>
+							<tr class="bg-color" style="border-bottom: 1px solid rgb(191, 191, 191); --darkreader-inline-border-bottom: var(--darkreader-border-bfbfbf, #495153);" data-darkreader-inline-border-bottom="">
+								<td><span>Starting Date</span></td>
+								<td></td>
+								<td><span>Ending Date</span></td>
+							</tr>
+							<tr class="bg-color">
+								<td><span id="starting_date">2024-07-01</span></td>
+								<td><span>to</span></td>
+								<td><span id="ending_date">2026-08-27</span></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<table class="table table-bordered tablebordered table-striped" id="account_book" style="margin-bottom: 6px !important; margin-top: 6px !important;">
+			<thead>
+				<tr>
+					<th class="text-center">Date</th>
+					<th class="text-center">Ref No</th>
+					<th class="text-center" colspan="2">Accounts / Description</th>
+					
+					<th class="text-center">Document #</th>
+					<th class="text-center" width="10%">Debit</th>
+					<th class="text-center" width="10%">Credit</th>
+					<th class="text-center" width="10%">Balance</th> 
+					<th class="no-print">Action</th>
+				</tr>
+			</thead>
+			<tbody>
+																						<tr>
+								<td>30-06-2024</td>
+								<td></td>
+								<td style="word-wrap: break-word;white-space: normal;"></td>
+								<td>Opening Balance</td>
+								
+								<td></td>
+								<td id="opening_debit" class="text-right"></td>
+								<td id="opening_credit" class="text-right"></td>
+								<td class="text-right">
+																		0.00
+								</td>
+								<td class="no-print"></td>
+							</tr>
+																				
+													<tr>
+					<td>11-03-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1289" data-id="8635" data-refno="CPV-1289">CPV-1289</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay to danish agst purchasing of solar electric items &amp; cables for solar wiring , sentory items 9pipe, bands , clips, wiring 6mm cable , 2.5mm cable , sheets) at clifton office cash deposit slip # 1686030/-,  rs- 139090/- + 8080/- easypaisa.
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						148,100.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						148,100.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="8635" data-refno="CPV-1289">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>12-03-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1300" data-id="8657" data-refno="CPV-1300">CPV-1300</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay to adeel eng as advance 50% agst solar panel wiring contract rs = 50,000/- clifton office
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						25,000.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						173,100.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="8657" data-refno="CPV-1300">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>12-03-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1298" data-id="8893" data-refno="CPV-1298">CPV-1298</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay to danish purchased 18 scokets 30m wire for solar electric use , led flooredlight
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						7,020.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						180,120.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="8893" data-refno="CPV-1298">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>13-03-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1302" data-id="8661" data-refno="CPV-1302">CPV-1302</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay to sajid for purchasing of rati cement for office solar panel wiring work
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,230.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						183,350.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="8661" data-refno="CPV-1302">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>13-03-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1303" data-id="8663" data-refno="CPV-1303">CPV-1303</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay to labour charges for solar panel wiring civil cement work at clifton office
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						5,000.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						188,350.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="8663" data-refno="CPV-1303">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>15-03-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1312" data-id="8681" data-refno="CPV-1312">CPV-1312</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay to mr. adeel eng as full payment agst solar panel wiring contract rs. 50,000/- ,  for clifton deposit slip no # 1926304 date : 15-03-2025.
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						25,000.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						213,350.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="8681" data-refno="CPV-1312">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>30-06-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-552" data-id="12583" data-refno="J-552">J-552</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						expense and revenue summary 2024-2025						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Close the Account for Tax Year - 2024-2025 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						213,350.00
+					</td>
+					<td class="text-right">
+						0.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="12583" data-refno="J-552">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>23-12-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-828" data-id="17092" data-refno="J-828">J-828</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						smart technologies - sollar cleaning COMPANY						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO RECORD PAYMENT OF SOLAR CLEANING COMPANY AGST INV NO : 07 DATE : 11-11-2025 CLIFTON OFFICE 34.56KW SOLAR SYSTEM QUATERLY SERVICE CHARGES 15/12/25 TO 14/03/25 VIA IBFT : 1512AF3060AC 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						13,500.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						13,500.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="17092" data-refno="J-828">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>23-05-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-1032" data-id="20750" data-refno="J-1032">J-1032</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						smart technologies - sollar cleaning COMPANY						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO RECORD SMART TECH CO AGAINST INVOICE # 20206 06-03-2026 FOR KMP HOME SOLLAR CLEANING SERVICE CHARGES M/O MAR-2026 RS.4100 SLIP # 0260769 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						4,100.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						17,600.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="20750" data-refno="J-1032">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>23-05-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-1033" data-id="20752" data-refno="J-1033">J-1033</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						smart technologies - sollar cleaning COMPANY						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO RECORD SMART TECH SOLAR CLEANING COMPANY AGST INV : 01 DATE : 05-04-2026 CLIFTON OFFICE SOLAR CLEANING RS = 18000 ( 4500 x 4 = 18000/- ) KMP HOME SOLAR SYSTEM CHARGES 16,400/- ( 4100 x 4 = 16,400/- APR-26 to JULY-26 VIA IBFT : 110540cdb253 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						34,400.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						52,000.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="20752" data-refno="J-1033">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>30-06-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-1190" data-id="22497" data-refno="J-1190">J-1190</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						expense and revenue summary 2025-2026						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO  CLOSE THE ACCOUNT FOR THE TAX YEAR 2025-2026 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						52,000.00
+					</td>
+					<td class="text-right">
+						0.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="22497" data-refno="J-1190">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>20-08-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-1392" data-id="24092" data-refno="J-1392">J-1392</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						emcon eng (arif sollar installation)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO RECORD EMCON ENG AGST INV : 01/ME-2804/1 PURCHASE OF 10KW HYBRID SINGLE PHASE IP 65 INVERTER INTERCONNECTED KE GRID AND BATTERIES FOR BACKUP GOODWE SP HYBRID 10KW QTY = 1 @ RS = 390,000/- + GOODWEE 51V 16KWH QTY = 1 @ 745,000/- total = 1,135,000/- 10 YEAR WARRANTY ON BOTH PRODUCTS FOR OFFICE APPROVED BY KMP 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						1,135,000.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						1,135,000.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="24092" data-refno="J-1392">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>20-08-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-1393" data-id="24094" data-refno="J-1393">J-1393</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						emcon eng (arif sollar installation)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO RECORD MR ARIF AS FULL PAYMENT AGST SOLLAR INSTALLATION HAVE KMP APPROVAL 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						175,000.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						1,310,000.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="24094" data-refno="J-1393">  Show </button>
+					</td>
+				</tr>
+							</tbody>
+			
+		</table>
+		
+		
+		<div class="row myfooter">
+			<div class="col-xs-12">
+								<table class="table footer_table" style="margin-bottom: 6px !important;">
+					<tbody>
+						<tr>
+							<td width="55%" colspan="4"></td>
+							<td width="10%">Total: </td>
+														<td width="10%" class="text-right myborder">1,575,350.00</td>
+							<td width="10%" class="text-right myborder">265,350.00</td>
+							<td width="10%" class="text-right myborder">
+								1,310,000.00
+							</td>
+							<td class="no-print" width="5%"></td>
+						</tr>
+						<tr>
+							<td width="55%" colspan="4"></td>
+							<td width="10%">Reporting Period Total: </td>
+							<td width="10%" class="text-right myborder0">1,575,350.00</td>
+							<td width="10%" class="text-right myborder0">265,350.00</td>
+							<td width="10%" class="text-right"></td>
+							<td class="no-print" width="5%"></td>
+						</tr>
+					</tbody>
+				</table>
+								<input type="hidden" id="last_balance" value="Dr: 1,310,000.00">
+				
+                
+
+			</div>
+		</div>
+
+	</div>
+	<div class="page-break"></div>
+</table></body></html>

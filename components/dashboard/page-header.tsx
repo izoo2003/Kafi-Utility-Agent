@@ -17,7 +17,8 @@ export function PageHeader({
     | "generator"
     | "solar"
     | "utilities"
-    | "tenants";
+    | "tenants"
+    | "accounts";
   accent?: NavAccent;
 }) {
   return (

@@ -10,6 +10,7 @@ export const IMPORT_TARGETS = [
   "tenants",
   "tenant-rent",
   "tenant-electricity",
+  "chart-of-accounts",
 ] as const;
 
 export type ImportTarget = (typeof IMPORT_TARGETS)[number];
@@ -128,6 +129,16 @@ export function importPromptFor(target: ImportTarget): string {
         "payment status → payment_status; payment date → payment_date; outstanding → outstanding_amount; notes.",
         "Dates are DD/MM/YYYY. These are tenant-billed KE charges, NOT site utility meters (239G/234G/Clifton/KMP).",
         "Do not write rent logs or utility_payment_create.",
+      ].join(" ");
+    case "chart-of-accounts":
+      return [
+        "IMPORT TARGET: Chart of Accounts ledger ONLY.",
+        "Extract EVERY distinct ledger row (not totals).",
+        "For EACH row call chart_of_accounts_entry_create with confirmed=false.",
+        "Set ledger from the current section or document title: Solar Panel Clifton → solar_panel_clifton; E.O.B.I / EOBI → eobi; K-Electric Gondpass → k_electric_gondpass; KWSB / K.W & S.B Clifton → kwsb_clifton.",
+        "Map: Date → entry_date (DD/MM/YYYY); Ref No → ref_no; Accounts / Description → account_description; Document # → document_no; Debit → debit; Credit → credit.",
+        "Skip Starting/Ending Date headers, Total, and Reporting Period Total rows. Keep Opening Balance and year-close rows.",
+        "Do not write to utilities, tenants, generator, or other domains.",
       ].join(" ");
   }
 }

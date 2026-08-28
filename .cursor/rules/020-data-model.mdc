@@ -114,5 +114,18 @@ Site date display/parse convention: DD/MM/YYYY (stored as ISO dates).
 - outstanding_amount numeric
 - notes text
 
+## 7. Chart of Accounts (`chart_of_accounts_entries`)
+Subsidiary ledgers (one table, `ledger` discriminator):
+- ledger text — `solar_panel_clifton` | `eobi` | `k_electric_gondpass` | `kwsb_clifton`
+- entry_date date
+- ref_no text (e.g. CPV-74, J-511)
+- account_description text (Accounts / Description column)
+- document_no text (Document # / narration)
+- debit numeric default 0
+- credit numeric default 0
+- notes text
+
+Derived: running balance = prior balance + debit − credit (computed in UI / agent, not stored).
+
 ## Adding a new domain later
 Follow the same shape: base audit columns + domain fields + one `..._log` table if the domain has recurring events (like fuel or monitoring). Don't invent a different pattern.

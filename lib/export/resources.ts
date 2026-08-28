@@ -18,7 +18,9 @@ import {
   listTenantRentLogs,
   listTenants,
 } from "@/lib/supabase/tenants";
+import { listChartOfAccountsEntries } from "@/lib/supabase/chart-of-accounts";
 import type {
+  ChartOfAccountsEntry,
   GeneratorExpense,
   GeneratorFuelLog,
   GeneratorMaintenance,
@@ -44,6 +46,7 @@ export const EXPORT_RESOURCES = [
   "tenants",
   "tenant-rent",
   "tenant-electricity",
+  "chart-of-accounts",
 ] as const;
 
 export type ExportResource = (typeof EXPORT_RESOURCES)[number];
@@ -346,6 +349,34 @@ export async function loadExportBundle(
           { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
         ]),
         rows: asRows(rows),
+      };
+    }
+    case "chart-of-accounts": {
+      const { data, error } = await listChartOfAccountsEntries(supabase);
+      if (error) throw new Error(error.message);
+      return {
+        title: "Chart of Accounts",
+        filename: "chart-of-accounts",
+        columns: cols<ChartOfAccountsEntry>([
+          { key: "ledger", header: "Ledger", value: (r) => r.ledger },
+          { key: "entry_date", header: "Date", value: (r) => r.entry_date },
+          { key: "ref_no", header: "Ref No", value: (r) => r.ref_no },
+          {
+            key: "account_description",
+            header: "Accounts / Description",
+            value: (r) => r.account_description,
+          },
+          {
+            key: "document_no",
+            header: "Document #",
+            value: (r) => r.document_no,
+          },
+          { key: "debit", header: "Debit", value: (r) => r.debit },
+          { key: "credit", header: "Credit", value: (r) => r.credit },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(data),
       };
     }
   }

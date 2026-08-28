@@ -107,6 +107,24 @@ export type GeneratorExpense = AuditColumns & {
   notes: string | null;
 };
 
+export type ChartOfAccountsLedger =
+  | "solar_panel_clifton"
+  | "eobi"
+  | "k_electric_gondpass"
+  | "kwsb_clifton";
+
+/** Chart of Accounts subsidiary ledger lines. Running balance is computed. */
+export type ChartOfAccountsEntry = AuditColumns & {
+  ledger: ChartOfAccountsLedger;
+  entry_date: IsoDate;
+  ref_no: string | null;
+  account_description: string | null;
+  document_no: string | null;
+  debit: number;
+  credit: number;
+  notes: string | null;
+};
+
 export type SolarSpecs = AuditColumns & {
   panel_capacity_kw: number | null;
   inverter_model: string | null;
@@ -272,6 +290,11 @@ export type Database = {
         Update: GeneratorRunLogUpdate;
       };
       generator_expenses: { Row: GeneratorExpense; Insert: GeneratorExpenseInsert; Update: GeneratorExpenseUpdate };
+      chart_of_accounts_entries: {
+        Row: ChartOfAccountsEntry;
+        Insert: ChartOfAccountsEntryInsert;
+        Update: ChartOfAccountsEntryUpdate;
+      };
       solar_specs: { Row: SolarSpecs; Insert: SolarSpecsInsert; Update: SolarSpecsUpdate };
       solar_monitoring_log: { Row: SolarMonitoringLog; Insert: SolarMonitoringLogInsert; Update: SolarMonitoringLogUpdate };
       solar_live_snapshot: {
@@ -338,6 +361,16 @@ export type GeneratorExpenseInsert = Partial<OmitAuditOnWrite<GeneratorExpense>>
   expense_date: IsoDate;
 };
 export type GeneratorExpenseUpdate = Partial<OmitAuditOnWrite<GeneratorExpense>>;
+
+export type ChartOfAccountsEntryInsert = Partial<
+  OmitAuditOnWrite<ChartOfAccountsEntry>
+> & {
+  ledger: ChartOfAccountsLedger;
+  entry_date: IsoDate;
+};
+export type ChartOfAccountsEntryUpdate = Partial<
+  OmitAuditOnWrite<ChartOfAccountsEntry>
+>;
 
 export type SolarSpecsInsert = Partial<OmitAuditOnWrite<SolarSpecs>>;
 export type SolarSpecsUpdate = Partial<OmitAuditOnWrite<SolarSpecs>>;

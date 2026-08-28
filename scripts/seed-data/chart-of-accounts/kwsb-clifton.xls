@@ -1,0 +1,1123 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Ledger</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table><style>
+	@page  {
+		margin-top: 10mm;
+		margin-bottom: 10mm;
+		margin-left: 15mm;
+		margin-right: 15mm;
+		size:   A4 portrait;
+	} 
+	@media  print{
+		.page-break {
+            page-break-after: always;
+            display: block; 
+        }
+		/* .page-number {
+			position: fixed;
+			bottom: 0;
+			right: 0;
+			font-size: 8px;
+		} */
+		.no-print { display: none !important; }
+		h2 { font-size: 12px; }
+		h4 { font-size: 12px; }
+		p { font-size: 10px; }
+		.tablebordered th,.tablebordered td {
+			font-size: 8px !important;
+			border: 1px solid black !important;
+			border-collapse: collapse !important;
+			padding: 2px !important;
+		}
+		table td a{
+			font-size: 8px !important;
+		}
+		#account_book tr td {
+			border: none !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		#account_book tr th {
+			border:  1px solid #000 !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		.footer_table tr td{
+			font-size: 8px !important;
+			padding: 2px !important; 
+		}
+		.myborder0{
+			border-top: 1px solid #000 !important;
+			border-bottom: 1px solid #000 !important;
+		}
+		.myborder{
+			border-top: 1px solid #000 !important;
+			border-bottom-style: double !important;
+		}
+	}
+	.bg-color{
+        background-color: #d9d9d9 !important;
+    }
+	.financial-period{
+		font-size: 14px !important;
+		padding: 0px !important;
+		text-align: center !important;
+	}
+	.financial-period table tr td{
+		padding: 5px;
+	}
+	.myheader {
+        margin-bottom: 10px;
+    }
+	.margin-bottom-20{
+		display: none;
+	} 
+</style><style class="darkreader darkreader--sync" media="screen"></style>
+
+        
+	<div class="page">
+
+		<div class="row myheader">
+		    <div class="col-xs-12">
+    	        <div class="d-flex" style="display: flex; justify-content: space-between; font-size: 8px;">
+        			<span class="pull-left ">27-08-2026 05:12 PM</span>
+        			<span class="text-center">Print By: syed moiz</span>
+        			<span class="pull-right page-number">Page 1 Of 1</span>
+        		</div>
+    	    </div>
+			<div class="col-md-8 col-xs-8" style="text-align: left">
+				<div style="display: flex;">
+					<div class="header_logo">
+						<img src="/uploads/business_logos/1720520063_Logo-KAFI.png" width="80" height="80" alt="Logo">
+					</div>
+					<div class="header_name">
+						<h4><b>Kafi Commodities (PVT.) LimITED</b></h4>
+						<h4>KAFI COMMODITIES (PVT.) LIMITED</h4>
+					</div>
+				</div>
+				
+				<p style="line-height: 25px">Account Name: <span><b>K.W &amp; S.B CLIFTON OFFICE</b></span></p>
+				<p style="line-height: 25px">Account Type: 	<span class="account_type"> EXPENSES -  ADMINISTRATOR EXPENSE</span></p>
+				<p style="line-height: 25px">Account Number: 	<span>5040025</span></p>
+				<p style="line-height: 25px" class="header_balance">Balance: 		<span class="account_balance">Dr: 14,880.00</span></p>
+			</div>
+			<div class="col-md-4 col-xs-4 date_div" style="padding-top: 50px; padding-right: 20px;">
+				<h4><b>ACCOUNTS LEDGER</b></h4>
+				<h6>STATEMENT REPORTING PERIOD</h6>
+				<div class="border financial-period">
+					<table class="tablebordered" style="border: 1px solid rgb(0, 0, 0); width: 100%; --darkreader-inline-border-top: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-right: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-bottom: var(--darkreader-border-000000, #a39784); --darkreader-inline-border-left: var(--darkreader-border-000000, #a39784);" data-darkreader-inline-border-top="" data-darkreader-inline-border-right="" data-darkreader-inline-border-bottom="" data-darkreader-inline-border-left="">
+						<tbody>
+							<tr class="bg-color" style="border-bottom: 1px solid rgb(191, 191, 191); --darkreader-inline-border-bottom: var(--darkreader-border-bfbfbf, #495153);" data-darkreader-inline-border-bottom="">
+								<td><span>Starting Date</span></td>
+								<td></td>
+								<td><span>Ending Date</span></td>
+							</tr>
+							<tr class="bg-color">
+								<td><span id="starting_date">2024-07-01</span></td>
+								<td><span>to</span></td>
+								<td><span id="ending_date">2026-08-27</span></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<table class="table table-bordered tablebordered table-striped" id="account_book" style="margin-bottom: 6px !important; margin-top: 6px !important;">
+			<thead>
+				<tr>
+					<th class="text-center">Date</th>
+					<th class="text-center">Ref No</th>
+					<th class="text-center" colspan="2">Accounts / Description</th>
+					
+					<th class="text-center">Document #</th>
+					<th class="text-center" width="10%">Debit</th>
+					<th class="text-center" width="10%">Credit</th>
+					<th class="text-center" width="10%">Balance</th> 
+					<th class="no-print">Action</th>
+				</tr>
+			</thead>
+			<tbody>
+															<tr>
+								<td>01-07-2026</td>
+								<td></td>
+								<td></td>
+								<td>Opening Balance</td>
+								<td></td>
+								<td id="opening_debit" class="text-right">0.00</td>
+								<td id="opening_credit" class="text-right">0.00</td>
+								<td class="text-right">0.00</td>
+								<td class="no-print"></td>
+							</tr>
+													
+													<tr>
+					<td>13-07-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-74" data-id="663" data-refno="CPV-74">CPV-74</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay water bill k.w.s.b for clifton office m/o june-24 due date : 26-07-24
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						2,700.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						2,700.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="663" data-refno="CPV-74">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>16-08-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-275" data-id="1709" data-refno="CPV-275">CPV-275</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay water bill kw.sb m/o july-24 as per due date : 26-08-2024
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						2,700.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						5,400.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="1709" data-refno="CPV-275">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>09-09-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-407" data-id="2657" data-refno="CPV-407">CPV-407</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY WATER BILL CLIFTON OFFICE M/O AUG-24
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						2,700.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						8,100.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="2657" data-refno="CPV-407">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>15-10-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-626" data-id="3984" data-refno="CPV-626">CPV-626</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay water bill kwsb  clifton office m/o sep-24 have due date : 25-10-2024
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						4,656.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						12,756.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="3984" data-refno="CPV-626">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>11-11-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-799" data-id="5104" data-refno="CPV-799">CPV-799</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay (kwsb) water bill m/o oct-24 for clifton office
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,352.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						16,108.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="5104" data-refno="CPV-799">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>13-12-2024</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-949" data-id="6152" data-refno="CPV-949">CPV-949</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay kwsb water bill for clifton office for m/o nov-2024
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,352.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						19,460.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="6152" data-refno="CPV-949">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>20-02-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1220" data-id="7903" data-refno="CPV-1220">CPV-1220</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay kwsb bill for m/o jan-2025 for clifton office
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,352.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						22,812.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="7903" data-refno="CPV-1220">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>15-04-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1452" data-id="9578" data-refno="CPV-1452">CPV-1452</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY KWSB WATER BILL against 2 Months MAR &amp; APRIL-2025  DUE DATED : 25-04-2025 FOR CLIFTON OFFICE
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						7,000.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						29,812.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="9578" data-refno="CPV-1452">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>20-05-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1619" data-id="10926" data-refno="CPV-1619">CPV-1619</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY KWSB FOR BILL FOR M/O APRIL-2025
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,352.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						33,164.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="10926" data-refno="CPV-1619">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>19-06-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1748" data-id="11834" data-refno="CPV-1748">CPV-1748</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY KWSB WATER BILL FOR M/O MAY-2025 FOR CLIFTON OFFICE
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,352.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						36,516.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="11834" data-refno="CPV-1748">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>30-06-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-511" data-id="12501" data-refno="J-511">J-511</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						expense and revenue summary 2024-2025						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        To Close the Account for Tax Year - 2024-2025 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						36,516.00
+					</td>
+					<td class="text-right">
+						0.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="12501" data-refno="J-511">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>17-07-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1870" data-id="12968" data-refno="CPV-1870">CPV-1870</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY KWSB WATER TANKER BILL FOR JUNE-2025 FOR CLIFTON OFFICE
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,352.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						3,352.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="12968" data-refno="CPV-1870">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>15-08-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-1995" data-id="13677" data-refno="CPV-1995">CPV-1995</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay kwsb water bill for m/o july-25 for clifton office.
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,502.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						6,854.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="13677" data-refno="CPV-1995">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>15-09-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2142" data-id="14923" data-refno="CPV-2142">CPV-2142</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay kwsb water bill for m/o AUG-25 for clifton office.
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,502.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						10,356.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="14923" data-refno="CPV-2142">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>15-10-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2269" data-id="15572" data-refno="CPV-2269">CPV-2269</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay kwsb water bill for m/o SEP-25 for clifton office.
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,502.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						13,858.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="15572" data-refno="CPV-2269">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>26-11-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2487" data-id="16404" data-refno="CPV-2487">CPV-2487</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay kwsb water bill for m/o OCT-25 for clifton office.
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,502.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						17,360.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="16404" data-refno="CPV-2487">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>19-12-2025</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2605" data-id="17027" data-refno="CPV-2605">CPV-2605</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY KWSB WATER BILL FOR M/O NOV-25 for CLIFTON OFFICE
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,502.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						20,862.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="17027" data-refno="CPV-2605">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>16-01-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2726" data-id="17630" data-refno="CPV-2726">CPV-2726</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY KWSB WATER BILL FOR M/O DEC-25 for CLIFTON OFFICE
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,500.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						24,362.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="17630" data-refno="CPV-2726">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>17-02-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/CPV-2866" data-id="18401" data-refno="CPV-2866">CPV-2866</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						Cash in Hand (Petty Cash)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY KWSB WATER BILL FOR M/O JAN-26 for CLIFTON OFFICE
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,502.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						27,864.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="18401" data-refno="CPV-2866">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>02-06-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/PV-1055" data-id="20999" data-refno="PV-1055">PV-1055</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						ABL-950028 Kafi Commodities (PLS)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        PAY KWSB WATER BILL FOR M/O APR-26 FOR CLIFTON OFFICE CONSUMER ID : 65062019600084 VIA IBFT : 030607761ECC
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,502.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						31,366.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="20999" data-refno="PV-1055">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>12-06-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/PV-1090" data-id="21743" data-refno="PV-1090">PV-1090</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						ABL-950028 Kafi Commodities (PLS)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay k.w &amp; s.b water bill for m/o may-26 due date : 23-06-26 for clifton office consumer id : 65062019600084
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,502.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						34,868.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="21743" data-refno="PV-1090">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>30-06-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/J-1210" data-id="22537" data-refno="J-1210">J-1210</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						expense and revenue summary 2025-2026						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        TO  CLOSE THE ACCOUNT FOR THE TAX YEAR 2025-2026 
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						34,868.00
+					</td>
+					<td class="text-right">
+						0.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="22537" data-refno="J-1210">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>13-07-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/PV-1114" data-id="22839" data-refno="PV-1114">PV-1114</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						ABL-950028 Kafi Commodities (PLS)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay kwsb water bill for clifton office for m/o jun -26 pay via ibft : 13077782026e
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						11,132.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						11,132.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="22839" data-refno="PV-1114">  Show </button>
+					</td>
+				</tr>
+													<tr>
+					<td>11-08-2026</td>
+					<td>
+						 <a href="#" class="account_book_show" data-href="https://erp.kafi-group.com/account/invoice-prt/PV-1192" data-id="23722" data-refno="PV-1192">PV-1192</a>					</td>
+					<td>
+					 <div class="col-hide" style="word-wrap: break-word;white-space: nowrap;">
+					    
+						ABL-950028 Kafi Commodities (PLS)						</div>
+					</td>
+					
+					<td>
+					    <div style="text-wrap: balance;">
+					        					        pay kwsb water bill for clifton office for m/o july-26 via ibft : 11083310680c
+					        					    
+					    					     
+					    					    
+                                                          
+                                
+                            
+					    					    
+					     
+					    					   
+					    
+					    </div>
+					</td>
+					
+					<td></td>
+					<td class="text-right">
+						3,748.00
+					</td>
+					<td class="text-right">
+						
+					</td>
+					<td class="text-right">
+						14,880.00					</td>
+					<td width="5%" class="no-print">
+						<button type="button" class="btn btn-success btn-xs account_book_show" data-id="23722" data-refno="PV-1192">  Show </button>
+					</td>
+				</tr>
+							</tbody>
+			
+		</table>
+		
+		
+		<div class="row myfooter">
+			<div class="col-xs-12">
+								<table class="table footer_table" style="margin-bottom: 6px !important;">
+					<tbody>
+						<tr>
+							<td width="55%" colspan="4"></td>
+							<td width="10%">Total: </td>
+														<td width="10%" class="text-right myborder">86,264.00</td>
+							<td width="10%" class="text-right myborder">71,384.00</td>
+							<td width="10%" class="text-right myborder">
+								14,880.00
+							</td>
+							<td class="no-print" width="5%"></td>
+						</tr>
+						<tr>
+							<td width="55%" colspan="4"></td>
+							<td width="10%">Reporting Period Total: </td>
+							<td width="10%" class="text-right myborder0">86,264.00</td>
+							<td width="10%" class="text-right myborder0">71,384.00</td>
+							<td width="10%" class="text-right"></td>
+							<td class="no-print" width="5%"></td>
+						</tr>
+					</tbody>
+				</table>
+								<input type="hidden" id="last_balance" value="Dr: 14,880.00">
+				
+                
+
+			</div>
+		</div>
+
+	</div>
+	<div class="page-break"></div>
+</table></body></html>

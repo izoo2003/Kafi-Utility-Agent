@@ -37,6 +37,11 @@ import {
   listTenants,
 } from "@/lib/supabase/tenants";
 import {
+  listChartOfAccountsEntries,
+} from "@/lib/supabase/chart-of-accounts";
+import { withRunningBalances } from "@/lib/chart-of-accounts/balance";
+import { chartOfAccountsLedgerSchema } from "@/lib/validations/chart-of-accounts";
+import {
   latestPayment,
   nextDueFromLastPaid,
 } from "@/lib/utilities/billing";
@@ -546,6 +551,42 @@ export async function executeAgentTool(
         tenant_name: names.get(r.tenant_id) ?? null,
       }));
       return truncatedList(mapped, limit);
+    }
+
+    case "chart_of_accounts_list": {
+      const ledgerParsed = chartOfAccountsLedgerSchema.safeParse(input.ledger);
+      if (!ledgerParsed.success) {
+        return {
+          error:
+            "ledger is required: solar_panel_clifton | eobi | k_electric_gondpass | kwsb_clifton",
+        };
+      }
+      const { data, error } = await listChartOfAccountsEntries(
+        supabase,
+        ledgerParsed.data,
+      );
+      if (error) throw new Error(error.message);
+      const rows = withRunningBalances(data ?? []);
+      const totalDebit = rows.reduce(
+        (sum, r) => sum + (Number(r.debit) || 0),
+        0,
+      );
+      const totalCredit = rows.reduce(
+        (sum, r) => sum + (Number(r.credit) || 0),
+        0,
+      );
+      const closingBalance =
+        rows.length > 0 ? rows[rows.length - 1]!.balance : 0;
+      const limit = clampLimit(input.limit, 50);
+      // Show newest first in truncated response, but totals cover full ledger
+      const newestFirst = [...rows].reverse();
+      return truncatedList(newestFirst, limit, {
+        ledger: ledgerParsed.data,
+        total_debit: totalDebit,
+        total_credit: totalCredit,
+        closing_balance: closingBalance,
+        row_count: rows.length,
+      });
     }
 
     default:

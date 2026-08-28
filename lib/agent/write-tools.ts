@@ -774,4 +774,74 @@ export const agentWriteTools: FunctionDeclaration[] = [
       required: ["id"],
     },
   },
+  {
+    name: "chart_of_accounts_entry_create",
+    description:
+      "Create a Chart of Accounts ledger entry. ledger: solar_panel_clifton | eobi | k_electric_gondpass | kwsb_clifton. Map Date→entry_date, Ref No→ref_no, Accounts/Description→account_description, Document #→document_no, Debit→debit, Credit→credit. Dates DD/MM/YYYY or YYYY-MM-DD. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ledger: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: [
+            "solar_panel_clifton",
+            "eobi",
+            "k_electric_gondpass",
+            "kwsb_clifton",
+          ],
+        },
+        entry_date: {
+          type: SchemaType.STRING,
+          description: "DD/MM/YYYY or YYYY-MM-DD",
+        },
+        ref_no: { type: SchemaType.STRING },
+        account_description: { type: SchemaType.STRING },
+        document_no: { type: SchemaType.STRING },
+        debit: { type: SchemaType.NUMBER },
+        credit: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["ledger", "entry_date"],
+    },
+  },
+  {
+    name: "chart_of_accounts_entry_update",
+    description: "Update a Chart of Accounts ledger entry. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        ledger: {
+          type: SchemaType.STRING,
+          format: "enum",
+          enum: [
+            "solar_panel_clifton",
+            "eobi",
+            "k_electric_gondpass",
+            "kwsb_clifton",
+          ],
+        },
+        entry_date: { type: SchemaType.STRING },
+        ref_no: { type: SchemaType.STRING },
+        account_description: { type: SchemaType.STRING },
+        document_no: { type: SchemaType.STRING },
+        debit: { type: SchemaType.NUMBER },
+        credit: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "chart_of_accounts_entry_delete",
+    description: "Delete a Chart of Accounts ledger entry. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: { ...idProp, ...confirmedProperty },
+      required: ["id"],
+    },
+  },
 ];

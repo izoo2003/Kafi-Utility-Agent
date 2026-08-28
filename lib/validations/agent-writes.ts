@@ -34,6 +34,10 @@ import {
   tenantRentLogUpdateSchema,
   tenantUpdateSchema,
 } from "@/lib/validations/tenants";
+import {
+  chartOfAccountsEntryInsertSchema,
+  chartOfAccountsEntryUpdateSchema,
+} from "@/lib/validations/chart-of-accounts";
 
 export const WRITE_TOOL_NAMES = [
   "kitchen_inventory_create",
@@ -72,6 +76,9 @@ export const WRITE_TOOL_NAMES = [
   "tenant_electric_bill_create",
   "tenant_electric_bill_update",
   "tenant_electric_bill_delete",
+  "chart_of_accounts_entry_create",
+  "chart_of_accounts_entry_update",
+  "chart_of_accounts_entry_delete",
 ] as const;
 
 export type WriteToolName = (typeof WRITE_TOOL_NAMES)[number];
@@ -244,3 +251,7 @@ export const tenantElectricBillCreateSchema = tenantElectricBillInsertSchema
   });
 export const tenantElectricBillUpdateSchemaAgent =
   tenantElectricBillUpdateSchema.required({ id: true });
+
+export const chartOfAccountsEntryCreateSchema = chartOfAccountsEntryInsertSchema;
+export const chartOfAccountsEntryUpdateSchemaAgent =
+  chartOfAccountsEntryUpdateSchema.required({ id: true });

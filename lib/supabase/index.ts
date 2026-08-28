@@ -7,3 +7,4 @@ export * from "./generator";
 export * from "./solar";
 export * from "./utilities";
 export * from "./tenants";
+export * from "./chart-of-accounts";
