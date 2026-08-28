@@ -25,6 +25,7 @@ import {
   MAX_CHAT_ATTACHMENTS,
   type ChatPendingAttachment,
 } from "@/lib/chat/attachments";
+import { prefersRomanUrduReply } from "@/lib/agent/reply-locale";
 
 const SUGGESTIONS = [
   "What's low in kitchen inventory?",
@@ -266,9 +267,12 @@ export function ChatPanel() {
 
       const left = remaining.length;
       const baseReply = json.data!.message.content;
+      const romanUrdu = prefersRomanUrduReply(nextMessages);
       const progressNote =
         left > 0
-          ? `\n\n${left} more record${left === 1 ? "" : "s"} waiting for confirm.`
+          ? romanUrdu
+            ? `\n\n${left} aur record confirm ke liye waiting hain.`
+            : `\n\n${left} more record${left === 1 ? "" : "s"} waiting for confirm.`
           : "";
 
       setMessages((prev) => [
@@ -357,13 +361,17 @@ export function ChatPanel() {
   function leavePending() {
     if (!pending || loading) return;
     const skipped = 1 + pendingQueue.length;
+    const romanUrdu = prefersRomanUrduReply(messages);
     setMessages((prev) => [
       ...prev,
       { role: "user", content: "Leave — discard pending confirms." },
       {
         role: "assistant",
-        content:
-          skipped > 1
+        content: romanUrdu
+          ? skipped > 1
+            ? `Theek hai bhai — kuch save nahi hua (${skipped} pending records chor diye).`
+            : "Theek hai bhai — kuch save nahi hua."
+          : skipped > 1
             ? `Left as-is — nothing was saved (${skipped} pending records discarded).`
             : "Left as-is — nothing was saved.",
       },

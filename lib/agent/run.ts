@@ -25,6 +25,11 @@ import {
   shouldRequireLiveLookup,
   wrapToolResult,
 } from "@/lib/agent/grounding";
+import {
+  confirmedWriteReply,
+  pendingRecordsReply,
+  prefersRomanUrduReply,
+} from "@/lib/agent/reply-locale";
 
 export type ChatMessage = {
   role: "user" | "assistant";
@@ -97,6 +102,7 @@ async function runWithModel(
   const toolsUsed: string[] = [];
   const pendingConfirmations: PendingConfirmation[] = [];
   const userText = messages[messages.length - 1]?.content ?? "";
+  const romanUrdu = prefersRomanUrduReply(messages);
   let nudgedForGrounding = false;
   let result = await chat.sendMessage(latestParts);
 
@@ -118,8 +124,14 @@ async function runWithModel(
         reply:
           text ||
           (pendingConfirmations.length
-            ? `Found ${pendingConfirmations.length} record${pendingConfirmations.length === 1 ? "" : "s"} ready to review. Use Confirm, Confirm all, or Leave below.`
-            : "I couldn’t produce a response. Try asking again."),
+            ? pendingRecordsReply(
+                pendingConfirmations.length,
+                romanUrdu,
+                false,
+              )
+            : romanUrdu
+              ? "Bhai, jawab nahi ban saka. Dobara try karo."
+              : "I couldn’t produce a response. Try asking again."),
         toolsUsed,
         model: modelName,
         pendingConfirmations,
@@ -167,7 +179,11 @@ async function runWithModel(
     // continue and attempt confirmed=true on its own.
     if (pendingConfirmations.length > 0) {
       return {
-        reply: `Found ${pendingConfirmations.length} record${pendingConfirmations.length === 1 ? "" : "s"} from your file. Nothing is saved yet — use Confirm (one), Confirm all, or Leave below.`,
+        reply: pendingRecordsReply(
+          pendingConfirmations.length,
+          romanUrdu,
+          hasAttachments,
+        ),
         toolsUsed,
         model: modelName,
         pendingConfirmations,
@@ -179,8 +195,10 @@ async function runWithModel(
 
   return {
     reply: pendingConfirmations.length
-      ? `Found ${pendingConfirmations.length} record${pendingConfirmations.length === 1 ? "" : "s"} ready to review. Use Confirm, Confirm all, or Leave below.`
-      : "I hit the tool-call limit while looking that up. Ask a narrower question, or try again.",
+      ? pendingRecordsReply(pendingConfirmations.length, romanUrdu, false)
+      : romanUrdu
+        ? "Bhai, itni der ho gayi — thora specific poocho ya dobara try karo."
+        : "I hit the tool-call limit while looking that up. Ask a narrower question, or try again.",
     toolsUsed,
     model: modelName,
     pendingConfirmations,
@@ -270,6 +288,7 @@ export async function confirmAgentWrite(
   user: User,
   tool: string,
   args: Record<string, unknown>,
+  romanUrdu = false,
 ): Promise<{ reply: string; toolsUsed: string[] }> {
   const result = await executeAgentTool(
     { supabase, user },
@@ -304,7 +323,7 @@ export async function confirmAgentWrite(
       : "Change applied.";
 
   return {
-    reply: `Confirmed — ${summary}`,
+    reply: confirmedWriteReply(summary, romanUrdu),
     toolsUsed: [tool],
   };
 }

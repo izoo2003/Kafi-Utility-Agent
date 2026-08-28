@@ -5,6 +5,10 @@ import {
   confirmAgentWrite,
   runFacilityOpsAgent,
 } from "@/lib/agent/run";
+import {
+  confirmedBatchReply,
+  prefersRomanUrduReply,
+} from "@/lib/agent/reply-locale";
 import { agentChatRequestSchema } from "@/lib/validations/agent";
 
 export async function POST(request: Request) {
@@ -27,6 +31,7 @@ export async function POST(request: Request) {
       const replies: string[] = [];
       let failedAt: number | null = null;
       let failMessage: string | null = null;
+      const romanUrdu = prefersRomanUrduReply(parsed.data.messages);
 
       for (let i = 0; i < batch.length; i++) {
         const item = batch[i]!;
@@ -36,6 +41,7 @@ export async function POST(request: Request) {
             user,
             item.tool,
             item.args,
+            romanUrdu,
           );
           toolsUsed.push(...used);
           replies.push(reply);
@@ -50,13 +56,14 @@ export async function POST(request: Request) {
       const okCount = replies.length;
       const total = batch.length;
       const summary =
-        failedAt == null
-          ? total === 1
-            ? replies[0]!
-            : `Confirmed all ${total} records.`
-          : okCount === 0
-            ? `Confirm failed: ${failMessage}`
-            : `Confirmed ${okCount} of ${total} records, then failed: ${failMessage}`;
+        failedAt == null && total === 1
+          ? replies[0]!
+          : (confirmedBatchReply(
+              total,
+              okCount,
+              failedAt == null ? null : failMessage,
+              romanUrdu,
+            ) ?? replies[0]!);
 
       return NextResponse.json(
         {

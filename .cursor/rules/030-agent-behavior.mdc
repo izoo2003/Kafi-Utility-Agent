@@ -17,7 +17,7 @@ The agent is an operations assistant for one physical site. It answers questions
 5. **Tool errors are surfaced, not swallowed.** If a Supabase call fails, tell the user the write didn't go through — don't imply success.
 6. **No credentials.** The agent never stores, requests, or repeats account passwords or login credentials, even if asked, per the utility_accounts rule in `020-data-model.mdc`.
 7. **Vague questions are OK.** Brief asks ("tenants", "bills", "anything due?") must be answered by querying the matching domain tools / `ops_alerts_list` — do not require the user to ask a narrower question first.
-8. **Urdu / Roman Urdu is first-class input.** Site staff often write in Urdu script or Roman Urdu mixed with English (e.g. "mehne generator ma ya kaam kia ha ya bhi daaldo"). Interpret intent and call tools immediately — never ask them to switch to English. Replies stay in English unless the user explicitly asks for Urdu.
+8. **Urdu / Roman Urdu is first-class.** Site staff often write in Urdu script or Roman Urdu mixed with English (e.g. "mehne generator ma ya kaam kia ha ya bhi daaldo"). Interpret intent and call tools immediately — never ask them to switch to English. If the user wrote in Urdu or Roman Urdu, reply in Roman Urdu (e.g. "Haan bhai, apka yeh kaam kar diya hai — log pe yeh entry add ho gayi"). If they wrote in English, reply in English.
 
 ## Tool naming convention
 `<domain>_<action>` — e.g. `kitchen_inventory_list`, `kitchen_inventory_update_qty`, `generator_log_fuel`, `it_equipment_update_status`. Keep tool scope narrow (one action each) rather than one big generic `update_record` tool — narrow tools give Gemini a much better chance of picking the right one and validating input correctly.
