@@ -3,17 +3,15 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseErrorResponse } from "@/lib/api/parse";
 import { isAllowedTenantDocumentFile } from "@/lib/supabase/tenant-storage";
 import {
-  clearRentLogPaymentFile,
+  clearRentPaymentFile,
   clearTenantAgreementFile,
   clearTenantPaymentFile,
-  setRentLogPaymentFile,
+  setRentPaymentFile,
   setTenantAgreementFile,
   setTenantPaymentFile,
 } from "@/lib/supabase/tenant-documents";
-import {
-  createTenantDocumentSignedUrl,
-} from "@/lib/supabase/tenant-storage";
-import { getTenant, getTenantRentLog } from "@/lib/supabase/tenants";
+import { createTenantDocumentSignedUrl } from "@/lib/supabase/tenant-storage";
+import { getTenant, getTenantRentPayment } from "@/lib/supabase/tenants";
 
 async function readUploadFile(request: Request) {
   const form = await request.formData();
@@ -126,7 +124,7 @@ export async function getTenantPaymentUrl(
   return NextResponse.json({ data: { url: signed.data.signedUrl } });
 }
 
-export async function postRentLogPayment(
+export async function postRentPaymentReceipt(
   request: Request,
   id: string,
   user: User,
@@ -134,7 +132,7 @@ export async function postRentLogPayment(
 ) {
   const parsed = await readUploadFile(request);
   if ("error" in parsed && parsed.error) return parsed.error;
-  const { data, error } = await setRentLogPaymentFile(
+  const { data, error } = await setRentPaymentFile(
     supabase,
     user,
     id,
@@ -144,21 +142,21 @@ export async function postRentLogPayment(
   return NextResponse.json({ data });
 }
 
-export async function deleteRentLogPaymentFile(
+export async function deleteRentPaymentReceipt(
   id: string,
   user: User,
   supabase: SupabaseClient,
 ) {
-  const { data, error } = await clearRentLogPaymentFile(supabase, user, id);
+  const { data, error } = await clearRentPaymentFile(supabase, user, id);
   if (error) return supabaseErrorResponse(error.message);
   return NextResponse.json({ data });
 }
 
-export async function getRentLogPaymentUrl(
+export async function getRentPaymentReceiptUrl(
   id: string,
   supabase: SupabaseClient,
 ) {
-  const { data, error } = await getTenantRentLog(supabase, id);
+  const { data, error } = await getTenantRentPayment(supabase, id);
   if (error) return supabaseErrorResponse(error.message);
   if (!data?.payment_file_url) {
     return NextResponse.json({ error: "No payment file attached" }, { status: 404 });

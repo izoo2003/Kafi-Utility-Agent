@@ -855,56 +855,52 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "tenants_create",
     description:
-      "Create a tenant account with current rent fields, optional agreement_expiry (lease end date), and optional attached agreement/payment files from this chat turn. Also writes the first rent log when rent fields are present. Requires confirmation.",
+      "Create a tenant with contract dates, survey, deposit, sqft/rate or lum-sum gross rent, and optional extra monthly charges (line_items). Generates the monthly rent ledger. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         tenant_name: { type: SchemaType.STRING },
-        rent_amount: { type: SchemaType.NUMBER },
-        rent_due_date: {
+        survey_no: { type: SchemaType.STRING },
+        contract_start_date: {
           type: SchemaType.STRING,
-          description: "YYYY-MM-DD or DD/MM/YYYY",
+          description: "Agreement start YYYY-MM-DD or DD/MM/YYYY",
         },
-        payment_status: {
+        contract_end_date: {
+          type: SchemaType.STRING,
+          description: "Agreement end YYYY-MM-DD or DD/MM/YYYY",
+        },
+        security_deposit_amount: { type: SchemaType.NUMBER },
+        security_deposit_bank_account: { type: SchemaType.STRING },
+        security_deposit_bank_name: { type: SchemaType.STRING },
+        security_deposit_cheque_no: { type: SchemaType.STRING },
+        sqft: { type: SchemaType.NUMBER },
+        rate: { type: SchemaType.NUMBER },
+        rate_type: {
           type: SchemaType.STRING,
           format: "enum",
-          enum: ["paid", "unpaid", "partial", "overdue"],
+          enum: ["per_sqft", "lum_sum"],
         },
-        payment_date: { type: SchemaType.STRING },
-        outstanding_amount: { type: SchemaType.NUMBER },
-        agreement_expiry: {
-          type: SchemaType.STRING,
-          description: "Lease / agreement end date (YYYY-MM-DD or DD/MM/YYYY)",
-        },
+        gross_rent: { type: SchemaType.NUMBER },
+        contract_detail: { type: SchemaType.STRING },
         notes: { type: SchemaType.STRING },
         attach_agreement: {
           type: SchemaType.BOOLEAN,
           description:
             "If true, save the chat-attached agreement PDF/photo onto this tenant.",
         },
-        attach_payment: {
-          type: SchemaType.BOOLEAN,
-          description:
-            "If true, save the chat-attached payment receipt onto this tenant (and their latest rent log).",
-        },
         agreement_attachment_index: {
           type: SchemaType.NUMBER,
           description: "Which attached file is the agreement (0-based). Default 0.",
         },
-        payment_attachment_index: {
-          type: SchemaType.NUMBER,
-          description:
-            "Which attached file is the payment receipt (0-based). Default 1 if attach_agreement is also true, else 0.",
-        },
         ...confirmedProperty,
       },
-      required: ["tenant_name"],
+      required: ["tenant_name", "contract_start_date", "contract_end_date"],
     },
   },
   {
     name: "tenants_update",
     description:
-      "Update a tenant account by id (or tenant_name_lookup). Can set agreement_expiry, attach/replace agreement or payment files from this chat turn, or clear those files. Changing rent fields also upserts a rent log for that due date. Requires confirmation.",
+      "Update a tenant account by id (or tenant_name_lookup). Changing contract dates or rent terms rebuilds the monthly ledger; set regenerate_schedule=true if payments already exist. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -914,38 +910,32 @@ export const agentWriteTools: FunctionDeclaration[] = [
           description: "Find tenant by current name when id unknown",
         },
         tenant_name: { type: SchemaType.STRING },
-        rent_amount: { type: SchemaType.NUMBER },
-        rent_due_date: { type: SchemaType.STRING },
-        payment_status: {
+        survey_no: { type: SchemaType.STRING },
+        contract_start_date: { type: SchemaType.STRING },
+        contract_end_date: { type: SchemaType.STRING },
+        security_deposit_amount: { type: SchemaType.NUMBER },
+        security_deposit_bank_account: { type: SchemaType.STRING },
+        security_deposit_bank_name: { type: SchemaType.STRING },
+        security_deposit_cheque_no: { type: SchemaType.STRING },
+        sqft: { type: SchemaType.NUMBER },
+        rate: { type: SchemaType.NUMBER },
+        rate_type: {
           type: SchemaType.STRING,
           format: "enum",
-          enum: ["paid", "unpaid", "partial", "overdue"],
+          enum: ["per_sqft", "lum_sum"],
         },
-        payment_date: { type: SchemaType.STRING },
-        outstanding_amount: { type: SchemaType.NUMBER },
-        agreement_expiry: {
-          type: SchemaType.STRING,
-          description: "Lease / agreement end date, or empty to clear",
-        },
+        gross_rent: { type: SchemaType.NUMBER },
+        regenerate_schedule: { type: SchemaType.BOOLEAN },
         notes: { type: SchemaType.STRING },
         attach_agreement: {
           type: SchemaType.BOOLEAN,
           description: "Save/replace the chat-attached agreement file.",
         },
-        attach_payment: {
-          type: SchemaType.BOOLEAN,
-          description: "Save/replace the chat-attached payment receipt.",
-        },
         clear_agreement_file: {
           type: SchemaType.BOOLEAN,
           description: "Delete the stored agreement file.",
         },
-        clear_payment_file: {
-          type: SchemaType.BOOLEAN,
-          description: "Delete the stored current payment receipt.",
-        },
         agreement_attachment_index: { type: SchemaType.NUMBER },
-        payment_attachment_index: { type: SchemaType.NUMBER },
         ...confirmedProperty,
       },
     },
@@ -967,72 +957,34 @@ export const agentWriteTools: FunctionDeclaration[] = [
     },
   },
   {
-    name: "tenant_rent_log_create",
+    name: "tenant_rent_payment_create",
     description:
-      "Log a rent payment for a tenant (amount, due date, payment status, payment date, outstanding). Optionally save a chat-attached payment receipt (attach_payment=true). Resolve tenant via tenants_list; pass tenant_id or tenant_name. Requires confirmation.",
+      "Record an amount received against a tenant monthly ledger row. Pass schedule_id from tenant_schedule_list, or tenant_id/tenant_name plus month_date. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
+        schedule_id: { type: SchemaType.STRING },
         tenant_id: { type: SchemaType.STRING },
         tenant_name: { type: SchemaType.STRING },
-        rent_amount: { type: SchemaType.NUMBER },
-        rent_due_date: { type: SchemaType.STRING },
-        payment_status: {
+        month_date: {
           type: SchemaType.STRING,
-          format: "enum",
-          enum: ["paid", "unpaid", "partial", "overdue"],
+          description: "Any date in the billing month (YYYY-MM-DD or DD/MM/YYYY)",
         },
-        payment_date: { type: SchemaType.STRING },
-        outstanding_amount: { type: SchemaType.NUMBER },
-        notes: { type: SchemaType.STRING },
+        amount_received: { type: SchemaType.NUMBER },
+        payer_bank_name: { type: SchemaType.STRING },
+        payer_bank_account: { type: SchemaType.STRING },
+        payee_bank_name: { type: SchemaType.STRING },
+        payee_bank_account: { type: SchemaType.STRING },
+        cheque_no: { type: SchemaType.STRING },
+        payment_reference: { type: SchemaType.STRING },
         attach_payment: {
           type: SchemaType.BOOLEAN,
-          description: "Save the chat-attached payment receipt onto this rent log.",
+          description: "Save the chat-attached payment receipt onto this payment.",
         },
         payment_attachment_index: { type: SchemaType.NUMBER },
         ...confirmedProperty,
       },
-    },
-  },
-  {
-    name: "tenant_rent_log_update",
-    description:
-      "Update a tenant rent log by id. Can attach/replace or clear the payment receipt. Requires confirmation.",
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: {
-        ...idProp,
-        rent_amount: { type: SchemaType.NUMBER },
-        rent_due_date: { type: SchemaType.STRING },
-        payment_status: {
-          type: SchemaType.STRING,
-          format: "enum",
-          enum: ["paid", "unpaid", "partial", "overdue"],
-        },
-        payment_date: { type: SchemaType.STRING },
-        outstanding_amount: { type: SchemaType.NUMBER },
-        notes: { type: SchemaType.STRING },
-        attach_payment: {
-          type: SchemaType.BOOLEAN,
-          description: "Save/replace the chat-attached payment receipt.",
-        },
-        clear_payment_file: {
-          type: SchemaType.BOOLEAN,
-          description: "Delete the stored payment receipt on this rent log.",
-        },
-        payment_attachment_index: { type: SchemaType.NUMBER },
-        ...confirmedProperty,
-      },
-      required: ["id"],
-    },
-  },
-  {
-    name: "tenant_rent_log_delete",
-    description: "Delete a tenant rent log entry. Requires confirmation.",
-    parameters: {
-      type: SchemaType.OBJECT,
-      properties: { ...idProp, ...confirmedProperty },
-      required: ["id"],
+      required: ["amount_received"],
     },
   },
   {

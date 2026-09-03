@@ -4,7 +4,7 @@ import { parseJsonBody, supabaseErrorResponse } from "@/lib/api/parse";
 import { withUpdatedBy } from "@/lib/api/with-user";
 import {
   deleteTenant,
-  getTenant,
+  getTenantLedger,
   updateTenant,
 } from "@/lib/supabase/tenants";
 import { tenantUpdateSchema } from "@/lib/validations/tenants";
@@ -16,9 +16,11 @@ export async function GET(_request: Request, { params }: Params) {
   const { supabase, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
-  const { data, error } = await getTenant(supabase, id);
+  const { data, error } = await getTenantLedger(supabase, id);
   if (error) return supabaseErrorResponse(error.message);
-  if (!data) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!data?.tenant) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   return NextResponse.json({ data });
 }
 

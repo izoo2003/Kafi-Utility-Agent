@@ -351,7 +351,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "tenants_list",
     description:
-      "List tenant accounts with current rent snapshot plus agreement_expiry, agreement_days_remaining, has_agreement_file, has_payment_file. Call this BEFORE tenant_rent_log_create or tenant_electric_bill_create so you can map a name to tenant_id.",
+      "List tenant accounts with contract dates, survey no, gross rent, monthly total, outstanding ledger balance, and agreement_days_remaining. Call this BEFORE tenant_rent_payment_create or tenant_electric_bill_create so you can map a name to tenant_id.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -364,7 +364,8 @@ const agentReadTools: FunctionDeclaration[] = [
   },
   {
     name: "tenants_get",
-    description: "Get one tenant by id or tenant_name, including current rent fields.",
+    description:
+      "Get one tenant by id or tenant_name, including contract terms and a monthly schedule preview (due, received, balance).",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -377,9 +378,9 @@ const agentReadTools: FunctionDeclaration[] = [
     },
   },
   {
-    name: "tenant_rent_logs_list",
+    name: "tenant_schedule_list",
     description:
-      "List rent payment history for tenants (due date, amount, status, payment date, outstanding). Filter by tenant_id or tenant_name.",
+      "List the monthly rent ledger for tenants (month, gross rent, extra charges, received, balance). Filter by tenant_id or tenant_name.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {

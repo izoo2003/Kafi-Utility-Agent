@@ -19,7 +19,8 @@ import {
 import { listUtilityAccounts } from "@/lib/supabase/utilities";
 import {
   listTenantElectricBills,
-  listTenantRentLogs,
+  listTenantRentPayments,
+  listTenantSchedule,
   listTenants,
 } from "@/lib/supabase/tenants";
 import { listChartOfAccountsEntries } from "@/lib/supabase/chart-of-accounts";
@@ -40,7 +41,7 @@ import type {
   SolarSpecs,
   Tenant,
   TenantElectricBill,
-  TenantRentLog,
+  TenantRentSchedule,
   UtilityAccount,
 } from "@/lib/types/database";
 
@@ -379,20 +380,26 @@ export async function loadExportBundle(
         filename: "tenants",
         columns: cols<Tenant>([
           { key: "tenant_name", header: "Tenant name", value: (r) => r.tenant_name },
-          { key: "rent_amount", header: "Rent amount", value: (r) => r.rent_amount },
-          { key: "rent_due_date", header: "Rent due date", value: (r) => r.rent_due_date },
-          { key: "payment_status", header: "Payment status", value: (r) => r.payment_status },
-          { key: "payment_date", header: "Payment date", value: (r) => r.payment_date },
+          { key: "survey_no", header: "Survey no.", value: (r) => r.survey_no },
           {
-            key: "outstanding_amount",
-            header: "Outstanding / overdue",
-            value: (r) => r.outstanding_amount,
+            key: "contract_start_date",
+            header: "Contract start",
+            value: (r) => r.contract_start_date,
           },
           {
-            key: "agreement_expiry",
-            header: "Agreement expiry",
-            value: (r) => r.agreement_expiry,
+            key: "contract_end_date",
+            header: "Contract end",
+            value: (r) => r.contract_end_date,
           },
+          {
+            key: "security_deposit_amount",
+            header: "Security deposit",
+            value: (r) => r.security_deposit_amount,
+          },
+          { key: "sqft", header: "Sqft", value: (r) => r.sqft },
+          { key: "rate", header: "Rate", value: (r) => r.rate },
+          { key: "rate_type", header: "Rate type", value: (r) => r.rate_type },
+          { key: "gross_rent", header: "Gross rent", value: (r) => r.gross_rent },
           { key: "notes", header: "Notes", value: (r) => r.notes },
           { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
         ]),
@@ -400,35 +407,68 @@ export async function loadExportBundle(
       };
     }
     case "tenant-rent": {
-      const [tenants, logs] = await Promise.all([
+      const [tenants, schedule] = await Promise.all([
         listTenants(supabase),
-        listTenantRentLogs(supabase),
+        listTenantSchedule(supabase),
       ]);
       if (tenants.error) throw new Error(tenants.error.message);
-      if (logs.error) throw new Error(logs.error.message);
+      if (schedule.error) throw new Error(schedule.error.message);
+      const payments = await listTenantRentPayments(
+        supabase,
+        (schedule.data ?? []).map((r) => r.id),
+      );
+      if (payments.error) throw new Error(payments.error.message);
       const names = new Map(
         (tenants.data ?? []).map((t) => [t.id, t.tenant_name]),
       );
-      const rows = (logs.data ?? []).map((r) => ({
-        ...r,
-        tenant_name: names.get(r.tenant_id) ?? "",
-      }));
+      const received = new Map<string, number>();
+      const refs = new Map<string, string[]>();
+      for (const p of payments.data ?? []) {
+        received.set(
+          p.schedule_id,
+          (received.get(p.schedule_id) ?? 0) + Number(p.amount_received ?? 0),
+        );
+        const label = p.payment_reference || p.cheque_no;
+        if (label) {
+          const list = refs.get(p.schedule_id) ?? [];
+          list.push(label);
+          refs.set(p.schedule_id, list);
+        }
+      }
+      const rows = (schedule.data ?? []).map((r) => {
+        const got = received.get(r.id) ?? 0;
+        return {
+          ...r,
+          tenant_name: names.get(r.tenant_id) ?? "",
+          received: got,
+          balance: Number(r.total_due ?? 0) - got,
+          payment_ref: (refs.get(r.id) ?? []).join("; "),
+        };
+      });
       return {
-        title: "Tenant rent records",
+        title: "Tenant rent ledger",
         filename: "tenant-rent",
-        columns: cols<TenantRentLog & { tenant_name: string }>([
+        columns: cols<
+          TenantRentSchedule & {
+            tenant_name: string;
+            received: number;
+            balance: number;
+            payment_ref: string;
+          }
+        >([
           { key: "tenant_name", header: "Tenant name", value: (r) => r.tenant_name },
-          { key: "rent_amount", header: "Rent amount", value: (r) => r.rent_amount },
-          { key: "rent_due_date", header: "Rent due date", value: (r) => r.rent_due_date },
-          { key: "payment_status", header: "Payment status", value: (r) => r.payment_status },
-          { key: "payment_date", header: "Payment date", value: (r) => r.payment_date },
           {
-            key: "outstanding_amount",
-            header: "Outstanding / overdue",
-            value: (r) => r.outstanding_amount,
+            key: "period",
+            header: "Month",
+            value: (r) => `${r.period_year}-${String(r.period_month).padStart(2, "0")}`,
           },
-          { key: "notes", header: "Notes", value: (r) => r.notes },
-          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+          { key: "survey_no", header: "Survey no.", value: (r) => r.survey_no },
+          { key: "sqft", header: "Sqft", value: (r) => r.sqft },
+          { key: "gross_rent", header: "Gross rent", value: (r) => r.gross_rent },
+          { key: "total_due", header: "Total due", value: (r) => r.total_due },
+          { key: "received", header: "Received", value: (r) => r.received },
+          { key: "balance", header: "Balance", value: (r) => r.balance },
+          { key: "payment_ref", header: "Cheque / ref", value: (r) => r.payment_ref },
         ]),
         rows: asRows(rows),
       };

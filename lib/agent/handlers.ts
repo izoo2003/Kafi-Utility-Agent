@@ -43,8 +43,10 @@ import {
 import {
   findTenantByName,
   getTenant,
+  getTenantLedger,
   listTenantElectricBills,
-  listTenantRentLogs,
+  listTenantSchedule,
+  listTenantSummaries,
   listTenants,
 } from "@/lib/supabase/tenants";
 import {
@@ -653,7 +655,7 @@ export async function executeAgentTool(
     }
 
     case "tenants_list": {
-      const { data, error } = await listTenants(supabase);
+      const { data, error } = await listTenantSummaries(supabase);
       if (error) throw new Error(error.message);
       let rows = data ?? [];
       if (typeof input.name_contains === "string" && input.name_contains.trim()) {
@@ -665,15 +667,18 @@ export async function executeAgentTool(
       return rows.map((r) => ({
         id: r.id,
         tenant_name: r.tenant_name,
-        rent_amount: r.rent_amount,
-        rent_due_date: r.rent_due_date,
-        payment_status: r.payment_status,
-        payment_date: r.payment_date,
-        outstanding_amount: r.outstanding_amount,
-        agreement_expiry: r.agreement_expiry,
-        agreement_days_remaining: daysUntilAgreementExpiry(r.agreement_expiry),
+        survey_no: r.survey_no,
+        contract_start_date: r.contract_start_date,
+        contract_end_date: r.contract_end_date,
+        gross_rent: r.gross_rent,
+        monthly_total: r.monthly_total,
+        outstanding: r.outstanding,
+        month_count: r.month_count,
+        agreement_expiry: r.contract_end_date ?? r.agreement_expiry,
+        agreement_days_remaining: daysUntilAgreementExpiry(
+          r.contract_end_date ?? r.agreement_expiry,
+        ),
         has_agreement_file: Boolean(r.agreement_file_url),
-        has_payment_file: Boolean(r.payment_file_url),
         notes: r.notes,
       }));
     }
@@ -693,23 +698,36 @@ export async function executeAgentTool(
         return { error: "Provide id or tenant_name" };
       }
       if (!row) return { error: "Tenant not found" };
+      const ledger = await getTenantLedger(supabase, row.id);
       return {
         id: row.id,
         tenant_name: row.tenant_name,
-        rent_amount: row.rent_amount,
-        rent_due_date: row.rent_due_date,
-        payment_status: row.payment_status,
-        payment_date: row.payment_date,
-        outstanding_amount: row.outstanding_amount,
-        agreement_expiry: row.agreement_expiry,
-        agreement_days_remaining: daysUntilAgreementExpiry(row.agreement_expiry),
+        survey_no: row.survey_no,
+        contract_start_date: row.contract_start_date,
+        contract_end_date: row.contract_end_date,
+        security_deposit_amount: row.security_deposit_amount,
+        sqft: row.sqft,
+        rate: row.rate,
+        rate_type: row.rate_type,
+        gross_rent: row.gross_rent,
+        outstanding: ledger.data?.outstanding ?? null,
+        schedule_preview: (ledger.data?.schedule ?? []).map((s) => ({
+          id: s.id,
+          month: s.month_label,
+          total_due: s.total_due,
+          received: s.received,
+          balance: s.balance,
+        })),
+        agreement_expiry: row.contract_end_date ?? row.agreement_expiry,
+        agreement_days_remaining: daysUntilAgreementExpiry(
+          row.contract_end_date ?? row.agreement_expiry,
+        ),
         has_agreement_file: Boolean(row.agreement_file_url),
-        has_payment_file: Boolean(row.payment_file_url),
         notes: row.notes,
       };
     }
 
-    case "tenant_rent_logs_list": {
+    case "tenant_schedule_list": {
       const { data: tenants, error: tenantsError } = await listTenants(supabase);
       if (tenantsError) throw new Error(tenantsError.message);
       let tenantId =
@@ -719,13 +737,17 @@ export async function executeAgentTool(
         tenantId = match?.id;
         if (!tenantId) return { error: "Tenant not found" };
       }
-      const { data, error } = await listTenantRentLogs(supabase, tenantId);
+      if (tenantId) {
+        const ledger = await getTenantLedger(supabase, tenantId);
+        if (ledger.error) throw new Error(ledger.error.message);
+        const limit = clampLimit(input.limit, 40);
+        return truncatedList(ledger.data?.schedule ?? [], limit);
+      }
+      const { data: allSchedule, error } = await listTenantSchedule(supabase);
       if (error) throw new Error(error.message);
-      const names = new Map(
-        (tenants ?? []).map((t) => [t.id, t.tenant_name]),
-      );
+      const names = new Map((tenants ?? []).map((t) => [t.id, t.tenant_name]));
       const limit = clampLimit(input.limit, 40);
-      const mapped = (data ?? []).map((r) => ({
+      const mapped = (allSchedule ?? []).map((r) => ({
         ...r,
         tenant_name: names.get(r.tenant_id) ?? null,
       }));

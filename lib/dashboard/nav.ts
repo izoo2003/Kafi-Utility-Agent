@@ -141,26 +141,9 @@ export const dashboardNav = [
   {
     href: "/dashboard/tenants",
     label: "Tenants",
-    description: "Accounts, rent records, and tenant electricity bills",
+    description: "Tenant accounts, rent ledger, and electricity bills",
     icon: "tenants",
     accent: "violet",
-    children: [
-      {
-        href: "/dashboard/tenants",
-        label: "Create tenant",
-        match: "exact" as const,
-      },
-      {
-        href: "/dashboard/tenants/records",
-        label: "Rent records",
-        match: "prefix" as const,
-      },
-      {
-        href: "/dashboard/tenants/electricity",
-        label: "Electricity bills",
-        match: "prefix" as const,
-      },
-    ],
   },
   {
     href: "/dashboard/chart-of-accounts",

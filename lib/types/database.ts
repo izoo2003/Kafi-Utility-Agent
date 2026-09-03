@@ -268,17 +268,73 @@ export type UtilityPaymentLog = AuditColumns & {
 
 export type TenantPaymentStatus = "paid" | "unpaid" | "partial" | "overdue";
 
+export type TenantRateType = "per_sqft" | "lum_sum";
+
+export type TenantRentLineItemSnapshot = {
+  label: string;
+  amount: number;
+};
+
 export type Tenant = AuditColumns & {
   tenant_name: string;
+  survey_no: string | null;
+  contract_start_date: IsoDate | null;
+  contract_end_date: IsoDate | null;
+  security_deposit_amount: number | null;
+  security_deposit_bank_account: string | null;
+  security_deposit_bank_name: string | null;
+  security_deposit_cheque_no: string | null;
+  sqft: number | null;
+  rate: number | null;
+  rate_type: TenantRateType;
+  gross_rent: number | null;
+  contract_detail: string | null;
+  /** Deprecated snapshot — kept for migration compatibility. */
   rent_amount: number | null;
   rent_due_date: IsoDate | null;
   payment_status: TenantPaymentStatus;
   payment_date: IsoDate | null;
   outstanding_amount: number | null;
+  /** Prefer contract_end_date; kept in sync on write. */
   agreement_expiry: IsoDate | null;
   agreement_file_url: string | null;
   payment_file_url: string | null;
   notes: string | null;
+};
+
+export type TenantRentLineItem = AuditColumns & {
+  tenant_id: Uuid;
+  label: string;
+  amount: number;
+  sort_order: number;
+};
+
+export type TenantRentSchedule = AuditColumns & {
+  tenant_id: Uuid;
+  serial_no: number;
+  period_year: number;
+  period_month: number;
+  period_start: IsoDate;
+  period_end: IsoDate;
+  survey_no: string | null;
+  sqft: number | null;
+  rate: number | null;
+  rate_type: TenantRateType;
+  gross_rent: number | null;
+  line_items: TenantRentLineItemSnapshot[];
+  total_due: number;
+};
+
+export type TenantRentPayment = AuditColumns & {
+  schedule_id: Uuid;
+  amount_received: number;
+  payer_bank_account: string | null;
+  payer_bank_name: string | null;
+  payee_bank_account: string | null;
+  payee_bank_name: string | null;
+  cheque_no: string | null;
+  payment_reference: string | null;
+  payment_file_url: string | null;
 };
 
 export type TenantRentLog = AuditColumns & {
@@ -373,6 +429,21 @@ export type Database = {
         Update: UtilityPaymentLogUpdate;
       };
       tenants: { Row: Tenant; Insert: TenantInsert; Update: TenantUpdate };
+      tenant_rent_line_items: {
+        Row: TenantRentLineItem;
+        Insert: TenantRentLineItemInsert;
+        Update: TenantRentLineItemUpdate;
+      };
+      tenant_rent_schedule: {
+        Row: TenantRentSchedule;
+        Insert: TenantRentScheduleInsert;
+        Update: TenantRentScheduleUpdate;
+      };
+      tenant_rent_payments: {
+        Row: TenantRentPayment;
+        Insert: TenantRentPaymentInsert;
+        Update: TenantRentPaymentUpdate;
+      };
       tenant_rent_logs: {
         Row: TenantRentLog;
         Insert: TenantRentLogInsert;
@@ -481,6 +552,39 @@ export type TenantInsert = Partial<OmitAuditOnWrite<Tenant>> & {
   tenant_name: string;
 };
 export type TenantUpdate = Partial<OmitAuditOnWrite<Tenant>>;
+
+export type TenantRentLineItemInsert = Partial<
+  OmitAuditOnWrite<TenantRentLineItem>
+> & {
+  tenant_id: Uuid;
+  label: string;
+};
+export type TenantRentLineItemUpdate = Partial<
+  OmitAuditOnWrite<TenantRentLineItem>
+>;
+
+export type TenantRentScheduleInsert = Partial<
+  OmitAuditOnWrite<TenantRentSchedule>
+> & {
+  tenant_id: Uuid;
+  serial_no: number;
+  period_year: number;
+  period_month: number;
+  period_start: IsoDate;
+  period_end: IsoDate;
+};
+export type TenantRentScheduleUpdate = Partial<
+  OmitAuditOnWrite<TenantRentSchedule>
+>;
+
+export type TenantRentPaymentInsert = Partial<
+  OmitAuditOnWrite<TenantRentPayment>
+> & {
+  schedule_id: Uuid;
+};
+export type TenantRentPaymentUpdate = Partial<
+  OmitAuditOnWrite<TenantRentPayment>
+>;
 
 export type TenantRentLogInsert = Partial<OmitAuditOnWrite<TenantRentLog>> & {
   tenant_id: Uuid;

@@ -3,10 +3,11 @@ import { requireUser } from "@/lib/auth/require-user";
 import { parseJsonBody, supabaseErrorResponse } from "@/lib/api/parse";
 import { withUpdatedBy } from "@/lib/api/with-user";
 import {
-  deleteTenantRentLog,
-  updateTenantRentLog,
+  deleteTenantRentPayment,
+  getTenantRentPayment,
+  updateTenantRentPayment,
 } from "@/lib/supabase/tenants";
-import { tenantRentLogUpdateSchema } from "@/lib/validations/tenants";
+import { tenantRentPaymentUpdateSchema } from "@/lib/validations/tenants";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -15,11 +16,10 @@ export async function PATCH(request: Request, { params }: Params) {
   const { user, supabase, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
-  const parsed = await parseJsonBody(request, tenantRentLogUpdateSchema);
+  const parsed = await parseJsonBody(request, tenantRentPaymentUpdateSchema);
   if (parsed.error) return parsed.error;
-
-  const { id: _ignored, ...rest } = parsed.data;
-  const { data, error } = await updateTenantRentLog(
+  const { id: _ignored, schedule_id: _sid, ...rest } = parsed.data;
+  const { data, error } = await updateTenantRentPayment(
     supabase,
     id,
     withUpdatedBy(rest, user),
@@ -33,7 +33,12 @@ export async function DELETE(_request: Request, { params }: Params) {
   const { supabase, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
-  const { error } = await deleteTenantRentLog(supabase, id);
+  const existing = await getTenantRentPayment(supabase, id);
+  if (existing.error) return supabaseErrorResponse(existing.error.message);
+  if (!existing.data) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const { error } = await deleteTenantRentPayment(supabase, id);
   if (error) return supabaseErrorResponse(error.message);
   return NextResponse.json({ ok: true });
 }

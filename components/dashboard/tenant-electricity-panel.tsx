@@ -12,7 +12,6 @@ import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { TenantSectionNav } from "@/components/dashboard/tenant-section-nav";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { TablePagination } from "@/components/dashboard/table-pagination";
@@ -101,10 +100,12 @@ export function TenantElectricityPanel({
   initialTenants,
   initialBills,
   initialTenantId,
+  embedded = false,
 }: {
   initialTenants: Tenant[];
   initialBills: TenantElectricBill[];
   initialTenantId?: string | null;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [tenants] = useState(initialTenants);
@@ -189,6 +190,8 @@ export function TenantElectricityPanel({
 
   return (
     <div className="space-y-6">
+      {embedded ? null : (
+        <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title="Tenants · Electricity bills"
@@ -201,8 +204,8 @@ export function TenantElectricityPanel({
           <ImportFilesButton target="tenant-electricity" />
         </div>
       </div>
-
-      <TenantSectionNav active="electricity" />
+        </>
+      )}
 
       {tenants.length === 0 ? (
         <div className="rounded-xl border border-[oklch(0.88_0.02_290)] bg-white/70 px-4 py-6 text-sm text-muted-foreground">
@@ -214,6 +217,11 @@ export function TenantElectricityPanel({
         </div>
       ) : (
         <>
+          {embedded ? (
+            <div className="flex justify-end">
+              <Button onClick={openCreate}>Log electricity bill</Button>
+            </div>
+          ) : (
           <div className="space-y-2 rounded-xl border border-[oklch(0.88_0.02_290)] bg-[oklch(0.99_0.01_290)] px-4 py-4 sm:px-5">
             <Label htmlFor="tenant-electric-select">Tenant</Label>
             <select
@@ -237,8 +245,9 @@ export function TenantElectricityPanel({
               meters stay under Utilities.
             </p>
           </div>
+          )}
 
-          {tenant ? (
+          {tenant && !embedded ? (
             <section
               className={cn(
                 "space-y-3 rounded-xl border px-4 py-4 sm:px-5",

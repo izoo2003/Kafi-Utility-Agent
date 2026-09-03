@@ -3,10 +3,11 @@ import { withUpdatedBy } from "@/lib/api/with-user";
 import type { User } from "@supabase/supabase-js";
 import {
   getTenant,
-  getTenantRentLog,
-  listTenantRentLogs,
+  getTenantRentPayment,
+  listTenantRentPayments,
+  listTenantSchedule,
   updateTenant,
-  updateTenantRentLog,
+  updateTenantRentPayment,
 } from "@/lib/supabase/tenants";
 import {
   isAllowedTenantDocumentMime,
@@ -66,9 +67,7 @@ export async function setTenantAgreementFile(
   if (!existing.data) {
     return { data: null, error: { message: "Tenant not found" } };
   }
-  if (file instanceof File) {
-    /* ok */
-  } else if (!isAllowedTenantDocumentMime(file.mimeType, file.name)) {
+  if (!(file instanceof File) && !isAllowedTenantDocumentMime(file.mimeType, file.name)) {
     return {
       data: null,
       error: { message: "Only PDF or image files (JPG/PNG/WebP) are allowed" },
@@ -112,16 +111,16 @@ export async function clearTenantAgreementFile(
   );
 }
 
-export async function setRentLogPaymentFile(
+export async function setRentPaymentFile(
   supabase: SupabaseClient,
   user: User,
-  logId: string,
+  paymentId: string,
   file: File | ChatFilePayload,
 ) {
-  const existing = await getTenantRentLog(supabase, logId);
+  const existing = await getTenantRentPayment(supabase, paymentId);
   if (existing.error) return { data: null, error: existing.error };
   if (!existing.data) {
-    return { data: null, error: { message: "Rent log not found" } };
+    return { data: null, error: { message: "Payment not found" } };
   }
   if (!(file instanceof File) && !isAllowedTenantDocumentMime(file.mimeType, file.name)) {
     return {
@@ -133,7 +132,7 @@ export async function setRentLogPaymentFile(
     supabase,
     existing.data.payment_file_url,
     "payments",
-    logId,
+    paymentId,
     file,
   );
   if (uploaded.error || !uploaded.path) {
@@ -142,82 +141,66 @@ export async function setRentLogPaymentFile(
       error: uploaded.error ?? { message: "Upload failed" },
     };
   }
-  const updated = await updateTenantRentLog(
+  return updateTenantRentPayment(
     supabase,
-    logId,
+    paymentId,
     withUpdatedBy({ payment_file_url: uploaded.path }, user),
   );
-  return updated;
 }
 
-export async function clearRentLogPaymentFile(
+export async function clearRentPaymentFile(
   supabase: SupabaseClient,
   user: User,
-  logId: string,
+  paymentId: string,
 ) {
-  const existing = await getTenantRentLog(supabase, logId);
+  const existing = await getTenantRentPayment(supabase, paymentId);
   if (existing.error) return { data: null, error: existing.error };
   if (!existing.data) {
-    return { data: null, error: { message: "Rent log not found" } };
+    return { data: null, error: { message: "Payment not found" } };
   }
-  const tenant = await getTenant(supabase, existing.data.tenant_id);
-  const shared =
-    tenant.data?.payment_file_url === existing.data.payment_file_url;
-  if (!shared) {
-    await removeTenantDocument(supabase, existing.data.payment_file_url);
-  }
-  return updateTenantRentLog(
+  await removeTenantDocument(supabase, existing.data.payment_file_url);
+  return updateTenantRentPayment(
     supabase,
-    logId,
+    paymentId,
     withUpdatedBy({ payment_file_url: null }, user),
   );
 }
 
-/** Attach a payment receipt to the tenant snapshot and the latest (or matching due-date) rent log. */
+/** Attach a receipt to the latest unpaid schedule month, or the last month. */
 export async function setTenantPaymentFile(
   supabase: SupabaseClient,
   user: User,
   tenantId: string,
   file: File | ChatFilePayload,
 ) {
-  const logs = await listTenantRentLogs(supabase, tenantId);
-  if (logs.error) return { data: null, error: logs.error };
-  const latest = logs.data?.[0] ?? null;
-  if (latest) {
-    const result = await setRentLogPaymentFile(supabase, user, latest.id, file);
-    if (result.error || !result.data) return result;
-    const tenant = await getTenant(supabase, tenantId);
-    return { data: tenant.data, error: tenant.error };
+  const schedule = await listTenantSchedule(supabase, tenantId);
+  if (schedule.error) return { data: null, error: schedule.error };
+  const rows = schedule.data ?? [];
+  if (rows.length === 0) {
+    return { data: null, error: { message: "No rent schedule to attach a receipt to" } };
   }
-  const existing = await getTenant(supabase, tenantId);
-  if (existing.error) return { data: null, error: existing.error };
-  if (!existing.data) {
-    return { data: null, error: { message: "Tenant not found" } };
-  }
-  if (!(file instanceof File) && !isAllowedTenantDocumentMime(file.mimeType, file.name)) {
-    return {
-      data: null,
-      error: { message: "Only PDF or image files (JPG/PNG/WebP) are allowed" },
-    };
-  }
-  const uploaded = await replacePath(
+  const payments = await listTenantRentPayments(
     supabase,
-    existing.data.payment_file_url,
-    "payments",
-    tenantId,
-    file,
+    rows.map((row) => row.id),
   );
-  if (uploaded.error || !uploaded.path) {
-    return {
-      data: null,
-      error: uploaded.error ?? { message: "Upload failed" },
-    };
+  if (payments.error) return { data: null, error: payments.error };
+  const receivedBy = new Map<string, number>();
+  for (const payment of payments.data ?? []) {
+    receivedBy.set(
+      payment.schedule_id,
+      (receivedBy.get(payment.schedule_id) ?? 0) + Number(payment.amount_received ?? 0),
+    );
   }
-  return updateTenant(
-    supabase,
-    tenantId,
-    withUpdatedBy({ payment_file_url: uploaded.path }, user),
-  );
+  const target =
+    rows.find((row) => (receivedBy.get(row.id) ?? 0) < Number(row.total_due ?? 0)) ??
+    rows[rows.length - 1]!;
+  const latestPayment = (payments.data ?? [])
+    .filter((p) => p.schedule_id === target.id)
+    .at(-1);
+  if (latestPayment) {
+    return setRentPaymentFile(supabase, user, latestPayment.id, file);
+  }
+  return { data: null, error: { message: "Record a payment before attaching a receipt" } };
 }
 
 export async function clearTenantPaymentFile(
@@ -230,17 +213,9 @@ export async function clearTenantPaymentFile(
   if (!existing.data) {
     return { data: null, error: { message: "Tenant not found" } };
   }
-  const logs = await listTenantRentLogs(supabase, tenantId);
-  const latest = logs.data?.[0] ?? null;
-  if (latest?.payment_file_url && latest.payment_file_url === existing.data.payment_file_url) {
-    await updateTenantRentLog(
-      supabase,
-      latest.id,
-      withUpdatedBy({ payment_file_url: null }, user),
-    );
-  } else {
+  if (existing.data.payment_file_url) {
     await removeTenantDocument(supabase, existing.data.payment_file_url);
-    await updateTenant(
+    return updateTenant(
       supabase,
       tenantId,
       withUpdatedBy({ payment_file_url: null }, user),

@@ -146,23 +146,43 @@ Dashboard plants (display names): Good We Office, Sungrow Office, KMP Home Solar
 - ai_summary_model text
 - ai_summary_at timestamptz
 
-## 6. Tenants (`tenants`, `tenant_rent_logs`, `tenant_electric_bills`)
-`tenants` (account + current rent snapshot):
+## 6. Tenants (`tenants`, `tenant_rent_line_items`, `tenant_rent_schedule`, `tenant_rent_payments`, `tenant_electric_bills`)
+`tenants` (account + contract terms):
 - tenant_name text (unique, case-insensitive)
-- rent_amount numeric
-- rent_due_date date
-- payment_status text (`paid` | `unpaid` | `partial` | `overdue`)
-- payment_date date
-- outstanding_amount numeric
-- agreement_expiry date (lease end; alert 1 month before)
+- survey_no text
+- contract_start_date / contract_end_date date (lease period; monthly ledger is generated from overlapping calendar months)
+- security_deposit_amount numeric
+- security_deposit_bank_account / security_deposit_bank_name / security_deposit_cheque_no text
+- sqft / rate numeric
+- rate_type text (`per_sqft` | `lum_sum`)
+- gross_rent numeric (`sqft * rate` when per_sqft; flat amount when lum_sum)
+- contract_detail text
 - agreement_file_url text (agreement PDF/photo in `tenant-documents` bucket)
-- payment_file_url text (current payment receipt snapshot)
 - notes text
 
-`tenant_rent_logs` (history per tenant; latest log syncs the tenant snapshot):
+Deprecated snapshot columns may still exist (`rent_amount`, `rent_due_date`, `payment_status`, `payment_date`, `outstanding_amount`, `agreement_expiry`, `payment_file_url`) — do not write them from the UI; outstanding and due state are computed from the ledger.
+
+`tenant_rent_line_items` (extra monthly columns such as Office Rent):
 - tenant_id uuid → tenants
-- same rent/payment fields as the tenant snapshot
-- payment_file_url text (receipt PDF/photo for that payment)
+- label text
+- amount numeric
+- sort_order int
+
+`tenant_rent_schedule` (one row per calendar month in the contract):
+- tenant_id uuid → tenants
+- serial_no, period_year, period_month
+- period_start / period_end date
+- snapshot of survey_no, sqft, rate, rate_type, gross_rent
+- line_items jsonb (`[{ label, amount }]`)
+- total_due numeric (gross_rent + line items)
+
+`tenant_rent_payments` (receipts against a schedule month):
+- schedule_id uuid → tenant_rent_schedule
+- amount_received numeric
+- payer_bank_account / payer_bank_name (from)
+- payee_bank_account / payee_bank_name (to)
+- cheque_no / payment_reference text
+- payment_file_url text
 
 `tenant_electric_bills` (K-Electric charges billed to the tenant — not site utility meters):
 - tenant_id uuid → tenants

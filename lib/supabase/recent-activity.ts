@@ -239,7 +239,7 @@ export async function collectRecentActivity(
         domain: "tenants",
         label: String(r.tenant_name ?? "Tenant"),
         detail: `Rent ${r.payment_status ?? "unpaid"}`,
-        href: "/dashboard/tenants",
+        href: `/dashboard/tenants/${r.id}`,
       }),
     ),
   ];

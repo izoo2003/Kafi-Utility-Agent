@@ -8,7 +8,6 @@ import type {
   SolarLiveSnapshot,
   SolarMaintenance,
   SolarMonitoringLog,
-  Tenant,
   TenantElectricBill,
   UtilityAccount,
   UtilityPaymentLog,
@@ -46,6 +45,7 @@ import {
   agreementExpiryStatus,
   daysUntilAgreementExpiry,
 } from "@/lib/tenants/agreement";
+import { listTenantSummaries } from "@/lib/supabase/tenants";
 
 const WARRANTY_WARNING_DAYS = 30;
 const SERVICE_WARNING_DAYS = 14;
@@ -82,7 +82,7 @@ export async function collectOpsAlerts(
     live,
     utilities,
     payments,
-    tenants,
+    tenantSummaries,
     tenantBills,
   ] =
     await Promise.all([
@@ -114,7 +114,7 @@ export async function collectOpsAlerts(
         .from("utility_payment_logs")
         .select("*")
         .order("paid_on", { ascending: false }),
-      supabase.from("tenants").select("*"),
+      listTenantSummaries(supabase),
       supabase
         .from("tenant_electric_bills")
         .select("*")
@@ -473,63 +473,28 @@ export async function collectOpsAlerts(
   }
 
   if (
-    !tenants.error ||
-    !/tenants|does not exist|schema cache/i.test(tenants.error.message)
+    !tenantSummaries.error ||
+    !/tenants|does not exist|schema cache/i.test(tenantSummaries.error.message)
   ) {
-    for (const tenant of (tenants.data ?? []) as Tenant[]) {
-      const status = effectivePaymentStatus(
-        tenant.payment_status,
-        tenant.rent_due_date,
-        today,
-      );
-      const outstanding = Number(tenant.outstanding_amount ?? 0);
-      if (status !== "overdue" && !(status !== "paid" && outstanding > 0)) {
-        if (status !== "unpaid" && status !== "partial") continue;
-        if (!tenant.rent_due_date || tenant.rent_due_date > serviceHorizon) {
-          continue;
-        }
-      }
-
-      const overdue = status === "overdue";
-      const dueSoon =
-        !overdue &&
-        tenant.rent_due_date != null &&
-        tenant.rent_due_date <= serviceHorizon;
-      if (!overdue && !dueSoon && outstanding <= 0) continue;
-
+    const tenants = tenantSummaries.data ?? [];
+    for (const tenant of tenants) {
+      const outstanding = Number(tenant.outstanding ?? 0);
+      if (outstanding <= 0) continue;
       alerts.push({
         id: `tenant-rent-${tenant.id}`,
         domain: "tenants",
-        severity: overdue || outstanding > 0 ? "critical" : "warning",
-        title: overdue
-          ? `Rent overdue: ${tenant.tenant_name}`
-          : outstanding > 0
-            ? `Rent outstanding: ${tenant.tenant_name}`
-            : `Rent due: ${tenant.tenant_name}`,
-        detail: [
-          tenant.rent_due_date
-            ? `Due ${formatDate(tenant.rent_due_date)}`
-            : null,
-          tenant.rent_amount != null
-            ? `rent ${formatMoney(tenant.rent_amount)}`
-            : null,
-          outstanding > 0
-            ? `outstanding ${formatMoney(outstanding)}`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · ") || "Rent payment needs attention.",
-        href: `/dashboard/tenants/records?tenant=${tenant.id}`,
+        severity: "critical",
+        title: `Rent outstanding: ${tenant.tenant_name}`,
+        detail: `Outstanding ${formatMoney(outstanding)} on the rent ledger.`,
+        href: `/dashboard/tenants/${tenant.id}`,
       });
     }
 
-    for (const tenant of (tenants.data ?? []) as Tenant[]) {
-      const status = agreementExpiryStatus(tenant.agreement_expiry, today);
+    for (const tenant of tenants) {
+      const expiry = tenant.contract_end_date ?? tenant.agreement_expiry;
+      const status = agreementExpiryStatus(expiry, today);
       if (status !== "soon" && status !== "expired") continue;
-      const remaining = daysUntilAgreementExpiry(
-        tenant.agreement_expiry,
-        today,
-      );
+      const remaining = daysUntilAgreementExpiry(expiry, today);
       const expired = status === "expired";
       alerts.push({
         id: `tenant-agreement-${tenant.id}`,
@@ -538,12 +503,12 @@ export async function collectOpsAlerts(
         title: expired
           ? `Agreement expired: ${tenant.tenant_name}`
           : `Agreement expires within 1 month: ${tenant.tenant_name}`,
-        detail: tenant.agreement_expiry
+        detail: expiry
           ? expired
-            ? `Agreement ended on ${formatDate(tenant.agreement_expiry)}.`
-            : `Agreement ends on ${formatDate(tenant.agreement_expiry)} (${remaining} day${remaining === 1 ? "" : "s"}).`
+            ? `Agreement ended on ${formatDate(expiry)}.`
+            : `Agreement ends on ${formatDate(expiry)} (${remaining} day${remaining === 1 ? "" : "s"}).`
           : "Agreement expiry is within one month.",
-        href: "/dashboard/tenants",
+        href: `/dashboard/tenants/${tenant.id}`,
       });
     }
   }
@@ -555,7 +520,7 @@ export async function collectOpsAlerts(
     )
   ) {
     const tenantNames = new Map(
-      ((tenants.data ?? []) as Tenant[]).map((t) => [t.id, t.tenant_name]),
+      (tenantSummaries.data ?? []).map((t) => [t.id, t.tenant_name]),
     );
     const latestByTenant = new Map<string, TenantElectricBill>();
     for (const bill of (tenantBills.data ?? []) as TenantElectricBill[]) {
@@ -598,7 +563,7 @@ export async function collectOpsAlerts(
         ]
           .filter(Boolean)
           .join(" · ") || "Electricity bill needs attention.",
-        href: `/dashboard/tenants/electricity?tenant=${bill.tenant_id}`,
+        href: `/dashboard/tenants/${bill.tenant_id}`,
       });
     }
   }

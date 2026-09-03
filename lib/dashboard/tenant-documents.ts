@@ -18,8 +18,8 @@ export async function uploadTenantPayment<T>(id: string, file: File) {
   return uploadForm<T>(`/api/tenants/${id}/payment`, file);
 }
 
-export async function uploadRentLogPayment<T>(id: string, file: File) {
-  return uploadForm<T>(`/api/tenants/rent-logs/${id}/payment`, file);
+export async function uploadRentPaymentReceipt<T>(id: string, file: File) {
+  return uploadForm<T>(`/api/tenants/payments/${id}/receipt`, file);
 }
 
 export async function openTenantDocument(url: string) {

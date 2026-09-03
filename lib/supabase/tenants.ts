@@ -5,41 +5,36 @@ import type {
   TenantElectricBillInsert,
   TenantElectricBillUpdate,
   TenantInsert,
-  TenantRentLog,
-  TenantRentLogInsert,
-  TenantRentLogUpdate,
+  TenantRentLineItem,
+  TenantRentPayment,
+  TenantRentPaymentInsert,
+  TenantRentPaymentUpdate,
+  TenantRentSchedule,
   TenantUpdate,
 } from "@/lib/types/database";
 import { removeTenantDocument } from "@/lib/supabase/tenant-storage";
-import {
-  incomingShouldOverwrite,
-  normalizeKeyPart,
-} from "@/lib/dashboard/dedupe";
+import { incomingShouldOverwrite, normalizeKeyPart } from "@/lib/dashboard/dedupe";
 import {
   writeErr,
   writeOk,
   type DomainWriteResult,
 } from "@/lib/supabase/write-result";
+import { calendarMonthsOverlapping } from "@/lib/tenants/schedule";
+import {
+  computeGrossRent,
+  monthlyTotal,
+  tenantOutstanding,
+  toLedgerRows,
+  type LedgerRow,
+} from "@/lib/tenants/ledger";
 
 const TENANTS = "tenants" as const;
-const RENT_LOGS = "tenant_rent_logs" as const;
+const LINE_ITEMS = "tenant_rent_line_items" as const;
+const SCHEDULE = "tenant_rent_schedule" as const;
+const PAYMENTS = "tenant_rent_payments" as const;
 const ELECTRIC = "tenant_electric_bills" as const;
 
-function hasRentSnapshot(input: {
-  rent_amount?: number | null;
-  rent_due_date?: string | null;
-  payment_date?: string | null;
-  outstanding_amount?: number | null;
-  payment_status?: string | null;
-}) {
-  return (
-    input.rent_amount != null ||
-    Boolean(input.rent_due_date) ||
-    Boolean(input.payment_date) ||
-    input.outstanding_amount != null ||
-    (input.payment_status != null && input.payment_status !== "unpaid")
-  );
-}
+export type TenantLineItemInput = { label: string; amount: number };
 
 export async function listTenants(supabase: SupabaseClient) {
   return supabase
@@ -70,7 +65,6 @@ export async function findTenantByName(
     .ilike("tenant_name", name.trim())
     .returns<Tenant[]>();
   if (error || !data?.length) {
-    // Fallback: scan all names for a normalized match (spaces / case)
     const all = await listTenants(supabase);
     if (all.error || !all.data?.length) return null;
     return (
@@ -82,26 +76,85 @@ export async function findTenantByName(
   );
 }
 
-export async function listTenantRentLogs(
+export async function listTenantLineItems(
+  supabase: SupabaseClient,
+  tenantId: string,
+) {
+  return supabase
+    .from(LINE_ITEMS)
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .order("sort_order", { ascending: true })
+    .returns<TenantRentLineItem[]>();
+}
+
+export async function listTenantSchedule(
   supabase: SupabaseClient,
   tenantId?: string,
 ) {
   let q = supabase
-    .from(RENT_LOGS)
+    .from(SCHEDULE)
     .select("*")
-    .order("rent_due_date", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("period_year", { ascending: true })
+    .order("period_month", { ascending: true });
   if (tenantId) q = q.eq("tenant_id", tenantId);
-  return q.returns<TenantRentLog[]>();
+  return q.returns<TenantRentSchedule[]>();
 }
 
-export async function getTenantRentLog(supabase: SupabaseClient, id: string) {
+export async function getTenantScheduleRow(
+  supabase: SupabaseClient,
+  id: string,
+) {
   const { data, error } = await supabase
-    .from(RENT_LOGS)
+    .from(SCHEDULE)
     .select("*")
     .eq("id", id)
     .maybeSingle();
-  return { data: (data as TenantRentLog | null) ?? null, error };
+  return { data: (data as TenantRentSchedule | null) ?? null, error };
+}
+
+export async function findScheduleByPeriod(
+  supabase: SupabaseClient,
+  tenantId: string,
+  year: number,
+  month: number,
+) {
+  const { data, error } = await supabase
+    .from(SCHEDULE)
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .eq("period_year", year)
+    .eq("period_month", month)
+    .maybeSingle();
+  return { data: (data as TenantRentSchedule | null) ?? null, error };
+}
+
+export async function listTenantRentPayments(
+  supabase: SupabaseClient,
+  scheduleIds?: string[],
+) {
+  let q = supabase.from(PAYMENTS).select("*").order("created_at", {
+    ascending: true,
+  });
+  if (scheduleIds) {
+    if (scheduleIds.length === 0) {
+      return { data: [] as TenantRentPayment[], error: null };
+    }
+    q = q.in("schedule_id", scheduleIds);
+  }
+  return q.returns<TenantRentPayment[]>();
+}
+
+export async function getTenantRentPayment(
+  supabase: SupabaseClient,
+  id: string,
+) {
+  const { data, error } = await supabase
+    .from(PAYMENTS)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return { data: (data as TenantRentPayment | null) ?? null, error };
 }
 
 export async function listTenantElectricBills(
@@ -129,223 +182,407 @@ export async function getTenantElectricBill(
   return { data: (data as TenantElectricBill | null) ?? null, error };
 }
 
-async function applyLatestRentSnapshot(
-  supabase: SupabaseClient,
-  tenantId: string,
-  updatedBy?: string | null,
-) {
-  const { data: logs, error } = await listTenantRentLogs(supabase, tenantId);
-  if (error) return { error };
-  const latest = logs?.[0] ?? null;
-  const patch: TenantUpdate = latest
-    ? {
-        rent_amount: latest.rent_amount,
-        rent_due_date: latest.rent_due_date,
-        payment_status: latest.payment_status,
-        payment_date: latest.payment_date,
-        outstanding_amount: latest.outstanding_amount,
-        payment_file_url: latest.payment_file_url,
-      }
-    : {
-        rent_amount: null,
-        rent_due_date: null,
-        payment_status: "unpaid",
-        payment_date: null,
-        outstanding_amount: null,
-        payment_file_url: null,
-      };
-  if (updatedBy) patch.updated_by = updatedBy;
-  return supabase.from(TENANTS).update(patch).eq("id", tenantId);
-}
-
-function rentSnapshotFromTenant(
-  input: TenantInsert | TenantUpdate,
-  tenantId: string,
-): TenantRentLogInsert | null {
-  if (!hasRentSnapshot(input)) return null;
+export async function getTenantLedger(supabase: SupabaseClient, tenantId: string) {
+  const [tenant, lineItems, schedule] = await Promise.all([
+    getTenant(supabase, tenantId),
+    listTenantLineItems(supabase, tenantId),
+    listTenantSchedule(supabase, tenantId),
+  ]);
+  if (tenant.error) return { error: tenant.error, data: null };
+  if (lineItems.error) return { error: lineItems.error, data: null };
+  if (schedule.error) return { error: schedule.error, data: null };
+  const payments = await listTenantRentPayments(
+    supabase,
+    (schedule.data ?? []).map((row) => row.id),
+  );
+  if (payments.error) return { error: payments.error, data: null };
+  const rows = toLedgerRows(schedule.data ?? [], payments.data ?? []);
   return {
-    tenant_id: tenantId,
-    rent_amount: input.rent_amount ?? null,
-    rent_due_date: input.rent_due_date ?? null,
-    payment_status: input.payment_status ?? "unpaid",
-    payment_date: input.payment_date ?? null,
-    outstanding_amount: input.outstanding_amount ?? null,
-    notes: input.notes ?? null,
-    updated_by: input.updated_by ?? null,
+    error: null,
+    data: {
+      tenant: tenant.data,
+      line_items: lineItems.data ?? [],
+      schedule: rows,
+      outstanding: tenantOutstanding(rows),
+    },
   };
 }
 
-async function upsertRentLogForDueDate(
+export type TenantListSummary = Tenant & {
+  monthly_total: number;
+  outstanding: number;
+  month_count: number;
+};
+
+export async function listTenantSummaries(supabase: SupabaseClient) {
+  const tenants = await listTenants(supabase);
+  if (tenants.error) return { data: null as TenantListSummary[] | null, error: tenants.error };
+  const schedule = await listTenantSchedule(supabase);
+  if (schedule.error) return { data: null, error: schedule.error };
+  const payments = await listTenantRentPayments(
+    supabase,
+    (schedule.data ?? []).map((row) => row.id),
+  );
+  if (payments.error) return { data: null, error: payments.error };
+  const lineItemsByTenant = new Map<string, { amount: number }[]>();
+  const { data: allItems, error: itemsError } = await supabase
+    .from(LINE_ITEMS)
+    .select("*")
+    .order("sort_order", { ascending: true })
+    .returns<TenantRentLineItem[]>();
+  if (itemsError) return { data: null, error: itemsError };
+  for (const item of allItems ?? []) {
+    const list = lineItemsByTenant.get(item.tenant_id) ?? [];
+    list.push({ amount: Number(item.amount ?? 0) });
+    lineItemsByTenant.set(item.tenant_id, list);
+  }
+  const rowsByTenant = new Map<string, LedgerRow[]>();
+  const allRows = toLedgerRows(schedule.data ?? [], payments.data ?? []);
+  for (const row of allRows) {
+    const list = rowsByTenant.get(row.tenant_id) ?? [];
+    list.push(row);
+    rowsByTenant.set(row.tenant_id, list);
+  }
+  const data: TenantListSummary[] = (tenants.data ?? []).map((tenant) => {
+    const rows = rowsByTenant.get(tenant.id) ?? [];
+    return {
+      ...tenant,
+      monthly_total: monthlyTotal(
+        tenant.gross_rent,
+        lineItemsByTenant.get(tenant.id) ?? [],
+      ),
+      outstanding: tenantOutstanding(rows),
+      month_count: rows.length,
+    };
+  });
+  return { data, error: null };
+}
+
+function tenantPayload(
+  input: TenantInsert | TenantUpdate,
+): TenantInsert | TenantUpdate {
+  const next: TenantInsert | TenantUpdate = { ...input };
+  const rentTouched =
+    input.rate_type !== undefined ||
+    input.sqft !== undefined ||
+    input.rate !== undefined ||
+    input.gross_rent !== undefined;
+  if (rentTouched) {
+    const rateType = input.rate_type === "lum_sum" ? "lum_sum" : "per_sqft";
+    next.rate_type = input.rate_type ?? rateType;
+    next.gross_rent = computeGrossRent({
+      rate_type: rateType,
+      sqft: input.sqft,
+      rate: input.rate,
+      gross_rent: input.gross_rent,
+    });
+  }
+  if (input.contract_end_date !== undefined) {
+    next.agreement_expiry = input.contract_end_date;
+  }
+  return next;
+}
+
+async function replaceLineItems(
   supabase: SupabaseClient,
-  input: TenantRentLogInsert,
-): Promise<DomainWriteResult<TenantRentLog>> {
-  const due = input.rent_due_date?.trim() || null;
-  if (due) {
-    const { data: existingRows } = await supabase
-      .from(RENT_LOGS)
-      .select("*")
-      .eq("tenant_id", input.tenant_id)
-      .eq("rent_due_date", due)
-      .returns<TenantRentLog[]>();
-    const existing = existingRows?.[0] ?? null;
-    if (existing) {
-      const overwrite = incomingShouldOverwrite({
-        incomingDate: input.payment_date ?? due,
-        existingDate: existing.payment_date ?? existing.rent_due_date,
-        existingUpdatedAt: existing.updated_at,
-      });
-      if (!overwrite) {
-        await applyLatestRentSnapshot(
-          supabase,
-          input.tenant_id,
-          input.updated_by,
-        );
-        return writeOk(existing, "skipped");
-      }
-      const { data, error } = await supabase
-        .from(RENT_LOGS)
-        .update(input)
-        .eq("id", existing.id)
-        .select("*")
-        .single<TenantRentLog>();
-      if (error) return writeErr(error.message);
-      await applyLatestRentSnapshot(supabase, input.tenant_id, input.updated_by);
-      return writeOk(data, "updated");
+  tenantId: string,
+  items: TenantLineItemInput[] | undefined,
+  updatedBy?: string | null,
+) {
+  if (!items) return { error: null };
+  const del = await supabase.from(LINE_ITEMS).delete().eq("tenant_id", tenantId);
+  if (del.error) return { error: del.error };
+  if (items.length === 0) return { error: null };
+  const rows = items.map((item, index) => ({
+    tenant_id: tenantId,
+    label: item.label.trim(),
+    amount: Number(item.amount ?? 0),
+    sort_order: index,
+    updated_by: updatedBy ?? null,
+  }));
+  const { error } = await supabase.from(LINE_ITEMS).insert(rows);
+  return { error };
+}
+
+export async function countSchedulePayments(
+  supabase: SupabaseClient,
+  tenantId: string,
+) {
+  const schedule = await listTenantSchedule(supabase, tenantId);
+  if (schedule.error) return { count: 0, error: schedule.error };
+  const ids = (schedule.data ?? []).map((row) => row.id);
+  if (ids.length === 0) return { count: 0, error: null };
+  const payments = await listTenantRentPayments(supabase, ids);
+  if (payments.error) return { count: 0, error: payments.error };
+  return { count: payments.data?.length ?? 0, error: null };
+}
+
+export async function regenerateTenantSchedule(
+  supabase: SupabaseClient,
+  tenantId: string,
+  options?: { force?: boolean; updatedBy?: string | null },
+): Promise<{ error: { message: string } | null; paymentCount?: number }> {
+  const tenant = await getTenant(supabase, tenantId);
+  if (tenant.error) return { error: { message: tenant.error.message } };
+  if (!tenant.data) return { error: { message: "Tenant not found" } };
+  const start = tenant.data.contract_start_date;
+  const end = tenant.data.contract_end_date;
+  if (!start || !end) {
+    return { error: { message: "Contract start and end dates are required" } };
+  }
+
+  const existing = await listTenantSchedule(supabase, tenantId);
+  if (existing.error) return { error: { message: existing.error.message } };
+  const existingRows = existing.data ?? [];
+  const existingIds = existingRows.map((row) => row.id);
+  const payments = await listTenantRentPayments(supabase, existingIds);
+  if (payments.error) return { error: { message: payments.error.message } };
+  const paymentCount = payments.data?.length ?? 0;
+  if (paymentCount > 0 && !options?.force) {
+    return {
+      error: {
+        message:
+          "This tenant already has recorded payments. Confirm regenerate_schedule to rebuild the monthly ledger (payments on removed months will be deleted).",
+      },
+      paymentCount,
+    };
+  }
+
+  const lineItems = await listTenantLineItems(supabase, tenantId);
+  if (lineItems.error) return { error: { message: lineItems.error.message } };
+  const snapshot = (lineItems.data ?? []).map((item) => ({
+    label: item.label,
+    amount: Number(item.amount ?? 0),
+  }));
+  const totalDue = monthlyTotal(tenant.data.gross_rent, snapshot);
+  const periods = calendarMonthsOverlapping(start, end);
+  const keepKeys = new Set(
+    periods.map((p) => `${p.period_year}-${p.period_month}`),
+  );
+  const byKey = new Map(
+    existingRows.map((row) => [`${row.period_year}-${row.period_month}`, row]),
+  );
+
+  for (const period of periods) {
+    const key = `${period.period_year}-${period.period_month}`;
+    const payload = {
+      tenant_id: tenantId,
+      serial_no: period.serial_no,
+      period_year: period.period_year,
+      period_month: period.period_month,
+      period_start: period.period_start,
+      period_end: period.period_end,
+      survey_no: tenant.data.survey_no,
+      sqft: tenant.data.sqft,
+      rate: tenant.data.rate,
+      rate_type: tenant.data.rate_type,
+      gross_rent: tenant.data.gross_rent,
+      line_items: snapshot,
+      total_due: totalDue,
+      updated_by: options?.updatedBy ?? null,
+    };
+    const found = byKey.get(key);
+    if (found) {
+      const { error } = await supabase
+        .from(SCHEDULE)
+        .update(payload)
+        .eq("id", found.id);
+      if (error) return { error: { message: error.message } };
+    } else {
+      const { error } = await supabase.from(SCHEDULE).insert(payload);
+      if (error) return { error: { message: error.message } };
     }
   }
 
-  const { data, error } = await supabase
-    .from(RENT_LOGS)
-    .insert(input)
-    .select("*")
-    .single<TenantRentLog>();
-  if (error) return writeErr(error.message);
-  await applyLatestRentSnapshot(supabase, input.tenant_id, input.updated_by);
-  return writeOk(data, "created");
+  const stale = existingRows.filter(
+    (row) => !keepKeys.has(`${row.period_year}-${row.period_month}`),
+  );
+  for (const row of stale) {
+    const rowPayments = (payments.data ?? []).filter(
+      (p) => p.schedule_id === row.id,
+    );
+    for (const payment of rowPayments) {
+      if (payment.payment_file_url) {
+        await removeTenantDocument(supabase, payment.payment_file_url);
+      }
+    }
+    const { error } = await supabase.from(SCHEDULE).delete().eq("id", row.id);
+    if (error) return { error: { message: error.message } };
+  }
+
+  return { error: null, paymentCount };
 }
 
 export async function createTenant(
   supabase: SupabaseClient,
-  input: TenantInsert,
+  input: TenantInsert & { line_items?: TenantLineItemInput[] },
 ): Promise<DomainWriteResult<Tenant>> {
   const existing = await findTenantByName(supabase, input.tenant_name);
+  const { line_items, ...rest } = input;
+  const payload = tenantPayload(rest) as TenantInsert;
+
   if (existing) {
     const overwrite = incomingShouldOverwrite({
-      incomingDate: input.rent_due_date ?? input.payment_date ?? null,
-      existingDate: existing.rent_due_date ?? existing.payment_date,
+      incomingDate: payload.contract_start_date ?? null,
+      existingDate: existing.contract_start_date ?? existing.updated_at,
       existingUpdatedAt: existing.updated_at,
     });
     if (!overwrite) return writeOk(existing, "skipped");
     const { data, error } = await supabase
       .from(TENANTS)
-      .update(input)
+      .update(payload)
       .eq("id", existing.id)
       .select("*")
       .single<Tenant>();
     if (error) return writeErr(error.message);
-    const log = rentSnapshotFromTenant(input, existing.id);
-    if (log) await upsertRentLogForDueDate(supabase, log);
+    const items = await replaceLineItems(
+      supabase,
+      existing.id,
+      line_items,
+      payload.updated_by,
+    );
+    if (items.error) return writeErr(items.error.message);
+    const regen = await regenerateTenantSchedule(supabase, existing.id, {
+      force: true,
+      updatedBy: payload.updated_by,
+    });
+    if (regen.error) return writeErr(regen.error.message);
     const refreshed = await getTenant(supabase, existing.id);
     return writeOk(refreshed.data ?? data, "updated");
   }
 
   const { data, error } = await supabase
     .from(TENANTS)
-    .insert(input)
+    .insert(payload)
     .select("*")
     .single<Tenant>();
   if (error) return writeErr(error.message);
-  const log = rentSnapshotFromTenant(input, data.id);
-  if (log) await upsertRentLogForDueDate(supabase, log);
+  const items = await replaceLineItems(
+    supabase,
+    data.id,
+    line_items ?? [],
+    payload.updated_by,
+  );
+  if (items.error) return writeErr(items.error.message);
+  const regen = await regenerateTenantSchedule(supabase, data.id, {
+    force: true,
+    updatedBy: payload.updated_by,
+  });
+  if (regen.error) return writeErr(regen.error.message);
   const refreshed = await getTenant(supabase, data.id);
   return writeOk(refreshed.data ?? data, "created");
+}
+
+function contractTermsChanged(input: TenantUpdate) {
+  return (
+    input.contract_start_date !== undefined ||
+    input.contract_end_date !== undefined ||
+    input.sqft !== undefined ||
+    input.rate !== undefined ||
+    input.rate_type !== undefined ||
+    input.gross_rent !== undefined ||
+    input.survey_no !== undefined
+  );
 }
 
 export async function updateTenant(
   supabase: SupabaseClient,
   id: string,
-  input: TenantUpdate,
+  input: TenantUpdate & {
+    line_items?: TenantLineItemInput[];
+    regenerate_schedule?: boolean;
+  },
 ) {
+  const { line_items, regenerate_schedule, ...rest } = input;
+  const payload = tenantPayload(rest);
   const result = await supabase
     .from(TENANTS)
-    .update(input)
+    .update(payload)
     .eq("id", id)
     .select("*")
     .single<Tenant>();
-  if (!result.error && hasRentSnapshot(input)) {
-    const log = rentSnapshotFromTenant(input, id);
-    if (log) await upsertRentLogForDueDate(supabase, log);
-    return getTenant(supabase, id);
+  if (result.error) return result;
+
+  if (line_items) {
+    const items = await replaceLineItems(
+      supabase,
+      id,
+      line_items,
+      payload.updated_by,
+    );
+    if (items.error) {
+      return { data: null, error: items.error };
+    }
   }
-  return result;
+
+  const shouldRegen =
+    Boolean(line_items) ||
+    contractTermsChanged(rest) ||
+    regenerate_schedule === true;
+  if (shouldRegen) {
+    const regen = await regenerateTenantSchedule(supabase, id, {
+      force: regenerate_schedule === true,
+      updatedBy: payload.updated_by,
+    });
+    if (regen.error) return { data: null, error: regen.error };
+  }
+
+  return getTenant(supabase, id);
 }
 
 export async function deleteTenant(supabase: SupabaseClient, id: string) {
   const existing = await getTenant(supabase, id);
-  const logs = await listTenantRentLogs(supabase, id);
+  const schedule = await listTenantSchedule(supabase, id);
+  const payments = await listTenantRentPayments(
+    supabase,
+    (schedule.data ?? []).map((row) => row.id),
+  );
   const paths = [
     existing.data?.agreement_file_url,
     existing.data?.payment_file_url,
-    ...(logs.data ?? []).map((row) => row.payment_file_url),
+    ...(payments.data ?? []).map((row) => row.payment_file_url),
   ].filter((p): p is string => Boolean(p));
-  const unique = [...new Set(paths)];
-  for (const path of unique) {
+  for (const path of [...new Set(paths)]) {
     await removeTenantDocument(supabase, path);
   }
   return supabase.from(TENANTS).delete().eq("id", id);
 }
 
-export async function createTenantRentLog(
+export async function createTenantRentPayment(
   supabase: SupabaseClient,
-  input: TenantRentLogInsert,
-): Promise<DomainWriteResult<TenantRentLog>> {
-  return upsertRentLogForDueDate(supabase, input);
+  input: TenantRentPaymentInsert,
+): Promise<DomainWriteResult<TenantRentPayment>> {
+  const { data, error } = await supabase
+    .from(PAYMENTS)
+    .insert(input)
+    .select("*")
+    .single<TenantRentPayment>();
+  if (error) return writeErr(error.message);
+  return writeOk(data, "created");
 }
 
-export async function updateTenantRentLog(
+export async function updateTenantRentPayment(
   supabase: SupabaseClient,
   id: string,
-  input: TenantRentLogUpdate,
+  input: TenantRentPaymentUpdate,
 ) {
-  const existing = await getTenantRentLog(supabase, id);
-  if (existing.error) return existing;
-  if (!existing.data) {
-    return { data: null, error: { message: "Rent log not found" } };
-  }
-  const result = await supabase
-    .from(RENT_LOGS)
+  return supabase
+    .from(PAYMENTS)
     .update(input)
     .eq("id", id)
     .select("*")
-    .single<TenantRentLog>();
-  if (!result.error) {
-    await applyLatestRentSnapshot(
-      supabase,
-      existing.data.tenant_id,
-      input.updated_by,
-    );
-  }
-  return result;
+    .single<TenantRentPayment>();
 }
 
-export async function deleteTenantRentLog(
+export async function deleteTenantRentPayment(
   supabase: SupabaseClient,
   id: string,
 ) {
-  const existing = await getTenantRentLog(supabase, id);
+  const existing = await getTenantRentPayment(supabase, id);
   if (existing.data?.payment_file_url) {
-    const tenant = await getTenant(supabase, existing.data.tenant_id);
-    const shared =
-      tenant.data?.payment_file_url === existing.data.payment_file_url;
-    if (!shared) {
-      await removeTenantDocument(supabase, existing.data.payment_file_url);
-    }
+    await removeTenantDocument(supabase, existing.data.payment_file_url);
   }
-  const result = await supabase.from(RENT_LOGS).delete().eq("id", id);
-  if (!result.error && existing.data) {
-    await applyLatestRentSnapshot(supabase, existing.data.tenant_id);
-  }
-  return result;
+  return supabase.from(PAYMENTS).delete().eq("id", id);
 }
 
 async function upsertElectricBillForDueDate(
