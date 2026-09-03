@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SolarMonitoringLog, SolarSpecs } from "@/lib/types/database";
+import type {
+  SolarMaintenance,
+  SolarMonitoringLog,
+  SolarSpecs,
+} from "@/lib/types/database";
+import { SolarServicePanel } from "@/components/dashboard/solar-service-panel";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
@@ -104,13 +109,18 @@ function fileNameFromPath(path: string | null) {
 
 export function SolarPanel({
   sites,
+  initialSiteId = "",
   initialSpecs,
   initialLogs,
+  initialMaintenance = [],
+  maintenanceError = null,
 }: {
   sites: SolarSitePublic[];
   initialSiteId?: string;
   initialSpecs: SolarSpecs[];
   initialLogs: SolarMonitoringLog[];
+  initialMaintenance?: SolarMaintenance[];
+  maintenanceError?: string | null;
 }) {
   const router = useRouter();
   const [specs, setSpecs] = useState(initialSpecs);
@@ -248,7 +258,7 @@ export function SolarPanel({
     <div className="space-y-10">
       <PageHeader
         title="Solar"
-        description="System specs, document uploads, and monitoring logs."
+        description="System specs, service logs, and monitoring logs."
         icon="solar"
         accent="teal"
       />
@@ -391,6 +401,19 @@ export function SolarPanel({
           onPageChange={specsPage.setPage}
         />
       </section>
+
+      {maintenanceError ? (
+        <p className="text-sm text-destructive" role="alert">
+          {maintenanceError}
+        </p>
+      ) : (
+        <SolarServicePanel
+          sites={sites}
+          initialSiteId={initialSiteId}
+          initialRows={initialMaintenance}
+          embedded
+        />
+      )}
 
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

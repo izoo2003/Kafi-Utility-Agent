@@ -3,7 +3,7 @@ export const solarSections = [
     value: "records",
     href: "/dashboard/solar",
     label: "Records",
-    description: "System specs and monitoring logs",
+    description: "System specs, service logs, and monitoring logs",
   },
   {
     value: "service",

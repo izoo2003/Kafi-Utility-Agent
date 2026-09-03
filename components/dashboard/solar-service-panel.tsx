@@ -92,6 +92,8 @@ export function SolarServicePanel(props: {
   sites: SolarSitePublic[];
   initialSiteId: string;
   initialRows: SolarMaintenance[];
+  /** When true, render only the table (for Solar → Records). */
+  embedded?: boolean;
 }) {
   return (
     <Suspense
@@ -108,10 +110,12 @@ function SolarServicePanelInner({
   sites,
   initialSiteId,
   initialRows,
+  embedded = false,
 }: {
   sites: SolarSitePublic[];
   initialSiteId: string;
   initialRows: SolarMaintenance[];
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const { siteId, site } = useSolarSiteId(sites, initialSiteId);
@@ -225,20 +229,17 @@ function SolarServicePanelInner({
     setOpen(true);
   }
 
-  return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Solar · Service logs"
-        description="Service logs and maintenance for each solar plant. Next due defaults to one month after the service date. Dates: DD/MM/YYYY."
-        icon="solar"
-        accent="teal"
-      />
-
-      <SolarSectionNav active="service" sites={sites} />
-
+  const body = (
+    <>
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-medium">
+          <h2
+            className={
+              embedded
+                ? "font-heading text-lg font-semibold"
+                : "text-lg font-medium"
+            }
+          >
             Service logs
             {site ? (
               <span className="font-normal text-muted-foreground">
@@ -537,6 +538,21 @@ function SolarServicePanelInner({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <div className="space-y-8">
+      <PageHeader
+        title="Solar · Service logs"
+        description="Service logs and maintenance for each solar plant. Next due defaults to one month after the service date. Dates: DD/MM/YYYY."
+        icon="solar"
+        accent="teal"
+      />
+      <SolarSectionNav active="service" sites={sites} />
+      {body}
     </div>
   );
 }
