@@ -74,7 +74,7 @@ No separate backend host is required — API routes ship with the Next.js app. S
 2. Add the same env vars as `.env` (never commit `.env`).
 3. Set `APP_BASE_URL` to your Vercel URL.
 4. Add the Vercel domain to Supabase Auth redirect URLs.
-5. Deploy. Cron hits `/api/cron/alerts` daily (see `vercel.json`).
+5. Deploy. Cron hits `/api/cron/alerts` daily and `/api/cron/solar-sync` hourly (see `vercel.json`). Hourly solar sync needs a Vercel plan that allows more than one daily cron.
 
 ## Environment variables (summary)
 
@@ -87,7 +87,7 @@ No separate backend host is required — API routes ship with the Next.js app. S
 | `GEMINI_BILL_SUMMARY_API_KEY` | Dedicated key for utility bill AI reports (falls back to the chat keys) |
 | `GEMINI_BILL_SUMMARY_MODEL` | Base model for bill summaries (default `gemini-3.5-flash`) |
 | `GEMINI_BILL_SUMMARY_FALLBACK_MODELS` | Comma-separated fallbacks, then the shared Gemini list |
-| `CRON_SECRET` | Protects `/api/cron/alerts` |
+| `CRON_SECRET` | Protects `/api/cron/alerts` and `/api/cron/solar-sync` |
 | `ALERT_EMAIL_TO` / `RESEND_API_KEY` | Alert email digests |
 | `APP_BASE_URL` | Links in emails / reports |
 

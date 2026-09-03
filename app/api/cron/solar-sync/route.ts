@@ -3,6 +3,8 @@ import { authorizeCron } from "@/lib/api/authorize-cron";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncAllSemsLive } from "@/lib/sems/sync";
 
+export const maxDuration = 60;
+
 async function handle(request: Request) {
   const auth = authorizeCron(request);
   if (!auth.ok) return auth.response;

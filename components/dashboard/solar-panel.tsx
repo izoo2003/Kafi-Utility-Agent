@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
   SolarMaintenance,
@@ -9,8 +9,10 @@ import type {
 } from "@/lib/types/database";
 import { SolarServicePanel } from "@/components/dashboard/solar-service-panel";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import { solarSiteNavLabel } from "@/lib/dashboard/solar-site-nav";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
+import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
 import type { SolarSitePublic } from "@/lib/sems/sites";
@@ -107,7 +109,26 @@ function fileNameFromPath(path: string | null) {
   return parts[parts.length - 1] ?? path;
 }
 
-export function SolarPanel({
+export function SolarPanel(props: {
+  sites: SolarSitePublic[];
+  initialSiteId?: string;
+  initialSpecs: SolarSpecs[];
+  initialLogs: SolarMonitoringLog[];
+  initialMaintenance?: SolarMaintenance[];
+  maintenanceError?: string | null;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-48 animate-pulse rounded-xl border border-[oklch(0.9_0.02_185)] bg-[oklch(0.99_0.01_185)]" />
+      }
+    >
+      <SolarPanelInner {...props} />
+    </Suspense>
+  );
+}
+
+function SolarPanelInner({
   sites,
   initialSiteId = "",
   initialSpecs,
@@ -123,6 +144,9 @@ export function SolarPanel({
   maintenanceError?: string | null;
 }) {
   const router = useRouter();
+  const { site } = useSolarSiteId(sites, initialSiteId);
+  const plantName = site ? solarSiteNavLabel(site.label) : "this plant";
+  const stationId = site?.stationId ?? "";
   const [specs, setSpecs] = useState(initialSpecs);
   const [logs, setLogs] = useState(initialLogs);
 
@@ -139,7 +163,15 @@ export function SolarPanel({
   const [saving, setSaving] = useState(false);
 
   const specsSorted = useMemo(() => sortNewestFirst(specs), [specs]);
-  const logsSorted = useMemo(() => sortNewestFirst(logs), [logs]);
+  const logsSorted = useMemo(
+    () =>
+      sortNewestFirst(
+        stationId
+          ? logs.filter((row) => row.station_id === stationId)
+          : logs,
+      ),
+    [logs, stationId],
+  );
   const specsPage = usePagedRows(specsSorted);
   const logsPage = usePagedRows(logsSorted);
 
@@ -213,6 +245,7 @@ export function SolarPanel({
     setError(null);
     try {
       const payload = {
+        station_id: stationId || undefined,
         log_date: logForm.log_date,
         generation_kwh: parseOptionalNumber(logForm.generation_kwh),
         to_load_kwh: parseOptionalNumber(logForm.to_load_kwh),
@@ -258,7 +291,7 @@ export function SolarPanel({
     <div className="space-y-10">
       <PageHeader
         title="Solar"
-        description="System specs, service logs, and monitoring logs."
+        description="System specs, service logs, and monitoring logs. Each plant keeps one monitoring row per day — later saves that day update the same row."
         icon="solar"
         accent="teal"
       />
@@ -417,17 +450,29 @@ export function SolarPanel({
 
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="font-heading text-lg font-semibold">Monitoring log</h2>
+          <h2 className="font-heading text-lg font-semibold">
+            Monitoring log
+            {site ? (
+              <span className="font-normal text-muted-foreground">
+                {" "}
+                · {plantName}
+              </span>
+            ) : null}
+          </h2>
           <div className="flex flex-wrap items-center gap-2 self-start">
             <ExportButtons resource="solar-monitoring" />
             <ImportFilesButton target="solar-monitoring" />
             <Button
               onClick={() => {
                 setEditingLog(null);
-                setLogForm(emptyLog());
+                setLogForm({
+                  ...emptyLog(),
+                  log_date: new Date().toISOString().slice(0, 10),
+                });
                 setError(null);
                 setLogOpen(true);
               }}
+              disabled={!stationId}
             >
               Add log
             </Button>
@@ -454,7 +499,7 @@ export function SolarPanel({
                     colSpan={8}
                     className="max-w-none py-8 text-center text-muted-foreground"
                   >
-                    No monitoring logs yet.
+                    No monitoring logs for {plantName} yet.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -977,7 +1022,7 @@ export function SolarPanel({
             </Button>
             <Button
               onClick={saveLog}
-              disabled={saving || !logForm.log_date}
+              disabled={saving || !logForm.log_date || !stationId}
             >
               {saving ? "Saving…" : "Save"}
             </Button>

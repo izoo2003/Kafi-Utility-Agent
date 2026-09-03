@@ -15,7 +15,8 @@ async function handle(request: Request) {
 
   try {
     const supabase = createAdminClient();
-    // Hobby plan allows one daily cron — kitchen burn, SEMS, then digest.
+    // Kitchen burn + alert digest. Hourly solar sync is /api/cron/solar-sync;
+    // keep a daily backup here in case the hourly job is skipped on Hobby.
     const kitchen = await applyDailyKitchenConsumption(supabase);
     const solar = await syncAllSemsLive(supabase);
     const result = await runAlertDigest(supabase, { force });

@@ -40,22 +40,14 @@ async function findMaintenanceDuplicate(
   supabase: SupabaseClient,
   input: GeneratorMaintenanceInsert,
 ): Promise<GeneratorMaintenance | null> {
-  const typeKey = normalizeKeyPart(input.service_type);
   const { data, error } = await supabase
     .from(MAINTENANCE)
     .select("*")
     .eq("service_date", input.service_date)
+    .order("updated_at", { ascending: false })
     .returns<GeneratorMaintenance[]>();
   if (error || !data?.length) return null;
-  if (!typeKey) {
-    return (
-      [...data].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ??
-      null
-    );
-  }
-  return (
-    data.find((r) => normalizeKeyPart(r.service_type) === typeKey) ?? null
-  );
+  return data[0] ?? null;
 }
 
 export async function createGeneratorMaintenance(
@@ -64,12 +56,6 @@ export async function createGeneratorMaintenance(
 ): Promise<DomainWriteResult<GeneratorMaintenance>> {
   const existing = await findMaintenanceDuplicate(supabase, input);
   if (existing) {
-    const overwrite = incomingShouldOverwrite({
-      incomingDate: input.service_date,
-      existingDate: existing.service_date,
-      existingUpdatedAt: existing.updated_at,
-    });
-    if (!overwrite) return writeOk(existing, "skipped");
     const { data, error } = await supabase
       .from(MAINTENANCE)
       .update(input)
@@ -131,12 +117,6 @@ export async function createGeneratorFuelLog(
 
   const existing = matches?.[0] ?? null;
   if (existing) {
-    const overwrite = incomingShouldOverwrite({
-      incomingDate: input.log_date,
-      existingDate: existing.log_date,
-      existingUpdatedAt: existing.updated_at,
-    });
-    if (!overwrite) return writeOk(existing, "skipped");
     const { data, error } = await supabase
       .from(FUEL)
       .update(input)
@@ -184,6 +164,26 @@ export async function createGeneratorRunLog(
   supabase: SupabaseClient,
   input: GeneratorRunLogInsert,
 ): Promise<DomainWriteResult<GeneratorRunLog>> {
+  const { data: matches, error: findError } = await supabase
+    .from(RUNS)
+    .select("*")
+    .eq("run_date", input.run_date)
+    .order("updated_at", { ascending: false })
+    .returns<GeneratorRunLog[]>();
+  if (findError) return writeErr(findError.message);
+
+  const existing = matches?.[0] ?? null;
+  if (existing) {
+    const { data, error } = await supabase
+      .from(RUNS)
+      .update(input)
+      .eq("id", existing.id)
+      .select("*")
+      .single<GeneratorRunLog>();
+    if (error) return writeErr(error.message);
+    return writeOk(data, "updated");
+  }
+
   const { data, error } = await supabase
     .from(RUNS)
     .insert(input)

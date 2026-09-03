@@ -104,6 +104,27 @@ export async function createSolarNetMeteringLog(
   supabase: SupabaseClient,
   input: SolarNetMeteringLogInsert,
 ) {
+  const siteId = input.solar_site_id?.trim();
+  const month = input.bill_month?.trim();
+  if (siteId && month) {
+    const { data: existing } = await supabase
+      .from(TABLE)
+      .select("*")
+      .eq("solar_site_id", siteId)
+      .eq("bill_month", month)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<SolarNetMeteringLog>();
+    if (existing) {
+      return supabase
+        .from(TABLE)
+        .update(input)
+        .eq("id", existing.id)
+        .select("*")
+        .single<SolarNetMeteringLog>();
+    }
+  }
+
   return supabase
     .from(TABLE)
     .insert(input)

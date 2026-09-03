@@ -236,7 +236,7 @@ function SolarLivePanelInner({
             <p className="mt-1 text-sm text-muted-foreground">
               {isStatic
                 ? "Archived instantaneous readings from the last on-site iSolarCloud capture. Historical daily totals are available under Consumption and Energy Summary."
-                : "Instantaneous power/SOC come from SEMS+ stations/flow; today's kWh usually from equipment telecounting. Refreshed on Sync / cron (not a websocket). Sync also updates today's monitoring log under Records and auto-flags baseline breaches."}
+                : "Instantaneous power/SOC come from SEMS+ stations/flow; today's kWh usually from equipment telecounting. Auto-syncs every hour for all plants, and Sync now still works. Each sync updates today's monitoring log (one row per plant per day)."}
             </p>
           </div>
           {!isStatic ? (

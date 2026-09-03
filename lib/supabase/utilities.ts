@@ -174,14 +174,38 @@ export async function createUtilityPaymentLog(
   supabase: SupabaseClient,
   input: UtilityPaymentLogInsert,
 ): Promise<DomainWriteResult<UtilityPaymentLog>> {
-  const { data, error } = await supabase
+  const { data: matches, error: findError } = await supabase
     .from(PAYMENTS)
-    .insert(input)
     .select("*")
-    .single<UtilityPaymentLog>();
-  if (error) return writeErr(error.message);
+    .eq("utility_account_id", input.utility_account_id)
+    .eq("paid_on", input.paid_on)
+    .order("updated_at", { ascending: false })
+    .returns<UtilityPaymentLog[]>();
+  if (findError) return writeErr(findError.message);
 
-  // Keep monthly_avg_cost loosely in sync when amount is provided
+  let data: UtilityPaymentLog | null = matches?.[0] ?? null;
+  let outcome: "created" | "updated" = "created";
+
+  if (data) {
+    const updated = await supabase
+      .from(PAYMENTS)
+      .update(input)
+      .eq("id", data.id)
+      .select("*")
+      .single<UtilityPaymentLog>();
+    if (updated.error) return writeErr(updated.error.message);
+    data = updated.data;
+    outcome = "updated";
+  } else {
+    const inserted = await supabase
+      .from(PAYMENTS)
+      .insert(input)
+      .select("*")
+      .single<UtilityPaymentLog>();
+    if (inserted.error) return writeErr(inserted.error.message);
+    data = inserted.data;
+  }
+
   if (input.amount != null) {
     await supabase
       .from(TABLE)
@@ -189,7 +213,7 @@ export async function createUtilityPaymentLog(
       .eq("id", input.utility_account_id);
   }
 
-  return writeOk(data, "created");
+  return writeOk(data, outcome);
 }
 
 export async function updateUtilityPaymentLog(
