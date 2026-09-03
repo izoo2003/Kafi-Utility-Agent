@@ -74,7 +74,7 @@ No separate backend host is required — API routes ship with the Next.js app. S
 2. Add the same env vars as `.env` (never commit `.env`).
 3. Set `APP_BASE_URL` to your Vercel URL.
 4. Add the Vercel domain to Supabase Auth redirect URLs.
-5. Deploy. Cron hits `/api/cron/alerts` daily and `/api/cron/solar-sync` hourly (see `vercel.json`). Hourly solar sync needs a Vercel plan that allows more than one daily cron.
+5. Deploy. Cron hits `/api/cron/alerts` daily (08:00 UTC) and `/api/cron/solar-sync` daily (09:00 UTC) — Hobby only allows once-per-day crons. Upgrade to Pro if you need hourly solar sync (`0 * * * *`).
 
 ## Environment variables (summary)
 

@@ -15,7 +15,7 @@ async function handle(request: Request) {
 
   try {
     const supabase = createAdminClient();
-    // Kitchen burn + alert digest. Hourly solar sync is /api/cron/solar-sync;
+    // Kitchen burn + alert digest. Solar sync is /api/cron/solar-sync (daily on Hobby);
     // keep a daily backup here in case the hourly job is skipped on Hobby.
     const kitchen = await applyDailyKitchenConsumption(supabase);
     const solar = await syncAllSemsLive(supabase);
