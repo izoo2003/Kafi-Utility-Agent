@@ -18,6 +18,7 @@ import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { TablePagination } from "@/components/dashboard/table-pagination";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { PaymentStatusSelect } from "@/components/dashboard/tenant-payment-status-select";
+import { DocumentFileField } from "@/components/dashboard/document-file-field";
 import { formatDate } from "@/lib/format/datetime";
 import {
   CellText,
@@ -31,6 +32,10 @@ import {
   TENANT_PAYMENT_STATUS_LABELS,
   todayIso,
 } from "@/lib/tenants/payment-status";
+import {
+  openTenantDocument,
+  uploadRentLogPayment,
+} from "@/lib/dashboard/tenant-documents";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +122,8 @@ export function TenantRecordsPanel({
   const [form, setForm] = useState<RentForm>(emptyRent);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [paymentFile, setPaymentFile] = useState<File | null>(null);
+  const [removingPayment, setRemovingPayment] = useState(false);
 
   const tenant = tenants.find((t) => t.id === tenantId) ?? null;
   const tenantLogs = useMemo(
@@ -146,6 +153,7 @@ export function TenantRecordsPanel({
           ? ""
           : String(tenant.outstanding_amount),
     });
+    setPaymentFile(null);
     setError(null);
     setOpen(true);
   }
@@ -153,6 +161,7 @@ export function TenantRecordsPanel({
   function openEdit(log: TenantRentLog) {
     setEditing(log);
     setForm(toRentForm(log));
+    setPaymentFile(null);
     setError(null);
     setOpen(true);
   }
@@ -166,19 +175,26 @@ export function TenantRecordsPanel({
     setError(null);
     try {
       const payload = toRentPayload(form, tenantId);
+      let saved: TenantRentLog;
       if (editing) {
-        const data = await apiFetch<TenantRentLog>(
+        saved = await apiFetch<TenantRentLog>(
           `/api/tenants/rent-logs/${editing.id}`,
           { method: "PATCH", body: JSON.stringify(payload) },
         );
-        setLogs((prev) => prev.map((i) => (i.id === data.id ? data : i)));
       } else {
-        const data = await apiFetch<TenantRentLog>("/api/tenants/rent-logs", {
+        saved = await apiFetch<TenantRentLog>("/api/tenants/rent-logs", {
           method: "POST",
           body: JSON.stringify(payload),
         });
-        setLogs((prev) => upsertById(prev, data));
       }
+      if (paymentFile) {
+        saved = await uploadRentLogPayment<TenantRentLog>(saved.id, paymentFile);
+      }
+      setLogs((prev) =>
+        editing
+          ? prev.map((i) => (i.id === saved.id ? saved : i))
+          : upsertById(prev, saved),
+      );
       const refreshed = await apiFetch<Tenant>(`/api/tenants/${tenantId}`);
       setTenants((prev) => prev.map((t) => (t.id === refreshed.id ? refreshed : t)));
       setOpen(false);
@@ -204,6 +220,31 @@ export function TenantRecordsPanel({
       }
     }
     router.refresh();
+  }
+
+  async function removeLogPayment() {
+    if (!editing) return;
+    setRemovingPayment(true);
+    setError(null);
+    try {
+      const data = await apiFetch<TenantRentLog>(
+        `/api/tenants/rent-logs/${editing.id}/payment`,
+        { method: "DELETE" },
+      );
+      setEditing(data);
+      setLogs((prev) => prev.map((i) => (i.id === data.id ? data : i)));
+      if (tenantId) {
+        const refreshed = await apiFetch<Tenant>(`/api/tenants/${tenantId}`);
+        setTenants((prev) =>
+          prev.map((t) => (t.id === refreshed.id ? refreshed : t)),
+        );
+      }
+      setPaymentFile(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not remove receipt");
+    } finally {
+      setRemovingPayment(false);
+    }
   }
 
   return (
@@ -285,7 +326,7 @@ export function TenantRecordsPanel({
                 </div>
                 <Button onClick={openCreate}>Log rent</Button>
               </div>
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-5">
                 <div>
                   <p className="text-xs text-muted-foreground">Rent amount</p>
                   <p className="text-sm font-medium">
@@ -310,6 +351,12 @@ export function TenantRecordsPanel({
                     {formatMoney(tenant.outstanding_amount)}
                   </p>
                 </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Agreement expiry</p>
+                  <p className="text-sm font-medium">
+                    {formatDate(tenant.agreement_expiry)}
+                  </p>
+                </div>
               </div>
             </section>
           ) : null}
@@ -322,12 +369,13 @@ export function TenantRecordsPanel({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[16%]">Due date</TableHead>
-                    <TableHead className="w-[14%]">Rent amount</TableHead>
-                    <TableHead className="w-[14%]">Status</TableHead>
-                    <TableHead className="w-[14%]">Payment date</TableHead>
-                    <TableHead className="w-[14%]">Outstanding</TableHead>
-                    <TableHead className="w-[14%]">Notes</TableHead>
+                    <TableHead className="w-[14%]">Due date</TableHead>
+                    <TableHead className="w-[12%]">Rent amount</TableHead>
+                    <TableHead className="w-[12%]">Status</TableHead>
+                    <TableHead className="w-[12%]">Payment date</TableHead>
+                    <TableHead className="w-[12%]">Outstanding</TableHead>
+                    <TableHead className="w-[12%]">Receipt</TableHead>
+                    <TableHead className="w-[12%]">Notes</TableHead>
                     <TableHead className="w-[14%] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -335,7 +383,7 @@ export function TenantRecordsPanel({
                   {tenantLogs.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={8}
                         className="max-w-none py-8 text-center text-muted-foreground"
                       >
                         No rent logs for this tenant yet. Use Log rent after each
@@ -372,6 +420,11 @@ export function TenantRecordsPanel({
                           <TableCell>
                             <CellText>
                               {formatMoney(log.outstanding_amount)}
+                            </CellText>
+                          </TableCell>
+                          <TableCell>
+                            <CellText>
+                              {log.payment_file_url ? "Attached" : "—"}
                             </CellText>
                           </TableCell>
                           <TableCell>
@@ -476,6 +529,26 @@ export function TenantRecordsPanel({
                 }
               />
             </div>
+            <DocumentFileField
+              id="rent-payment-file"
+              label="Payment receipt (photo or PDF)"
+              existingPath={editing?.payment_file_url ?? null}
+              onFileChange={setPaymentFile}
+              onView={
+                editing?.payment_file_url
+                  ? () =>
+                      void openTenantDocument(
+                        `/api/tenants/rent-logs/${editing.id}/payment`,
+                      )
+                  : undefined
+              }
+              onRemove={
+                editing?.payment_file_url
+                  ? () => void removeLogPayment()
+                  : undefined
+              }
+              removing={removingPayment}
+            />
           </div>
           {error ? (
             <p className="text-sm text-destructive" role="alert">

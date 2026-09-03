@@ -74,6 +74,50 @@ function formatLoadError(error: unknown): string {
   return "Invalid SEMS_SITES configuration";
 }
 
+/** Canonical dashboard names — applied even if SEMS_SITES still has old labels. */
+export const SOLAR_SITE_DISPLAY_LABELS: Record<string, string> = {
+  "kafi-commodities": "Good We Office",
+  "sungrow-office": "Sungrow Office",
+  "nizam-energy": "KMP Home Solar",
+};
+
+const SOLAR_SITE_ALIASES: Record<string, string> = {
+  "kafi commodities": "kafi-commodities",
+  "kafi commodities solar": "kafi-commodities",
+  "good we office": "kafi-commodities",
+  "good we office (off grid/10kw)": "kafi-commodities",
+  "goodwe office": "kafi-commodities",
+  "good we": "kafi-commodities",
+  "goodwe": "kafi-commodities",
+  "nizam energy": "nizam-energy",
+  "nizam energy solar": "nizam-energy",
+  "nizam solar energy": "nizam-energy",
+  "nizam solar": "nizam-energy",
+  "nizam": "nizam-energy",
+  "kmp home solar": "nizam-energy",
+  "kmp home sungrow": "nizam-energy",
+  "kmp home sungrow (net metering)": "nizam-energy",
+  "kmp home": "nizam-energy",
+  "sungrow office solar": "sungrow-office",
+  "sungrow office": "sungrow-office",
+  "sungrow office (net metering)": "sungrow-office",
+  "sungrow": "sungrow-office",
+  "sun grow office": "sungrow-office",
+};
+
+export function solarSiteDisplayLabel(siteId: string, fallback?: string | null) {
+  return (
+    SOLAR_SITE_DISPLAY_LABELS[siteId.trim().toLowerCase()] ??
+    fallback?.trim() ??
+    siteId
+  );
+}
+
+function applyDisplayLabel(site: SolarSiteConfig): SolarSiteConfig {
+  const label = SOLAR_SITE_DISPLAY_LABELS[site.id.toLowerCase()];
+  return label ? { ...site, label } : site;
+}
+
 function resolveSite(raw: z.infer<typeof siteInputSchema>): SolarSiteConfig {
   const isStatic = raw.static === true;
   const region = resolveRegion(
@@ -133,7 +177,7 @@ function legacySiteFromEnv(): SolarSiteConfig | null {
 
   return resolveSite({
     id: "kafi-commodities",
-    label: "Kafi Commodities",
+    label: "Good We Office",
     email,
     password,
     stationId,
@@ -191,7 +235,7 @@ function loadSolarSitesCached(): SolarSitesLoadResult {
   const builtins = loadBuiltinStaticSites(envIds);
 
   loadCache = {
-    sites: [...fromEnv, ...builtins],
+    sites: [...fromEnv, ...builtins].map(applyDisplayLabel),
     configError,
   };
   return loadCache;
@@ -206,20 +250,34 @@ export function listSolarSites(): SolarSiteConfig[] {
   return loadSolarSitesCached().sites;
 }
 
+function siteMatchesKey(site: SolarSiteConfig, key: string): boolean {
+  return (
+    site.id.toLowerCase() === key ||
+    site.stationId.toLowerCase() === key ||
+    site.stationName?.toLowerCase() === key ||
+    site.label.toLowerCase() === key
+  );
+}
+
+/** Lookup a site by id, alias, label, or station — does not default to the first site. */
+export function findSolarSite(id?: string | null): SolarSiteConfig | null {
+  const raw = id?.trim();
+  if (!raw) return null;
+  const key = raw.toLowerCase();
+  const aliased = SOLAR_SITE_ALIASES[key] ?? key;
+  const sites = listSolarSites();
+  return (
+    sites.find((site) => siteMatchesKey(site, aliased)) ??
+    sites.find((site) => siteMatchesKey(site, key)) ??
+    null
+  );
+}
+
 export function getSolarSite(id?: string | null): SolarSiteConfig | null {
   const sites = listSolarSites();
   if (!sites.length) return null;
   if (!id?.trim()) return sites[0]!;
-
-  const key = id.trim().toLowerCase();
-  return (
-    sites.find(
-      (site) =>
-        site.id.toLowerCase() === key ||
-        site.stationId.toLowerCase() === key ||
-        site.stationName?.toLowerCase() === key,
-    ) ?? null
-  );
+  return findSolarSite(id);
 }
 
 export function requireSolarSite(id?: string | null): SolarSiteConfig {

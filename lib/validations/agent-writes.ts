@@ -25,6 +25,8 @@ import {
   generatorVendorUpdateSchema,
 } from "@/lib/validations/generator";
 import {
+  solarMaintenanceInsertSchema,
+  solarMaintenanceUpdateSchema,
   solarMonitoringLogInsertSchema,
   solarMonitoringLogUpdateSchema,
   solarSpecsInsertSchema,
@@ -80,6 +82,9 @@ export const WRITE_TOOL_NAMES = [
   "solar_monitoring_create",
   "solar_monitoring_update",
   "solar_monitoring_delete",
+  "solar_maintenance_create",
+  "solar_maintenance_update",
+  "solar_maintenance_delete",
   "utility_accounts_create",
   "utility_accounts_update",
   "utility_accounts_delete",
@@ -249,6 +254,10 @@ export const solarMonitoringCreateSchema = solarMonitoringLogInsertSchema;
 export const solarMonitoringUpdateSchemaAgent =
   solarMonitoringLogUpdateSchema.required({ id: true });
 
+export const solarMaintenanceCreateSchema = solarMaintenanceInsertSchema;
+export const solarMaintenanceUpdateSchemaAgent =
+  solarMaintenanceUpdateSchema.required({ id: true });
+
 export const utilityCreateSchema = utilityAccountInsertSchema;
 export const utilityUpdateSchemaAgent = utilityAccountUpdateSchema.required({
   id: true,
@@ -260,10 +269,21 @@ export const utilityPaymentCreateSchema = utilityPaymentLogInsertSchema.omit({
 });
 export const utilityPaymentDeleteSchema = idOnlySchema;
 
-export const tenantCreateSchema = tenantInsertSchema;
+export const tenantCreateSchema = tenantInsertSchema.extend({
+  attach_agreement: z.boolean().optional(),
+  attach_payment: z.boolean().optional(),
+  agreement_attachment_index: z.number().int().min(0).max(7).optional(),
+  payment_attachment_index: z.number().int().min(0).max(7).optional(),
+});
 export const tenantUpdateSchemaAgent = tenantUpdateSchema
   .extend({
     tenant_name_lookup: z.string().trim().min(1).optional(),
+    attach_agreement: z.boolean().optional(),
+    attach_payment: z.boolean().optional(),
+    clear_agreement_file: z.boolean().optional(),
+    clear_payment_file: z.boolean().optional(),
+    agreement_attachment_index: z.number().int().min(0).max(7).optional(),
+    payment_attachment_index: z.number().int().min(0).max(7).optional(),
   })
   .refine((v) => Boolean(v.id || v.tenant_name_lookup), {
     message: "Provide id or tenant_name_lookup to find the tenant",
@@ -285,13 +305,21 @@ const tenantRef = {
 
 export const tenantRentLogCreateSchema = tenantRentLogInsertSchema
   .omit({ tenant_id: true })
-  .extend(tenantRef)
+  .extend({
+    ...tenantRef,
+    attach_payment: z.boolean().optional(),
+    payment_attachment_index: z.number().int().min(0).max(7).optional(),
+  })
   .refine((v) => Boolean(v.tenant_id || v.tenant_name), {
     message: "Provide tenant_id or tenant_name",
   });
-export const tenantRentLogUpdateSchemaAgent = tenantRentLogUpdateSchema.required(
-  { id: true },
-);
+export const tenantRentLogUpdateSchemaAgent = tenantRentLogUpdateSchema
+  .extend({
+    attach_payment: z.boolean().optional(),
+    clear_payment_file: z.boolean().optional(),
+    payment_attachment_index: z.number().int().min(0).max(7).optional(),
+  })
+  .required({ id: true });
 
 export const tenantElectricBillCreateSchema = tenantElectricBillInsertSchema
   .omit({ tenant_id: true })

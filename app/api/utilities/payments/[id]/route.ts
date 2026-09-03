@@ -19,10 +19,26 @@ export async function PATCH(request: Request, { params }: Params) {
   if (parsed.error) return parsed.error;
 
   const { id: _ignored, ...rest } = parsed.data;
+  const factsChanged = [
+    "amount",
+    "units_kwh",
+    "bill_period",
+    "invoice_number",
+    "notes",
+    "paid_on",
+  ].some((key) => key in rest);
+  const patch = factsChanged
+    ? {
+        ...rest,
+        ai_summary: null,
+        ai_summary_model: null,
+        ai_summary_at: null,
+      }
+    : rest;
   const { data, error } = await updateUtilityPaymentLog(
     supabase,
     id,
-    withUpdatedBy(rest, user),
+    withUpdatedBy(patch, user),
   );
   if (error) return supabaseErrorResponse(error.message);
   return NextResponse.json({ data });

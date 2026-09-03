@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { applianceSiteHref } from "@/lib/dashboard/appliance-sites";
+import { solarSiteDisplayLabel } from "@/lib/sems/sites";
 
 export type RecentActivityItem = {
   id: string;
@@ -44,6 +45,7 @@ export async function collectRecentActivity(
     vendors,
     solarSpecs,
     solarLog,
+    solarMaint,
     utilities,
     tenants,
   ] =
@@ -96,6 +98,11 @@ export async function collectRecentActivity(
       supabase
         .from("solar_monitoring_log")
         .select("id, log_date, alert_flag, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(6),
+      supabase
+        .from("solar_maintenance")
+        .select("id, site_id, service_date, service_type, updated_at")
         .order("updated_at", { ascending: false })
         .limit(6),
       supabase
@@ -201,6 +208,18 @@ export async function collectRecentActivity(
         label: "Solar monitoring",
         detail: `${r.log_date}${r.alert_flag ? " · alert" : ""}`,
         href: "/dashboard/solar",
+      }),
+    ),
+    ...pickUpdated(
+      solarMaint.data as Array<Record<string, unknown>> | null,
+      (r) => ({
+        id: `solar-svc-${r.id}`,
+        domain: "solar",
+        label: `Solar service · ${solarSiteDisplayLabel(String(r.site_id ?? ""))}`,
+        detail: `${r.service_type ?? "Service"} on ${r.service_date}`,
+        href: r.site_id
+          ? `/dashboard/solar/service?site=${encodeURIComponent(String(r.site_id))}`
+          : "/dashboard/solar/service",
       }),
     ),
     ...pickUpdated(

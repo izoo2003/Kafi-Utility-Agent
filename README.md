@@ -84,6 +84,9 @@ No separate backend host is required — API routes ship with the Next.js app. S
 | `SUPABASE_SECRET_KEY` | Service role (cron, admin scripts) |
 | `GEMINI_API_KEY` | Primary chat key |
 | `GEMINI_API_KEY_2` | Secondary key after primary models are exhausted |
+| `GEMINI_BILL_SUMMARY_API_KEY` | Dedicated key for utility bill AI reports (falls back to the chat keys) |
+| `GEMINI_BILL_SUMMARY_MODEL` | Base model for bill summaries (default `gemini-3.5-flash`) |
+| `GEMINI_BILL_SUMMARY_FALLBACK_MODELS` | Comma-separated fallbacks, then the shared Gemini list |
 | `CRON_SECRET` | Protects `/api/cron/alerts` |
 | `ALERT_EMAIL_TO` / `RESEND_API_KEY` | Alert email digests |
 | `APP_BASE_URL` | Links in emails / reports |

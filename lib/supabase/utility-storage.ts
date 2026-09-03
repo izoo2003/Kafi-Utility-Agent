@@ -62,3 +62,31 @@ export async function removeUtilityBillFile(
 ) {
   return supabase.storage.from(UTILITY_BILLS_BUCKET).remove([path]);
 }
+
+function mimeFromPath(path: string) {
+  const lower = path.toLowerCase();
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  return "application/octet-stream";
+}
+
+export async function downloadUtilityBillBytes(
+  supabase: SupabaseClient,
+  path: string,
+): Promise<{ bytes: Buffer; mimeType: string; fileName: string } | { error: string }> {
+  const { data, error } = await supabase.storage
+    .from(UTILITY_BILLS_BUCKET)
+    .download(path);
+  if (error || !data) {
+    return { error: error?.message ?? "Could not download bill file" };
+  }
+  const bytes = Buffer.from(await data.arrayBuffer());
+  const fileName = path.split("/").pop() ?? path;
+  return {
+    bytes,
+    mimeType: data.type || mimeFromPath(path),
+    fileName,
+  };
+}

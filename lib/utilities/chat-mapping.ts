@@ -15,7 +15,7 @@ Accept both PDF attachments and photos/screenshots of bills — extract the same
 Field mapping (same as dashboard):
 - paid_on ← due date (within due date) or explicit paid date if stated
 - amount ← amount payable within / before due date (not after-due surcharge total unless that is the only figure)
-- units_kwh ← KE billed units (kWh) OR SSGC measured CM; omit for Jazz / KWSB / PTCL when not on bill
+- units_kwh ← KE billed units (kWh) OR SSGC measured CM OR tanker count; omit for Jazz / KWSB / PTCL / drinking water when not on bill
 - bill_period ← billing month / cycle (e.g. Jul-26, Jul-2026, 02/07/2026–01/08/2026)
 - invoice_number ← KE Invoice No, SSGC Bill ID, KWSB Consumer ID, Jazz Invoice No, or PTCL bill/account ref
 - notes ← short summary: customer name, account/consumer no, mobile (Jazz), address clue, meter if present
@@ -31,11 +31,19 @@ Issuer → section mapping (use address / account / customer name on the bill):
    - House / Phase VI / Muhafiz / Khalid Mehmood Paracha home gas → "SSGC (Gas) — KMP House"
 3) KWSB (water board) — ONE site only:
    - Always "KWSB (Water Board) — Clifton Office" (A.Karim Sons / F.50/1 Block-8 Clifton). There is NO KMP House KWSB section.
-4) PTCL (landline / broadband):
+4) Water tanker (bowser / tanker delivery — not KWSB pipe water, not bottled drinking water):
+   - Home / KMP house / residential → "Water tanker — Home"
+   - Office / Clifton office → "Water tanker — Office"
+   - 239 / SURWAY NO 239G Mill → "Water tanker — SURWAY NO 239G Mill"
+   - 234 / SURWAY NO 234G Mill / GondPass mill → "Water tanker — SURWAY NO 234G Mill"
+   - If the site is missing, ask which of the four tanker sections.
+5) Drinking water (bottled / dispenser / drinking supply — not tanker, not KWSB):
+   - Always "Drinking water — Clifton Office"
+6) PTCL (landline / broadband):
    - Office / Clifton / KAFI / commercial PTCL → "PTCL — Office"
    - KMP / house / residential / Phase-VI home PTCL → "PTCL — KMP House"
    - If ambiguous, ask the user which PTCL section.
-5) Jazz mobile:
+7) Jazz mobile:
    - Filename/user says KP, or name KHALID MEHMOOD PARACHA, mobile 03008206633, customer 72373646 → "Jazz monthly bill — Khalid Paracha"
    - Filename/user says SKP, or name SADIA KHALID PARACHA, mobile 03218206633, customer 163401563 → "Jazz monthly bill — Sadia Paracha"
 

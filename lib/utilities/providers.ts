@@ -73,6 +73,46 @@ const OTHER_PROVIDERS: readonly SiteUtilityProvider[] = [
     menuKey: "kwsb",
   },
   {
+    key: "water-tanker-home",
+    label: "Water tanker — Home",
+    siteLabel: "Home",
+    utility_type: "water",
+    billing_cycle: "monthly",
+    menuKey: "water-tanker",
+  },
+  {
+    key: "water-tanker-office",
+    label: "Water tanker — Office",
+    siteLabel: "Office",
+    utility_type: "water",
+    billing_cycle: "monthly",
+    menuKey: "water-tanker",
+  },
+  {
+    key: "water-tanker-239g-mill",
+    label: "Water tanker — SURWAY NO 239G Mill",
+    siteLabel: "SURWAY NO 239G Mill",
+    utility_type: "water",
+    billing_cycle: "monthly",
+    menuKey: "water-tanker",
+  },
+  {
+    key: "water-tanker-234g-mill",
+    label: "Water tanker — SURWAY NO 234G Mill",
+    siteLabel: "SURWAY NO 234G Mill",
+    utility_type: "water",
+    billing_cycle: "monthly",
+    menuKey: "water-tanker",
+  },
+  {
+    key: "drinking-water-clifton-office",
+    label: "Drinking water — Clifton Office",
+    siteLabel: "Clifton Office",
+    utility_type: "water",
+    billing_cycle: "monthly",
+    menuKey: "drinking-water",
+  },
+  {
     key: "ptcl-office",
     label: "PTCL — Office",
     siteLabel: "Office",
@@ -118,12 +158,18 @@ export const UTILITY_MENU_OPTIONS = [
   { key: "k-electric", label: "K-Electric" },
   { key: "ssgc", label: "SSGC (Gas)" },
   { key: "kwsb", label: "KWSB (Water Board)" },
+  { key: "water-tanker", label: "Water tanker" },
+  { key: "drinking-water", label: "Drinking water" },
   { key: "ptcl", label: "PTCL" },
   { key: "jazz", label: "Jazz monthly bill" },
 ] as const;
 
 export type UtilityMenuKey = (typeof UTILITY_MENU_OPTIONS)[number]["key"];
 export type SiteUtilityProviderKey = (typeof SITE_UTILITY_PROVIDERS)[number]["key"];
+
+export const SITE_UTILITY_PROVIDER_LABELS = SITE_UTILITY_PROVIDERS.map(
+  (p) => p.label,
+).join(" | ");
 
 export function providerByKey(key: string) {
   return SITE_UTILITY_PROVIDERS.find((p) => p.key === key) ?? null;
@@ -152,6 +198,9 @@ export function providerByLabel(label: string | null | undefined) {
     if (t.includes("ptcl")) {
       return providerByKey("ptcl-kmp-house");
     }
+    if (t.includes("tanker")) {
+      return providerByKey("water-tanker-home");
+    }
     if (t.includes("kwsb") || t.includes("water")) {
       return null;
     }
@@ -163,13 +212,31 @@ export function providerByLabel(label: string | null | undefined) {
   );
   if (exact) return exact;
 
+  if (t.includes("tanker")) {
+    if (t.includes("home") || t.includes("kmp") || t.includes("house")) {
+      return providerByKey("water-tanker-home");
+    }
+    if (t.includes("239")) return providerByKey("water-tanker-239g-mill");
+    if (t.includes("234") || t.includes("gond")) {
+      return providerByKey("water-tanker-234g-mill");
+    }
+    if (t.includes("office") || t.includes("clifton")) {
+      return providerByKey("water-tanker-office");
+    }
+    return null;
+  }
+
+  if (t.includes("drinking")) {
+    return providerByKey("drinking-water-clifton-office");
+  }
+
   // Match by site short name (e.g. "Clifton Office")
   const bySite = SITE_UTILITY_PROVIDERS.find(
     (p) => p.siteLabel && p.siteLabel.toLowerCase() === t,
   );
   if (bySite) return bySite;
 
-  // Legacy bare "PTCL" (pre site split) — ambiguous, do not auto-map.
+  // Legacy bare category names — ambiguous, do not auto-map.
   if (
     t === "k-electric" ||
     t === "kelectric" ||
@@ -179,7 +246,9 @@ export function providerByLabel(label: string | null | undefined) {
     t === "kwsb" ||
     t === "kwsb (water board)" ||
     t === "jazz" ||
-    t === "jazz monthly bill"
+    t === "jazz monthly bill" ||
+    t === "water tanker" ||
+    t === "drinking water"
   ) {
     return null;
   }

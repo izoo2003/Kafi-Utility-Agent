@@ -677,6 +677,72 @@ export const agentWriteTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "solar_maintenance_create",
+    description:
+      "Log solar service/maintenance for one plant. site_id is the plant slug or name: Good We Office (kafi-commodities), Sungrow Office (sungrow-office), KMP Home Solar (nizam-energy). If next_service_due is omitted, defaults to +1 month. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        site_id: {
+          type: SchemaType.STRING,
+          description:
+            "Plant slug or display name. Examples: Good We Office, Sungrow Office, KMP Home Solar.",
+        },
+        service_date: { type: SchemaType.STRING, description: "YYYY-MM-DD or DD/MM/YYYY" },
+        next_service_due: {
+          type: SchemaType.STRING,
+          description: "YYYY-MM-DD; defaults to +1 month from service_date",
+        },
+        service_type: {
+          type: SchemaType.STRING,
+          description: "e.g. Cleaning, inverter check, Service / maintenance",
+        },
+        vendor: { type: SchemaType.STRING },
+        cost: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        checkup_status: {
+          type: SchemaType.STRING,
+          description: "done or not_done",
+        },
+        ...confirmedProperty,
+      },
+      required: ["site_id", "service_date"],
+    },
+  },
+  {
+    name: "solar_maintenance_update",
+    description:
+      "Update a solar service/maintenance record (including checkup_status done/not_done). Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        site_id: { type: SchemaType.STRING },
+        service_date: { type: SchemaType.STRING },
+        next_service_due: { type: SchemaType.STRING },
+        service_type: { type: SchemaType.STRING },
+        vendor: { type: SchemaType.STRING },
+        cost: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        checkup_status: {
+          type: SchemaType.STRING,
+          description: "done or not_done",
+        },
+        ...confirmedProperty,
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "solar_maintenance_delete",
+    description: "Delete a solar service/maintenance record. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: { ...idProp, ...confirmedProperty },
+      required: ["id"],
+    },
+  },
+  {
     name: "utility_accounts_create",
     description:
       "Create a utility account (never passwords). Requires confirmation.",
@@ -691,7 +757,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
         provider: {
           type: SchemaType.STRING,
           description:
-            "Prefer: K-Electric — SURWAY NO 239G Mill | K-Electric — SURWAY NO 234G Mill | K-Electric — Clifton Office | K-Electric — KMP House | SSGC (Gas) — Clifton Office | SSGC (Gas) — KMP House | KWSB (Water Board) — Clifton Office | PTCL — Office | PTCL — KMP House | Jazz monthly bill — Khalid Paracha | Jazz monthly bill — Sadia Paracha",
+            "Prefer: K-Electric — SURWAY NO 239G Mill | K-Electric — SURWAY NO 234G Mill | K-Electric — Clifton Office | K-Electric — KMP House | SSGC (Gas) — Clifton Office | SSGC (Gas) — KMP House | KWSB (Water Board) — Clifton Office | Water tanker — Home | Water tanker — Office | Water tanker — SURWAY NO 239G Mill | Water tanker — SURWAY NO 234G Mill | Drinking water — Clifton Office | PTCL — Office | PTCL — KMP House | Jazz monthly bill — Khalid Paracha | Jazz monthly bill — Sadia Paracha",
         },
         account_number: { type: SchemaType.STRING },
         billing_cycle: { type: SchemaType.STRING },
@@ -744,7 +810,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "utility_payment_create",
     description:
-      "Log a utility bill payment with the same fields as the Utilities dashboard (amount, units_kwh, bill_period, invoice_number, notes). Next due = paid_on + 1 month. ALWAYS resolve utility_account_id via utility_accounts_list using exact provider labels (e.g. Jazz monthly bill — Khalid Paracha, SSGC (Gas) — Clifton Office, K-Electric — SURWAY NO 239G Mill). Requires confirmation. Chat extracts fields from attached PDFs; PDF file archive can be uploaded on the Utilities Log payment dialog.",
+      "Log a utility bill payment with the same fields as the Utilities dashboard (amount, units_kwh, bill_period, invoice_number, notes). Next due = paid_on + 1 month. ALWAYS resolve utility_account_id via utility_accounts_list using exact provider labels (e.g. Water tanker — Home, Drinking water — Clifton Office, K-Electric — SURWAY NO 239G Mill). Requires confirmation. Chat extracts fields from attached PDFs; PDF file archive can be uploaded on the Utilities Log payment dialog.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -789,7 +855,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "tenants_create",
     description:
-      "Create a tenant account with current rent fields (name, rent amount, due date, payment status, payment date, outstanding). Also writes the first rent log when rent fields are present. Requires confirmation.",
+      "Create a tenant account with current rent fields, optional agreement_expiry (lease end date), and optional attached agreement/payment files from this chat turn. Also writes the first rent log when rent fields are present. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -806,7 +872,30 @@ export const agentWriteTools: FunctionDeclaration[] = [
         },
         payment_date: { type: SchemaType.STRING },
         outstanding_amount: { type: SchemaType.NUMBER },
+        agreement_expiry: {
+          type: SchemaType.STRING,
+          description: "Lease / agreement end date (YYYY-MM-DD or DD/MM/YYYY)",
+        },
         notes: { type: SchemaType.STRING },
+        attach_agreement: {
+          type: SchemaType.BOOLEAN,
+          description:
+            "If true, save the chat-attached agreement PDF/photo onto this tenant.",
+        },
+        attach_payment: {
+          type: SchemaType.BOOLEAN,
+          description:
+            "If true, save the chat-attached payment receipt onto this tenant (and their latest rent log).",
+        },
+        agreement_attachment_index: {
+          type: SchemaType.NUMBER,
+          description: "Which attached file is the agreement (0-based). Default 0.",
+        },
+        payment_attachment_index: {
+          type: SchemaType.NUMBER,
+          description:
+            "Which attached file is the payment receipt (0-based). Default 1 if attach_agreement is also true, else 0.",
+        },
         ...confirmedProperty,
       },
       required: ["tenant_name"],
@@ -815,7 +904,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "tenants_update",
     description:
-      "Update a tenant account by id (or tenant_name_lookup). Changing rent fields also upserts a rent log for that due date. Requires confirmation.",
+      "Update a tenant account by id (or tenant_name_lookup). Can set agreement_expiry, attach/replace agreement or payment files from this chat turn, or clear those files. Changing rent fields also upserts a rent log for that due date. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -834,7 +923,29 @@ export const agentWriteTools: FunctionDeclaration[] = [
         },
         payment_date: { type: SchemaType.STRING },
         outstanding_amount: { type: SchemaType.NUMBER },
+        agreement_expiry: {
+          type: SchemaType.STRING,
+          description: "Lease / agreement end date, or empty to clear",
+        },
         notes: { type: SchemaType.STRING },
+        attach_agreement: {
+          type: SchemaType.BOOLEAN,
+          description: "Save/replace the chat-attached agreement file.",
+        },
+        attach_payment: {
+          type: SchemaType.BOOLEAN,
+          description: "Save/replace the chat-attached payment receipt.",
+        },
+        clear_agreement_file: {
+          type: SchemaType.BOOLEAN,
+          description: "Delete the stored agreement file.",
+        },
+        clear_payment_file: {
+          type: SchemaType.BOOLEAN,
+          description: "Delete the stored current payment receipt.",
+        },
+        agreement_attachment_index: { type: SchemaType.NUMBER },
+        payment_attachment_index: { type: SchemaType.NUMBER },
         ...confirmedProperty,
       },
     },
@@ -858,7 +969,7 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "tenant_rent_log_create",
     description:
-      "Log a rent payment for a tenant (amount, due date, payment status, payment date, outstanding). Resolve tenant via tenants_list; pass tenant_id or tenant_name. Requires confirmation.",
+      "Log a rent payment for a tenant (amount, due date, payment status, payment date, outstanding). Optionally save a chat-attached payment receipt (attach_payment=true). Resolve tenant via tenants_list; pass tenant_id or tenant_name. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -874,13 +985,19 @@ export const agentWriteTools: FunctionDeclaration[] = [
         payment_date: { type: SchemaType.STRING },
         outstanding_amount: { type: SchemaType.NUMBER },
         notes: { type: SchemaType.STRING },
+        attach_payment: {
+          type: SchemaType.BOOLEAN,
+          description: "Save the chat-attached payment receipt onto this rent log.",
+        },
+        payment_attachment_index: { type: SchemaType.NUMBER },
         ...confirmedProperty,
       },
     },
   },
   {
     name: "tenant_rent_log_update",
-    description: "Update a tenant rent log by id. Requires confirmation.",
+    description:
+      "Update a tenant rent log by id. Can attach/replace or clear the payment receipt. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -895,6 +1012,15 @@ export const agentWriteTools: FunctionDeclaration[] = [
         payment_date: { type: SchemaType.STRING },
         outstanding_amount: { type: SchemaType.NUMBER },
         notes: { type: SchemaType.STRING },
+        attach_payment: {
+          type: SchemaType.BOOLEAN,
+          description: "Save/replace the chat-attached payment receipt.",
+        },
+        clear_payment_file: {
+          type: SchemaType.BOOLEAN,
+          description: "Delete the stored payment receipt on this rent log.",
+        },
+        payment_attachment_index: { type: SchemaType.NUMBER },
         ...confirmedProperty,
       },
       required: ["id"],

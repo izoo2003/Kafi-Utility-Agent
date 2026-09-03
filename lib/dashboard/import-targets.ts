@@ -11,6 +11,7 @@ export const IMPORT_TARGETS = [
   "generator-vendors",
   "solar-specs",
   "solar-monitoring",
+  "solar-maintenance",
   "utilities",
   "tenants",
   "tenant-rent",
@@ -131,14 +132,23 @@ export function importPromptFor(target: ImportTarget): string {
         "Map: date → log_date (DD/MM/YYYY); generation kWh → generation_kwh; consumption kWh → consumption_kwh; battery % → battery_soc_pct; alert flag; notes.",
         "Skip headers/totals/blank lines. Do not write solar specs.",
       ].join(" ");
+    case "solar-maintenance":
+      return [
+        "IMPORT TARGET: Solar service / maintenance ONLY.",
+        "Read every page/photo carefully. Extract EVERY distinct service/maintenance row.",
+        "For EACH row call solar_maintenance_create with confirmed=false (one tool call per row).",
+        "ALWAYS set site_id to the plant: Good We Office → kafi-commodities; Sungrow Office → sungrow-office; KMP Home Solar → nizam-energy. Old names (Kafi Commodities Solar, Sungrow Office Solar, Nizam Solar Energy, KMP Home Sungrow) also resolve.",
+        "Map: date → service_date (DD/MM/YYYY); type → service_type; vendor; cost; remarks → notes; checkup_status done/not_done.",
+        "If next_service_due missing, omit it (defaults to +1 month). Skip headers/totals/blank lines. Do not write monitoring or specs.",
+      ].join(" ");
     case "utilities":
       return [
         "IMPORT TARGET: Internet & utility accounts / bill payments ONLY.",
         "Follow the same mapping as seeded dashboard logs.",
         "ALWAYS call utility_accounts_list first, then utility_payment_create (confirmed=false) with the matching account id.",
-        "Providers (exact labels): K-Electric — SURWAY NO 239G Mill | K-Electric — SURWAY NO 234G Mill | K-Electric — Clifton Office | K-Electric — KMP House | SSGC (Gas) — Clifton Office | SSGC (Gas) — KMP House | KWSB (Water Board) — Clifton Office | PTCL — Office | PTCL — KMP House | Jazz monthly bill — Khalid Paracha | Jazz monthly bill — Sadia Paracha.",
-        "Map: due date → paid_on; amount within due → amount; KE units kWh or SSGC CM → units_kwh; month/cycle → bill_period; invoice/Bill ID/Consumer ID → invoice_number; put customer/mobile/account clues in notes.",
-        "KE: 239/234 Baldia mills by survey no; Clifton vs KMP House by address. SSGC: Block 8 / Qasre Faisal → Clifton; DHA / KMP house → KMP House. KWSB: Clifton only. PTCL: Office vs KMP House by address/user. Jazz: KP/Khalid/03008206633 → Khalid Paracha; SKP/Sadia/03218206633 → Sadia Paracha.",
+        "Providers (exact labels): K-Electric — SURWAY NO 239G Mill | K-Electric — SURWAY NO 234G Mill | K-Electric — Clifton Office | K-Electric — KMP House | SSGC (Gas) — Clifton Office | SSGC (Gas) — KMP House | KWSB (Water Board) — Clifton Office | Water tanker — Home | Water tanker — Office | Water tanker — SURWAY NO 239G Mill | Water tanker — SURWAY NO 234G Mill | Drinking water — Clifton Office | PTCL — Office | PTCL — KMP House | Jazz monthly bill — Khalid Paracha | Jazz monthly bill — Sadia Paracha.",
+        "Map: due date → paid_on; amount within due → amount; KE units kWh or SSGC CM or tanker count → units_kwh; month/cycle → bill_period; invoice/Bill ID/Consumer ID → invoice_number; put customer/mobile/account clues in notes.",
+        "KE: 239/234 Baldia mills by survey no; Clifton vs KMP House by address. SSGC: Block 8 / Qasre Faisal → Clifton; DHA / KMP house → KMP House. KWSB: Clifton only. Water tanker: Home / Office / 239G Mill / 234G Mill. Drinking water: Clifton Office only. PTCL: Office vs KMP House by address/user. Jazz: KP/Khalid/03008206633 → Khalid Paracha; SKP/Sadia/03218206633 → Sadia Paracha.",
         "One payment create per bill PDF or image. Never invent providers or passwords. Do not write to other domains.",
       ].join(" ");
     case "tenants":
@@ -148,7 +158,8 @@ export function importPromptFor(target: ImportTarget): string {
         "For EACH tenant call tenants_create with confirmed=false (one tool call per tenant).",
         "Map: tenant/name → tenant_name; rent amount → rent_amount; rent due date → rent_due_date;",
         "payment status → payment_status (paid|unpaid|partial|overdue); payment date → payment_date;",
-        "outstanding/overdue amount → outstanding_amount; notes.",
+        "outstanding/overdue amount → outstanding_amount; agreement expiry → agreement_expiry; notes.",
+        "If an agreement PDF/photo is attached, set attach_agreement=true. If a payment receipt is attached, set attach_payment=true.",
         "Dates are DD/MM/YYYY. Skip headers/blank lines. Do not write rent logs or electricity bills separately unless they are clearly extra history rows.",
       ].join(" ");
     case "tenant-rent":
@@ -158,6 +169,7 @@ export function importPromptFor(target: ImportTarget): string {
         "For EACH rent row call tenant_rent_log_create with confirmed=false.",
         "Map: tenant name → tenant_name; rent amount → rent_amount; due date → rent_due_date;",
         "payment status → payment_status; payment date → payment_date; outstanding → outstanding_amount; notes.",
+        "If a payment receipt PDF/photo is attached, set attach_payment=true.",
         "Dates are DD/MM/YYYY. Do not create new tenants unless the name is clearly missing from tenants_list — then tenants_create first.",
         "Do not write electricity bills.",
       ].join(" ");

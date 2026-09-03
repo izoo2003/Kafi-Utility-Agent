@@ -35,7 +35,7 @@ export async function getUtilityAccount(supabase: SupabaseClient, id: string) {
     .returns<UtilityAccount>();
 }
 
-/** Ensure fixed site providers exist (4× K-Electric + SSGC/KWSB/Jazz). */
+/** Ensure fixed site providers exist (K-Electric, SSGC, KWSB, water tanker, drinking water, PTCL, Jazz). */
 export async function ensureSiteUtilityAccounts(supabase: SupabaseClient) {
   const { data: existing, error } = await listUtilityAccounts(supabase);
   if (error) return { error, data: null as UtilityAccount[] | null };

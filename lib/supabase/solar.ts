@@ -2,6 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   SolarLiveSnapshot,
   SolarLiveSnapshotUpsert,
+  SolarMaintenance,
+  SolarMaintenanceInsert,
+  SolarMaintenanceUpdate,
   SolarMonitoringLog,
   SolarMonitoringLogInsert,
   SolarMonitoringLogUpdate,
@@ -20,6 +23,7 @@ import { getSolarSite } from "@/lib/sems/sites";
 const SPECS = "solar_specs" as const;
 const LOG = "solar_monitoring_log" as const;
 const LIVE = "solar_live_snapshot" as const;
+const MAINTENANCE = "solar_maintenance" as const;
 
 export { SOLAR_SPECS_BUCKET };
 
@@ -276,4 +280,84 @@ export async function upsertSolarMonitoringLogByDate(
     } satisfies SolarMonitoringLogInsert)
     .select("*")
     .single<SolarMonitoringLog>();
+}
+
+export async function listSolarMaintenance(supabase: SupabaseClient) {
+  return supabase
+    .from(MAINTENANCE)
+    .select("*")
+    .order("service_date", { ascending: false })
+    .returns<SolarMaintenance[]>();
+}
+
+async function findSolarMaintenanceDuplicate(
+  supabase: SupabaseClient,
+  input: SolarMaintenanceInsert,
+): Promise<SolarMaintenance | null> {
+  const typeKey = normalizeKeyPart(input.service_type);
+  const { data, error } = await supabase
+    .from(MAINTENANCE)
+    .select("*")
+    .eq("site_id", input.site_id)
+    .eq("service_date", input.service_date)
+    .returns<SolarMaintenance[]>();
+  if (error || !data?.length) return null;
+  if (!typeKey) {
+    return (
+      [...data].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ??
+      null
+    );
+  }
+  return data.find((r) => normalizeKeyPart(r.service_type) === typeKey) ?? null;
+}
+
+export async function createSolarMaintenance(
+  supabase: SupabaseClient,
+  input: SolarMaintenanceInsert,
+): Promise<DomainWriteResult<SolarMaintenance>> {
+  const existing = await findSolarMaintenanceDuplicate(supabase, input);
+  if (existing) {
+    const overwrite = incomingShouldOverwrite({
+      incomingDate: input.service_date,
+      existingDate: existing.service_date,
+      existingUpdatedAt: existing.updated_at,
+    });
+    if (!overwrite) return writeOk(existing, "skipped");
+    const { data, error } = await supabase
+      .from(MAINTENANCE)
+      .update(input)
+      .eq("id", existing.id)
+      .select("*")
+      .single<SolarMaintenance>();
+    if (error) return writeErr(error.message);
+    return writeOk(data, "updated");
+  }
+
+  const { data, error } = await supabase
+    .from(MAINTENANCE)
+    .insert(input)
+    .select("*")
+    .single<SolarMaintenance>();
+  if (error) return writeErr(error.message);
+  return writeOk(data, "created");
+}
+
+export async function updateSolarMaintenance(
+  supabase: SupabaseClient,
+  id: string,
+  input: SolarMaintenanceUpdate,
+) {
+  return supabase
+    .from(MAINTENANCE)
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .single();
+}
+
+export async function deleteSolarMaintenance(
+  supabase: SupabaseClient,
+  id: string,
+) {
+  return supabase.from(MAINTENANCE).delete().eq("id", id);
 }

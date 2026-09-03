@@ -84,7 +84,9 @@ Dashboard subsections: Maintenance, Outage/Generator Runs, Expenses, Fuel, Vendo
 
 Site date display/parse convention: DD/MM/YYYY (stored as ISO dates).
 
-## 4. Solar system (`solar_specs`, `solar_monitoring_log`)
+## 4. Solar system (`solar_specs`, `solar_monitoring_log`, `solar_maintenance`)
+Dashboard plants (display names): Good We Office, Sungrow Office, KMP Home Solar.
+
 `solar_specs` (effectively one row, but keep as a table for history):
 - panel_capacity_kw numeric
 - inverter_model text
@@ -102,9 +104,19 @@ Site date display/parse convention: DD/MM/YYYY (stored as ISO dates).
 - alert_flag boolean default false
 - notes text
 
+`solar_maintenance` (service / maintenance per plant — dashboard Solar → Service):
+- site_id text (plant slug: `kafi-commodities` | `sungrow-office` | `nizam-energy`)
+- service_date date
+- next_service_due date (default: service_date + 1 month)
+- service_type text
+- vendor text
+- cost numeric
+- notes text
+- checkup_status text (`done` | `not_done`)
+
 ## 5. Internet & utility accounts (`utility_accounts`)
-- utility_type text (internet, electricity, gas, water)
-- provider text
+- utility_type text (internet, electricity, gas, water, mobile)
+- provider text — dashboard sections: K-Electric (4 sites), SSGC (2), KWSB Clifton, Water tanker (Home, Office, 239G Mill, 234G Mill), Drinking water (Clifton Office), PTCL (2), Jazz (2)
 - account_number text
 - billing_cycle text
 - monthly_avg_cost numeric
@@ -112,6 +124,19 @@ Site date display/parse convention: DD/MM/YYYY (stored as ISO dates).
 - contact_person text
 - notes text
 - **never store passwords/credentials in this table or anywhere in the app.** Reference a password manager entry name only.
+
+`utility_payment_logs` (bills / payments per account):
+- utility_account_id uuid → utility_accounts
+- paid_on date
+- amount numeric
+- units_kwh numeric
+- bill_period text
+- invoice_number text
+- bill_file_url text
+- notes text
+- ai_summary text (AI report: why this bill, vs previous, difference)
+- ai_summary_model text
+- ai_summary_at timestamptz
 
 ## 6. Tenants (`tenants`, `tenant_rent_logs`, `tenant_electric_bills`)
 `tenants` (account + current rent snapshot):
@@ -121,11 +146,15 @@ Site date display/parse convention: DD/MM/YYYY (stored as ISO dates).
 - payment_status text (`paid` | `unpaid` | `partial` | `overdue`)
 - payment_date date
 - outstanding_amount numeric
+- agreement_expiry date (lease end; alert 1 month before)
+- agreement_file_url text (agreement PDF/photo in `tenant-documents` bucket)
+- payment_file_url text (current payment receipt snapshot)
 - notes text
 
 `tenant_rent_logs` (history per tenant; latest log syncs the tenant snapshot):
 - tenant_id uuid → tenants
 - same rent/payment fields as the tenant snapshot
+- payment_file_url text (receipt PDF/photo for that payment)
 
 `tenant_electric_bills` (K-Electric charges billed to the tenant — not site utility meters):
 - tenant_id uuid → tenants

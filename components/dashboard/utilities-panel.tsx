@@ -53,6 +53,7 @@ import {
   latestPayment,
   nextDueFromLastPaid,
 } from "@/lib/utilities/billing";
+import { UtilityBillSummary } from "@/components/dashboard/utility-bill-summary";
 import { cn } from "@/lib/utils";
 
 type AccountForm = {
@@ -108,11 +109,13 @@ function formatMoney(n: number) {
 function formatUnits(
   units: number | null | undefined,
   utilityType: string | undefined,
+  menuKey?: string,
 ) {
   if (units == null) return "—";
   const n = Number(units);
   if (utilityType === "gas") return `${n} CM`;
   if (utilityType === "electricity") return `${n} kWh`;
+  if (menuKey === "water-tanker") return `${n} tankers`;
   return String(n);
 }
 
@@ -182,10 +185,12 @@ function accountForProvider(
     const byType = items.filter(
       (i) => i.utility_type === provider.utility_type,
     );
-    return (
-      [...byType].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ??
-      null
-    );
+    if (byType.length === 1) {
+      return (
+        [...byType].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0] ??
+        null
+      );
+    }
   }
 
   return null;
@@ -200,6 +205,7 @@ function SiteBillSection({
   onEdit,
   onEditPayment,
   onDeletePayment,
+  onPaymentUpdated,
 }: {
   provider: SiteUtilityProvider;
   account: UtilityAccount | null;
@@ -209,6 +215,7 @@ function SiteBillSection({
   onEdit: () => void;
   onEditPayment: (log: UtilityPaymentLog) => void;
   onDeletePayment: (id: string) => Promise<void>;
+  onPaymentUpdated: (log: UtilityPaymentLog) => void;
 }) {
   const title = provider.siteLabel ?? provider.label;
   const accountPayments = useMemo(() => {
@@ -260,6 +267,14 @@ function SiteBillSection({
             ) : provider.menuKey === "kwsb" ? (
               <p className="text-sm text-muted-foreground">
                 KWSB water board bill records for this location.
+              </p>
+            ) : provider.menuKey === "water-tanker" ? (
+              <p className="text-sm text-muted-foreground">
+                Water tanker delivery records for this location.
+              </p>
+            ) : provider.menuKey === "drinking-water" ? (
+              <p className="text-sm text-muted-foreground">
+                Drinking water records for this location.
               </p>
             ) : provider.menuKey === "ptcl" ? (
               <p className="text-sm text-muted-foreground">
@@ -320,11 +335,18 @@ function SiteBillSection({
           <div>
             <p className="text-xs text-muted-foreground">Last units</p>
             <p className="text-sm font-medium">
-              {formatUnits(last?.units_kwh, provider.utility_type)}
+              {formatUnits(last?.units_kwh, provider.utility_type, provider.menuKey)}
             </p>
           </div>
         </div>
       </div>
+
+      <UtilityBillSummary
+        account={account}
+        provider={provider}
+        payments={accountPayments}
+        onPaymentUpdated={onPaymentUpdated}
+      />
 
       <div className="space-y-3">
         <h3 className="text-base font-medium">Payment history — {title}</h3>
@@ -348,7 +370,7 @@ function SiteBillSection({
                     className="max-w-none py-8 text-center text-muted-foreground"
                   >
                     No payments for {title} yet. Use Log payment after each
-                    bill is paid (or upload a KE PDF in chat).
+                    bill is paid (or import a bill in chat).
                   </TableCell>
                 </TableRow>
               ) : (
@@ -364,7 +386,7 @@ function SiteBillSection({
                     </TableCell>
                     <TableCell>
                       <CellText>
-                        {formatUnits(log.units_kwh, provider.utility_type)}
+                        {formatUnits(log.units_kwh, provider.utility_type, provider.menuKey)}
                       </CellText>
                     </TableCell>
                     <TableCell>
@@ -682,7 +704,7 @@ export function UtilitiesPanel({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title="Internet & utilities"
-          description="Pick a utility from the dropdown. K-Electric shows four locations (each with its own bill history). Next due = last paid + 1 month. Dates: DD/MM/YYYY."
+          description="Pick a utility from the dropdown. K-Electric, water tanker, and other groups show each location separately. Next due = last paid + 1 month. Dates: DD/MM/YYYY."
           icon="utilities"
           accent="slate"
         />
@@ -715,6 +737,10 @@ export function UtilitiesPanel({
               ? "SSGC (Gas): two sections — Clifton Office and KMP House."
               : menuKey === "kwsb"
                 ? "KWSB (Water Board): one section — Clifton Office only."
+                : menuKey === "water-tanker"
+                  ? "Water tanker: four sections — Home, Office, 239G Mill, 234G Mill."
+                  : menuKey === "drinking-water"
+                    ? "Drinking water: one section — Clifton Office."
                 : menuKey === "ptcl"
                   ? "PTCL: two sections — Office and KMP House. Log bills via chat or Log payment."
                   : menuKey === "jazz"
@@ -740,6 +766,9 @@ export function UtilitiesPanel({
             onLogPayment={() => void openPay(provider)}
             onEdit={() => openEdit(provider)}
             onEditPayment={(log) => openEditPayment(provider, log)}
+            onPaymentUpdated={(log) => {
+              setPayments((prev) => upsertById(prev, log));
+            }}
             onDeletePayment={async (id) => {
               await apiFetch(`/api/utilities/payments/${id}`, {
                 method: "DELETE",
@@ -868,7 +897,15 @@ export function UtilitiesPanel({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Units (kWh or CM)</Label>
+                <Label>
+                  {activeProvider?.menuKey === "water-tanker"
+                    ? "Units (tankers, optional)"
+                    : activeProvider?.utility_type === "gas"
+                      ? "Units (CM, optional)"
+                      : activeProvider?.utility_type === "electricity"
+                        ? "Units (kWh, optional)"
+                        : "Units (optional)"}
+                </Label>
                 <Input
                   type="number"
                   min="0"

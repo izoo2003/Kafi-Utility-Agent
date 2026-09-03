@@ -10,6 +10,7 @@ import type {
   TenantRentLogUpdate,
   TenantUpdate,
 } from "@/lib/types/database";
+import { removeTenantDocument } from "@/lib/supabase/tenant-storage";
 import {
   incomingShouldOverwrite,
   normalizeKeyPart,
@@ -143,6 +144,7 @@ async function applyLatestRentSnapshot(
         payment_status: latest.payment_status,
         payment_date: latest.payment_date,
         outstanding_amount: latest.outstanding_amount,
+        payment_file_url: latest.payment_file_url,
       }
     : {
         rent_amount: null,
@@ -150,6 +152,7 @@ async function applyLatestRentSnapshot(
         payment_status: "unpaid",
         payment_date: null,
         outstanding_amount: null,
+        payment_file_url: null,
       };
   if (updatedBy) patch.updated_by = updatedBy;
   return supabase.from(TENANTS).update(patch).eq("id", tenantId);
@@ -278,6 +281,17 @@ export async function updateTenant(
 }
 
 export async function deleteTenant(supabase: SupabaseClient, id: string) {
+  const existing = await getTenant(supabase, id);
+  const logs = await listTenantRentLogs(supabase, id);
+  const paths = [
+    existing.data?.agreement_file_url,
+    existing.data?.payment_file_url,
+    ...(logs.data ?? []).map((row) => row.payment_file_url),
+  ].filter((p): p is string => Boolean(p));
+  const unique = [...new Set(paths)];
+  for (const path of unique) {
+    await removeTenantDocument(supabase, path);
+  }
   return supabase.from(TENANTS).delete().eq("id", id);
 }
 
@@ -319,6 +333,14 @@ export async function deleteTenantRentLog(
   id: string,
 ) {
   const existing = await getTenantRentLog(supabase, id);
+  if (existing.data?.payment_file_url) {
+    const tenant = await getTenant(supabase, existing.data.tenant_id);
+    const shared =
+      tenant.data?.payment_file_url === existing.data.payment_file_url;
+    if (!shared) {
+      await removeTenantDocument(supabase, existing.data.payment_file_url);
+    }
+  }
   const result = await supabase.from(RENT_LOGS).delete().eq("id", id);
   if (!result.error && existing.data) {
     await applyLatestRentSnapshot(supabase, existing.data.tenant_id);

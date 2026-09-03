@@ -42,6 +42,7 @@ import {
   updateGeneratorVendor,
 } from "@/lib/supabase/generator";
 import { withDefaultNextServiceDue } from "@/lib/generator/maintenance";
+import { findSolarSite, listSolarSites, solarSiteDisplayLabel } from "@/lib/sems/sites";
 import { outcomeSummary, type DedupeOutcome } from "@/lib/dashboard/dedupe";
 
 function finalizeCreateSummary(base: string, outcome: DedupeOutcome) {
@@ -52,10 +53,13 @@ function finalizeCreateSummary(base: string, outcome: DedupeOutcome) {
   return outcomeSummary(outcome, base.replace(/^Create\s+/i, "").replace(/\.$/, ""));
 }
 import {
+  createSolarMaintenance,
   createSolarMonitoringLog,
   createSolarSpecs,
+  deleteSolarMaintenance,
   deleteSolarMonitoringLog,
   deleteSolarSpecs,
+  updateSolarMaintenance,
   updateSolarMonitoringLog,
   updateSolarSpecs,
 } from "@/lib/supabase/solar";
@@ -83,6 +87,15 @@ import {
   updateTenantElectricBill,
   updateTenantRentLog,
 } from "@/lib/supabase/tenants";
+import {
+  clearRentLogPaymentFile,
+  clearTenantAgreementFile,
+  clearTenantPaymentFile,
+  setRentLogPaymentFile,
+  setTenantAgreementFile,
+  setTenantPaymentFile,
+  type ChatFilePayload,
+} from "@/lib/supabase/tenant-documents";
 import {
   createChartOfAccountsEntry,
   deleteChartOfAccountsEntry,
@@ -121,6 +134,8 @@ import {
   kitchenCreateSchema,
   kitchenUpdateSchema,
   kitchenAdjustQtySchema,
+  solarMaintenanceCreateSchema,
+  solarMaintenanceUpdateSchemaAgent,
   solarMonitoringCreateSchema,
   solarMonitoringUpdateSchemaAgent,
   solarSpecsCreateSchema,
@@ -140,7 +155,11 @@ import {
   type WriteToolName,
 } from "@/lib/validations/agent-writes";
 
-type Ctx = { supabase: SupabaseClient; user: User };
+type Ctx = {
+  supabase: SupabaseClient;
+  user: User;
+  attachments?: Array<{ mimeType: string; data: string; name?: string }>;
+};
 
 async function resolveApplianceByTag(
   supabase: SupabaseClient,
@@ -192,7 +211,7 @@ function isConfirmed(input: Record<string, unknown>) {
 
 function summarizeFields(fields: Record<string, unknown>) {
   return Object.entries(fields)
-    .filter(([, v]) => v !== undefined)
+    .filter(([k, v]) => v !== undefined && !k.startsWith("_"))
     .map(([k, v]) => `${k}=${v === null ? "null" : String(v)}`)
     .join(", ");
 }
@@ -201,6 +220,72 @@ function stripUndefined<T extends Record<string, unknown>>(obj: T) {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v !== undefined),
   ) as Partial<T>;
+}
+
+type ChatFile = ChatFilePayload;
+
+function asChatFile(value: unknown): ChatFile | null {
+  if (!value || typeof value !== "object") return null;
+  const o = value as Record<string, unknown>;
+  if (typeof o.data !== "string" || typeof o.mimeType !== "string") return null;
+  return {
+    mimeType: o.mimeType,
+    data: o.data,
+    name: typeof o.name === "string" ? o.name : undefined,
+  };
+}
+
+function pickChatAttachment(
+  ctx: Ctx,
+  index: unknown,
+  fallback: number,
+): ChatFile | null {
+  const files = ctx.attachments ?? [];
+  if (!files.length) return null;
+  const n = typeof index === "number" && Number.isFinite(index) ? index : fallback;
+  const picked = files[n] ?? files[0];
+  return picked ?? null;
+}
+
+function injectTenantChatFiles(
+  args: Record<string, unknown>,
+  input: Record<string, unknown>,
+  ctx: Ctx,
+): Record<string, unknown> {
+  const next = { ...args };
+  if (input.attach_agreement === true) {
+    const existing = asChatFile(input._agreement_file);
+    const picked =
+      existing ??
+      pickChatAttachment(ctx, input.agreement_attachment_index, 0);
+    if (picked) next._agreement_file = picked;
+  }
+  if (input.attach_payment === true) {
+    const existing = asChatFile(input._payment_file);
+    const defaultIdx = input.attach_agreement === true ? 1 : 0;
+    const picked =
+      existing ??
+      pickChatAttachment(ctx, input.payment_attachment_index, defaultIdx);
+    if (picked) next._payment_file = picked;
+  }
+  return next;
+}
+
+const TENANT_FILE_FLAG_KEYS = [
+  "attach_agreement",
+  "attach_payment",
+  "clear_agreement_file",
+  "clear_payment_file",
+  "agreement_attachment_index",
+  "payment_attachment_index",
+] as const;
+
+function omitTenantFileFlags<T extends Record<string, unknown>>(obj: T) {
+  const next = { ...obj };
+  for (const key of TENANT_FILE_FLAG_KEYS) delete next[key];
+  delete next._agreement_file;
+  delete next._payment_file;
+  return next;
 }
 
 async function getGeneratorMaintenance(
@@ -240,6 +325,33 @@ async function getSolarMonitoring(supabase: SupabaseClient, id: string) {
     .select("*")
     .eq("id", id)
     .maybeSingle();
+}
+
+async function getSolarMaintenance(supabase: SupabaseClient, id: string) {
+  return supabase
+    .from("solar_maintenance")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+}
+
+function resolveSolarPlant(raw?: string | null):
+  | { id: string; label: string }
+  | { error: string } {
+  const sites = listSolarSites();
+  if (!sites.length) return { error: "No solar plants configured" };
+  if (!raw?.trim()) {
+    if (sites.length === 1) {
+      return { id: sites[0]!.id, label: sites[0]!.label };
+    }
+    return {
+      error:
+        "Provide site_id: Good We Office, Sungrow Office, or KMP Home Solar",
+    };
+  }
+  const site = findSolarSite(raw);
+  if (!site) return { error: `Unknown solar plant "${raw.trim()}"` };
+  return { id: site.id, label: site.label };
 }
 
 export async function executeWriteTool(
@@ -997,6 +1109,82 @@ export async function executeWriteTool(
       return { status: "ok", summary, deleted_id: id };
     }
 
+    case "solar_maintenance_create": {
+      const parsed = solarMaintenanceCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const plant = resolveSolarPlant(parsed.data.site_id);
+      if ("error" in plant) return { error: plant.error };
+      const payload = withDefaultNextServiceDue({
+        ...parsed.data,
+        site_id: plant.id,
+        checkup_status: parsed.data.checkup_status ?? "done",
+      });
+      const summary = `Create solar service for ${plant.label} on ${payload.service_date}${payload.service_type ? ` (${payload.service_type})` : ""}, status ${payload.checkup_status}${payload.next_service_due ? `, next due ${payload.next_service_due}` : " (next due +1 month)"}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { ...payload });
+      }
+      const { data, error, outcome } = await createSolarMaintenance(
+        supabase,
+        withUpdatedBy({ ...payload }, user),
+      );
+      if (error) throw new Error(error.message);
+      return {
+        status: "ok",
+        outcome,
+        summary: finalizeCreateSummary(summary, outcome),
+        item: data,
+      };
+    }
+
+    case "solar_maintenance_update": {
+      const parsed = solarMaintenanceUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, ...fields } = parsed.data;
+      const patch = stripUndefined(fields as Record<string, unknown>);
+      if (Object.keys(patch).length === 0) {
+        return { error: "Provide at least one field to update" };
+      }
+      if (typeof patch.site_id === "string") {
+        const plant = resolveSolarPlant(patch.site_id);
+        if ("error" in plant) return { error: plant.error };
+        patch.site_id = plant.id;
+      }
+      const existing = await getSolarMaintenance(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Solar service record not found" };
+      const plantLabel = solarSiteDisplayLabel(
+        String(patch.site_id ?? existing.data.site_id),
+      );
+      const summary = `Update solar service ${id} (${plantLabel}, service ${existing.data.service_date}): set ${summarizeFields(patch)}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id, ...patch });
+      }
+      const { data, error } = await updateSolarMaintenance(
+        supabase,
+        id,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "solar_maintenance_delete": {
+      const parsed = idOnlySchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id } = parsed.data;
+      const existing = await getSolarMaintenance(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Solar service record not found" };
+      const plantLabel = solarSiteDisplayLabel(existing.data.site_id);
+      const summary = `DELETE solar service for ${plantLabel} on ${existing.data.service_date}${existing.data.service_type ? ` (${existing.data.service_type})` : ""}. This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id });
+      }
+      const { error } = await deleteSolarMaintenance(supabase, id);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: id };
+    }
+
     case "utility_accounts_create": {
       const parsed = utilityCreateSchema.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
@@ -1136,30 +1324,96 @@ export async function executeWriteTool(
     case "tenants_create": {
       const parsed = tenantCreateSchema.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
-      const payload = parsed.data;
-      const summary = `Create tenant "${payload.tenant_name}"${payload.rent_amount != null ? ` with rent ${payload.rent_amount}` : ""}${payload.rent_due_date ? ` due ${formatDate(payload.rent_due_date)}` : ""}.`;
+      const {
+        attach_agreement,
+        attach_payment,
+        agreement_attachment_index,
+        payment_attachment_index,
+        ...payload
+      } = parsed.data;
+      const fileBits = [
+        attach_agreement ? "save attached agreement file" : null,
+        attach_payment ? "save attached payment receipt" : null,
+        payload.agreement_expiry
+          ? `agreement expires ${formatDate(payload.agreement_expiry)}`
+          : null,
+      ].filter(Boolean);
+      const summary = `Create tenant "${payload.tenant_name}"${payload.rent_amount != null ? ` with rent ${payload.rent_amount}` : ""}${payload.rent_due_date ? ` due ${formatDate(payload.rent_due_date)}` : ""}${fileBits.length ? ` — ${fileBits.join("; ")}` : ""}.`;
       if (!isConfirmed(input)) {
-        return needsConfirmation(name, summary, { ...payload });
+        return needsConfirmation(
+          name,
+          summary,
+          injectTenantChatFiles(
+            {
+              ...payload,
+              attach_agreement,
+              attach_payment,
+              agreement_attachment_index,
+              payment_attachment_index,
+            },
+            input,
+            ctx,
+          ),
+        );
       }
       const { data, error, outcome } = await createTenant(
         supabase,
         withUpdatedBy({ ...payload }, user),
       );
       if (error) throw new Error(error.message);
+      if (!data) throw new Error("Tenant create failed");
+      const agreementFile = asChatFile(input._agreement_file);
+      const paymentFile = asChatFile(input._payment_file);
+      if (agreementFile) {
+        const uploaded = await setTenantAgreementFile(
+          supabase,
+          user,
+          data.id,
+          agreementFile,
+        );
+        if (uploaded.error) throw new Error(uploaded.error.message);
+      }
+      if (paymentFile) {
+        const uploaded = await setTenantPaymentFile(
+          supabase,
+          user,
+          data.id,
+          paymentFile,
+        );
+        if (uploaded.error) throw new Error(uploaded.error.message);
+      }
+      const refreshed = await getTenant(supabase, data.id);
       return {
         status: "ok",
         outcome,
         summary: finalizeCreateSummary(summary, outcome),
-        item: data,
+        item: refreshed.data ?? data,
       };
     }
 
     case "tenants_update": {
       const parsed = tenantUpdateSchemaAgent.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
-      const { id, tenant_name_lookup, ...fields } = parsed.data;
-      const patch = stripUndefined(fields as Record<string, unknown>);
-      if (Object.keys(patch).length === 0) {
+      const {
+        id,
+        tenant_name_lookup,
+        attach_agreement,
+        attach_payment,
+        clear_agreement_file,
+        clear_payment_file,
+        agreement_attachment_index,
+        payment_attachment_index,
+        ...fields
+      } = parsed.data;
+      const patch = omitTenantFileFlags(
+        stripUndefined(fields as Record<string, unknown>),
+      );
+      const fileOps =
+        attach_agreement === true ||
+        attach_payment === true ||
+        clear_agreement_file === true ||
+        clear_payment_file === true;
+      if (Object.keys(patch).length === 0 && !fileOps) {
         return { error: "Provide at least one field to update" };
       }
       let tenantId = id;
@@ -1172,17 +1426,71 @@ export async function executeWriteTool(
       if (existing.error) throw new Error(existing.error.message);
       if (!existing.data) return { error: "Tenant not found" };
       const row = existing.data as Tenant;
-      const summary = `Update tenant "${row.tenant_name}": set ${summarizeFields(patch)}.`;
+      const fileBits = [
+        attach_agreement ? "save attached agreement file" : null,
+        attach_payment ? "save attached payment receipt" : null,
+        clear_agreement_file ? "remove agreement file" : null,
+        clear_payment_file ? "remove payment receipt" : null,
+      ].filter(Boolean);
+      const summary = `Update tenant "${row.tenant_name}"${Object.keys(patch).length ? `: set ${summarizeFields(patch)}` : ""}${fileBits.length ? ` — ${fileBits.join("; ")}` : ""}.`;
       if (!isConfirmed(input)) {
-        return needsConfirmation(name, summary, { id: tenantId, ...patch });
+        return needsConfirmation(
+          name,
+          summary,
+          injectTenantChatFiles(
+            {
+              id: tenantId,
+              ...patch,
+              attach_agreement,
+              attach_payment,
+              clear_agreement_file,
+              clear_payment_file,
+              agreement_attachment_index,
+              payment_attachment_index,
+            },
+            input,
+            ctx,
+          ),
+        );
       }
-      const { data, error } = await updateTenant(
-        supabase,
-        tenantId,
-        withUpdatedBy(patch, user),
-      );
-      if (error) throw new Error(error.message);
-      return { status: "ok", summary, item: data };
+      if (Object.keys(patch).length > 0) {
+        const { error } = await updateTenant(
+          supabase,
+          tenantId,
+          withUpdatedBy(patch, user),
+        );
+        if (error) throw new Error(error.message);
+      }
+      if (clear_agreement_file) {
+        const cleared = await clearTenantAgreementFile(supabase, user, tenantId);
+        if (cleared.error) throw new Error(cleared.error.message);
+      }
+      if (clear_payment_file) {
+        const cleared = await clearTenantPaymentFile(supabase, user, tenantId);
+        if (cleared.error) throw new Error(cleared.error.message);
+      }
+      const agreementFile = asChatFile(input._agreement_file);
+      const paymentFile = asChatFile(input._payment_file);
+      if (agreementFile) {
+        const uploaded = await setTenantAgreementFile(
+          supabase,
+          user,
+          tenantId,
+          agreementFile,
+        );
+        if (uploaded.error) throw new Error(uploaded.error.message);
+      }
+      if (paymentFile) {
+        const uploaded = await setTenantPaymentFile(
+          supabase,
+          user,
+          tenantId,
+          paymentFile,
+        );
+        if (uploaded.error) throw new Error(uploaded.error.message);
+      }
+      const refreshed = await getTenant(supabase, tenantId);
+      return { status: "ok", summary, item: refreshed.data };
     }
 
     case "tenants_delete": {
@@ -1212,7 +1520,13 @@ export async function executeWriteTool(
     case "tenant_rent_log_create": {
       const parsed = tenantRentLogCreateSchema.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
-      const { tenant_id, tenant_name, ...rest } = parsed.data;
+      const {
+        tenant_id,
+        tenant_name,
+        attach_payment,
+        payment_attachment_index,
+        ...rest
+      } = parsed.data;
       let tenantId = tenant_id;
       if (!tenantId && tenant_name) {
         const found = await findTenantByName(supabase, tenant_name);
@@ -1223,18 +1537,39 @@ export async function executeWriteTool(
       if (tenant.error) throw new Error(tenant.error.message);
       if (!tenant.data) return { error: "Tenant not found" };
       const label = tenant.data.tenant_name;
-      const summary = `Log rent for ${label}${rest.rent_amount != null ? ` — amount ${rest.rent_amount}` : ""}${rest.rent_due_date ? ` due ${formatDate(rest.rent_due_date)}` : ""}${rest.payment_status ? ` (${rest.payment_status})` : ""}.`;
+      const summary = `Log rent for ${label}${rest.rent_amount != null ? ` — amount ${rest.rent_amount}` : ""}${rest.rent_due_date ? ` due ${formatDate(rest.rent_due_date)}` : ""}${rest.payment_status ? ` (${rest.payment_status})` : ""}${attach_payment ? " — save attached payment receipt" : ""}.`;
       if (!isConfirmed(input)) {
-        return needsConfirmation(name, summary, {
-          tenant_id: tenantId,
-          ...rest,
-        });
+        return needsConfirmation(
+          name,
+          summary,
+          injectTenantChatFiles(
+            {
+              tenant_id: tenantId,
+              ...rest,
+              attach_payment,
+              payment_attachment_index,
+            },
+            input,
+            ctx,
+          ),
+        );
       }
       const { data, error, outcome } = await createTenantRentLog(
         supabase,
         withUpdatedBy({ tenant_id: tenantId, ...rest }, user),
       );
       if (error) throw new Error(error.message);
+      if (!data) throw new Error("Rent log create failed");
+      const paymentFile = asChatFile(input._payment_file);
+      if (paymentFile) {
+        const uploaded = await setRentLogPaymentFile(
+          supabase,
+          user,
+          data.id,
+          paymentFile,
+        );
+        if (uploaded.error) throw new Error(uploaded.error.message);
+      }
       return {
         status: "ok",
         outcome,
@@ -1246,25 +1581,69 @@ export async function executeWriteTool(
     case "tenant_rent_log_update": {
       const parsed = tenantRentLogUpdateSchemaAgent.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
-      const { id, ...fields } = parsed.data;
-      const patch = stripUndefined(fields as Record<string, unknown>);
-      if (Object.keys(patch).length === 0) {
+      const {
+        id,
+        attach_payment,
+        clear_payment_file,
+        payment_attachment_index,
+        ...fields
+      } = parsed.data;
+      const patch = omitTenantFileFlags(
+        stripUndefined(fields as Record<string, unknown>),
+      );
+      const fileOps = attach_payment === true || clear_payment_file === true;
+      if (Object.keys(patch).length === 0 && !fileOps) {
         return { error: "Provide at least one field to update" };
       }
       const existing = await getTenantRentLog(supabase, id);
       if (existing.error) throw new Error(existing.error.message);
       if (!existing.data) return { error: "Rent log not found" };
-      const summary = `Update rent log ${id}: set ${summarizeFields(patch)}.`;
+      const fileBits = [
+        attach_payment ? "save attached payment receipt" : null,
+        clear_payment_file ? "remove payment receipt" : null,
+      ].filter(Boolean);
+      const summary = `Update rent log ${id}${Object.keys(patch).length ? `: set ${summarizeFields(patch)}` : ""}${fileBits.length ? ` — ${fileBits.join("; ")}` : ""}.`;
       if (!isConfirmed(input)) {
-        return needsConfirmation(name, summary, { id, ...patch });
+        return needsConfirmation(
+          name,
+          summary,
+          injectTenantChatFiles(
+            {
+              id,
+              ...patch,
+              attach_payment,
+              clear_payment_file,
+              payment_attachment_index,
+            },
+            input,
+            ctx,
+          ),
+        );
       }
-      const { data, error } = await updateTenantRentLog(
-        supabase,
-        id,
-        withUpdatedBy(patch, user),
-      );
-      if (error) throw new Error(error.message);
-      return { status: "ok", summary, item: data };
+      if (Object.keys(patch).length > 0) {
+        const { error } = await updateTenantRentLog(
+          supabase,
+          id,
+          withUpdatedBy(patch, user),
+        );
+        if (error) throw new Error(error.message);
+      }
+      if (clear_payment_file) {
+        const cleared = await clearRentLogPaymentFile(supabase, user, id);
+        if (cleared.error) throw new Error(cleared.error.message);
+      }
+      const paymentFile = asChatFile(input._payment_file);
+      if (paymentFile) {
+        const uploaded = await setRentLogPaymentFile(
+          supabase,
+          user,
+          id,
+          paymentFile,
+        );
+        if (uploaded.error) throw new Error(uploaded.error.message);
+      }
+      const refreshed = await getTenantRentLog(supabase, id);
+      return { status: "ok", summary, item: refreshed.data };
     }
 
     case "tenant_rent_log_delete": {

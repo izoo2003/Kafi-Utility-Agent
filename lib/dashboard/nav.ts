@@ -95,7 +95,7 @@ export const dashboardNav = [
   {
     href: "/dashboard/solar",
     label: "Solar",
-    description: "Specs, monitoring logs, and SEMS+ live data",
+    description: "Specs, monitoring, service logs, and SEMS+ live data",
     icon: "solar",
     accent: "teal",
     children: [
@@ -103,6 +103,11 @@ export const dashboardNav = [
         href: "/dashboard/solar",
         label: "Records",
         match: "exact" as const,
+      },
+      {
+        href: "/dashboard/solar/service",
+        label: "Service logs",
+        match: "prefix" as const,
       },
       {
         href: "/dashboard/solar/summary",

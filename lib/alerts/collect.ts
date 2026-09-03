@@ -6,12 +6,14 @@ import type {
   ItEquipment,
   KitchenInventory,
   SolarLiveSnapshot,
+  SolarMaintenance,
   SolarMonitoringLog,
   Tenant,
   TenantElectricBill,
   UtilityAccount,
   UtilityPaymentLog,
 } from "@/lib/types/database";
+import { solarSiteDisplayLabel } from "@/lib/sems/sites";
 import {
   evaluateSnapshotAlerts,
   findingsToOpsAlerts,
@@ -40,6 +42,10 @@ import {
   effectivePaymentStatus,
   formatMoney,
 } from "@/lib/tenants/payment-status";
+import {
+  agreementExpiryStatus,
+  daysUntilAgreementExpiry,
+} from "@/lib/tenants/agreement";
 
 const WARRANTY_WARNING_DAYS = 30;
 const SERVICE_WARNING_DAYS = 14;
@@ -72,6 +78,7 @@ export async function collectOpsAlerts(
     maintenance,
     runs,
     solar,
+    solarMaint,
     live,
     utilities,
     payments,
@@ -94,6 +101,10 @@ export async function collectOpsAlerts(
         .select("*")
         .eq("alert_flag", true)
         .order("log_date", { ascending: false }),
+      supabase
+        .from("solar_maintenance")
+        .select("*")
+        .order("service_date", { ascending: false }),
       supabase
         .from("solar_live_snapshot")
         .select("*")
@@ -307,6 +318,80 @@ export async function collectOpsAlerts(
     }
   }
 
+  // Solar per-plant monthly service
+  if (
+    !solarMaint.error ||
+    !/solar_maintenance|does not exist|schema cache/i.test(
+      solarMaint.error.message,
+    )
+  ) {
+    const rows = (solarMaint.data ?? []) as SolarMaintenance[];
+    const bySite = new Map<string, SolarMaintenance[]>();
+    for (const row of rows) {
+      const list = bySite.get(row.site_id) ?? [];
+      list.push(row);
+      bySite.set(row.site_id, list);
+    }
+
+    for (const [siteId, siteRows] of bySite) {
+      const plant = solarSiteDisplayLabel(siteId);
+      const href = `/dashboard/solar/service?site=${encodeURIComponent(siteId)}`;
+      const notDone = siteRows.filter(
+        (r) =>
+          r.checkup_status === "not_done" &&
+          (r.next_service_due || r.service_date),
+      );
+      const latestDone = [...siteRows]
+        .filter((r) => r.checkup_status === "done")
+        .sort((a, b) => b.service_date.localeCompare(a.service_date))[0];
+
+      for (const row of notDone) {
+        const due = row.next_service_due ?? row.service_date;
+        if (due > serviceHorizon) continue;
+        const remaining = daysUntil(due);
+        const overdue = due < today;
+        alerts.push({
+          id: `solar-service-${row.id}`,
+          domain: "solar",
+          severity: overdue ? "critical" : "warning",
+          title: overdue
+            ? `${plant} checkup not done (overdue)`
+            : `${plant} checkup not done`,
+          detail: overdue
+            ? `${row.service_type ?? "Monthly checkup"} was due on ${due} and is still marked not done.`
+            : `${row.service_type ?? "Monthly checkup"} due ${due} (${remaining} day${remaining === 1 ? "" : "s"}) — status: not done.`,
+          href,
+        });
+      }
+
+      if (
+        latestDone?.next_service_due &&
+        latestDone.next_service_due <= serviceHorizon &&
+        !notDone.some(
+          (r) =>
+            (r.next_service_due ?? r.service_date) ===
+            latestDone.next_service_due,
+        )
+      ) {
+        const due = latestDone.next_service_due;
+        const remaining = daysUntil(due);
+        const overdue = due < today;
+        alerts.push({
+          id: `solar-next-due-${latestDone.id}`,
+          domain: "solar",
+          severity: overdue ? "critical" : "warning",
+          title: overdue
+            ? `${plant} monthly service overdue`
+            : `${plant} monthly service due soon`,
+          detail: overdue
+            ? `Next service was due on ${due} (last done ${latestDone.service_date}). Mark done when completed.`
+            : `Next service due ${due} (${remaining} day${remaining === 1 ? "" : "s"}) — last done ${latestDone.service_date}.`,
+          href,
+        });
+      }
+    }
+  }
+
   // Live SEMS+ baselines (SOC, daytime PV, stale sync, sync errors)
   if (
     !live.error ||
@@ -435,6 +520,30 @@ export async function collectOpsAlerts(
           .filter(Boolean)
           .join(" · ") || "Rent payment needs attention.",
         href: `/dashboard/tenants/records?tenant=${tenant.id}`,
+      });
+    }
+
+    for (const tenant of (tenants.data ?? []) as Tenant[]) {
+      const status = agreementExpiryStatus(tenant.agreement_expiry, today);
+      if (status !== "soon" && status !== "expired") continue;
+      const remaining = daysUntilAgreementExpiry(
+        tenant.agreement_expiry,
+        today,
+      );
+      const expired = status === "expired";
+      alerts.push({
+        id: `tenant-agreement-${tenant.id}`,
+        domain: "tenants",
+        severity: expired ? "critical" : "warning",
+        title: expired
+          ? `Agreement expired: ${tenant.tenant_name}`
+          : `Agreement expires within 1 month: ${tenant.tenant_name}`,
+        detail: tenant.agreement_expiry
+          ? expired
+            ? `Agreement ended on ${formatDate(tenant.agreement_expiry)}.`
+            : `Agreement ends on ${formatDate(tenant.agreement_expiry)} (${remaining} day${remaining === 1 ? "" : "s"}).`
+          : "Agreement expiry is within one month.",
+        href: "/dashboard/tenants",
       });
     }
   }

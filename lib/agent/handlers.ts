@@ -31,9 +31,11 @@ import { evaluateSnapshotAlerts } from "@/lib/sems/alert-rules";
 import { isSemsConfigured } from "@/lib/sems/config";
 import {
   getSolarLiveSnapshot,
+  listSolarMaintenance,
   listSolarMonitoringLog,
   listSolarSpecs,
 } from "@/lib/supabase/solar";
+import { findSolarSite, solarSiteDisplayLabel } from "@/lib/sems/sites";
 import {
   listUtilityAccounts,
   listUtilityPaymentLogs,
@@ -63,6 +65,8 @@ import type {
   Tenant,
 } from "@/lib/types/database";
 import { normalizeKeyPart } from "@/lib/dashboard/dedupe";
+import { daysUntilAgreementExpiry } from "@/lib/tenants/agreement";
+import type { ChatAttachmentInput } from "@/lib/validations/agent";
 import type { WriteToolName } from "@/lib/validations/agent-writes";
 import { truncatedList } from "@/lib/agent/grounding";
 
@@ -75,6 +79,7 @@ export type PendingConfirmation = {
 export type AgentToolContext = {
   supabase: SupabaseClient;
   user: User;
+  attachments?: ChatAttachmentInput[];
 };
 
 function clampLimit(value: unknown, fallback = 40) {
@@ -385,6 +390,46 @@ export async function executeAgentTool(
       return truncatedList(rows, limit);
     }
 
+    case "solar_maintenance_list": {
+      const limit = clampLimit(input.limit);
+      const { data, error } = await listSolarMaintenance(supabase);
+      if (error) throw new Error(error.message);
+      const all = data ?? [];
+      const siteFilter =
+        typeof input.site_id === "string" && input.site_id.trim()
+          ? findSolarSite(input.site_id)
+          : null;
+      if (
+        typeof input.site_id === "string" &&
+        input.site_id.trim() &&
+        !siteFilter
+      ) {
+        return { error: `Unknown solar plant "${input.site_id.trim()}"` };
+      }
+      const rows = siteFilter
+        ? all.filter((row) => row.site_id === siteFilter.id)
+        : all;
+      const schedule = nextDueFromMaintenanceRows(rows);
+      return truncatedList(
+        rows.map((row) => ({
+          ...row,
+          plant: solarSiteDisplayLabel(row.site_id),
+        })),
+        limit,
+        {
+          plant: siteFilter
+            ? solarSiteDisplayLabel(siteFilter.id)
+            : "all plants",
+          schedule: {
+            next_maintenance_due: schedule.nextDue,
+            last_maintenance_done: schedule.lastDoneDate,
+            has_pending_not_done: schedule.pendingNotDone,
+            cadence: "Monthly checkup (about every 1 month)",
+          },
+        },
+      );
+    }
+
     case "solar_energy_summary": {
       const { getSolarSite, isSemsConfigured } = await import(
         "@/lib/sems/config"
@@ -567,6 +612,46 @@ export async function executeAgentTool(
       });
     }
 
+    case "utility_bill_summary": {
+      const {
+        resolveUtilityAccountForBillSummary,
+        runUtilityBillSummary,
+      } = await import("@/lib/utilities/run-bill-summary");
+      const accountId =
+        typeof input.utility_account_id === "string"
+          ? input.utility_account_id.trim()
+          : "";
+      const provider =
+        typeof input.provider === "string" ? input.provider.trim() : "";
+      const resolved = await resolveUtilityAccountForBillSummary(supabase, {
+        utility_account_id: accountId || undefined,
+        provider: provider || undefined,
+      });
+      if (!resolved.ok) {
+        return {
+          error: resolved.error,
+          matches: resolved.matches ?? [],
+        };
+      }
+      const generate = input.generate === true;
+      const result = await runUtilityBillSummary({
+        supabase,
+        user: ctx.user,
+        account: resolved.account,
+        regenerate: generate,
+        allowGenerate: generate,
+      });
+      if (!result.ok) {
+        return { error: result.error };
+      }
+      return {
+        provider: resolved.account.provider,
+        utility_type: resolved.account.utility_type,
+        generate,
+        ...result.data,
+      };
+    }
+
     case "tenants_list": {
       const { data, error } = await listTenants(supabase);
       if (error) throw new Error(error.message);
@@ -585,6 +670,10 @@ export async function executeAgentTool(
         payment_status: r.payment_status,
         payment_date: r.payment_date,
         outstanding_amount: r.outstanding_amount,
+        agreement_expiry: r.agreement_expiry,
+        agreement_days_remaining: daysUntilAgreementExpiry(r.agreement_expiry),
+        has_agreement_file: Boolean(r.agreement_file_url),
+        has_payment_file: Boolean(r.payment_file_url),
         notes: r.notes,
       }));
     }
@@ -604,7 +693,20 @@ export async function executeAgentTool(
         return { error: "Provide id or tenant_name" };
       }
       if (!row) return { error: "Tenant not found" };
-      return row;
+      return {
+        id: row.id,
+        tenant_name: row.tenant_name,
+        rent_amount: row.rent_amount,
+        rent_due_date: row.rent_due_date,
+        payment_status: row.payment_status,
+        payment_date: row.payment_date,
+        outstanding_amount: row.outstanding_amount,
+        agreement_expiry: row.agreement_expiry,
+        agreement_days_remaining: daysUntilAgreementExpiry(row.agreement_expiry),
+        has_agreement_file: Boolean(row.agreement_file_url),
+        has_payment_file: Boolean(row.payment_file_url),
+        notes: row.notes,
+      };
     }
 
     case "tenant_rent_logs_list": {

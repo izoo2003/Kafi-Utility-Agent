@@ -252,6 +252,25 @@ const agentReadTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "solar_maintenance_list",
+    description:
+      "List solar service/maintenance records (newest first) plus schedule summary: next_maintenance_due, last_maintenance_done, and pending not_done. Cadence is monthly (~1 month). Filter by site_id or plant name: Good We Office (kafi-commodities), Sungrow Office (sungrow-office), KMP Home Solar (nizam-energy).",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        site_id: {
+          type: SchemaType.STRING,
+          description:
+            "Plant slug or display name. Examples: Good We Office, Sungrow Office, KMP Home Solar.",
+        },
+        limit: {
+          type: SchemaType.NUMBER,
+          description: "Max rows to return (default 40, max 200). Response includes total and truncated.",
+        },
+      },
+    },
+  },
+  {
     name: "solar_energy_summary",
     description:
       "Monthly Solar Energy Summary for one SEMS+ plant: generated units, consumed units, units exported to grid, MoM comparison, 6-month trend, and alerts. Set with_ai_summary=true for a written AI monthly briefing. month format YYYY-MM. Use site_id (e.g. kafi-commodities, nizam-energy) when multiple plants are configured.",
@@ -261,7 +280,7 @@ const agentReadTools: FunctionDeclaration[] = [
         site_id: {
           type: SchemaType.STRING,
           description:
-            "Solar site slug (defaults to the first configured site). Examples: kafi-commodities, nizam-energy.",
+            "Solar site slug or display name (defaults to the first configured site). Examples: Good We Office, Sungrow Office, KMP Home Solar.",
         },
         month: {
           type: SchemaType.STRING,
@@ -285,7 +304,7 @@ const agentReadTools: FunctionDeclaration[] = [
         site_id: {
           type: SchemaType.STRING,
           description:
-            "Solar site slug (defaults to first site). Examples: kafi-commodities, nizam-energy.",
+            "Solar site slug or display name (defaults to first site). Examples: Good We Office, Sungrow Office, KMP Home Solar.",
         },
       },
     },
@@ -293,7 +312,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "utility_accounts_list",
     description:
-      "List utility accounts with ids and exact provider labels used by the Utilities dashboard (K-Electric sites, SSGC sites, KWSB Clifton, PTCL Office/KMP House, Jazz Khalid/Sadia). Call this BEFORE utility_payment_create so you can map a bill PDF or image to the correct utility_account_id. Never returns passwords.",
+      "List utility accounts with ids and exact provider labels used by the Utilities dashboard (K-Electric sites, SSGC sites, KWSB Clifton, Water tanker Home/Office/239G/234G, Drinking water Clifton, PTCL Office/KMP House, Jazz Khalid/Sadia). Call this BEFORE utility_payment_create so you can map a bill PDF or image to the correct utility_account_id. Never returns passwords.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -306,9 +325,33 @@ const agentReadTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "utility_bill_summary",
+    description:
+      "Bill summary for one utility account: this bill vs previous (amount, units, period, % difference) plus recent history. Default is numbers + any cached AI report. Set generate=true to write a fresh AI report (why this bill, vs previous, difference). Resolve the account first with utility_accounts_list (exact provider labels).",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        utility_account_id: {
+          type: SchemaType.STRING,
+          description: "Utility account UUID from utility_accounts_list",
+        },
+        provider: {
+          type: SchemaType.STRING,
+          description:
+            "Exact dashboard provider label, e.g. K-Electric — Clifton Office, Water tanker — Home",
+        },
+        generate: {
+          type: SchemaType.BOOLEAN,
+          description:
+            "If true, generate (or refresh) the AI report. If false/omitted, return comparison numbers and cached summary only.",
+        },
+      },
+    },
+  },
+  {
     name: "tenants_list",
     description:
-      "List tenant accounts with current rent snapshot: tenant_name, rent_amount, rent_due_date, payment_status, payment_date, outstanding_amount. Call this BEFORE tenant_rent_log_create or tenant_electric_bill_create so you can map a name to tenant_id.",
+      "List tenant accounts with current rent snapshot plus agreement_expiry, agreement_days_remaining, has_agreement_file, has_payment_file. Call this BEFORE tenant_rent_log_create or tenant_electric_bill_create so you can map a name to tenant_id.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {

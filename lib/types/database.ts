@@ -154,6 +154,8 @@ export type ChartOfAccountsEntry = AuditColumns & {
   notes: string | null;
 };
 
+export type SolarCheckupStatus = "done" | "not_done";
+
 export type SolarSpecs = AuditColumns & {
   panel_capacity_kw: number | null;
   inverter_model: string | null;
@@ -166,6 +168,18 @@ export type SolarSpecs = AuditColumns & {
   /** Battery warranty / expiry date */
   battery_expiry: IsoDate | null;
   spec_file_url: string | null;
+};
+
+/** Service / maintenance row for one solar plant. */
+export type SolarMaintenance = AuditColumns & {
+  site_id: string;
+  service_date: IsoDate;
+  next_service_due: IsoDate | null;
+  service_type: string | null;
+  vendor: string | null;
+  cost: number | null;
+  notes: string | null;
+  checkup_status: SolarCheckupStatus;
 };
 
 export type SolarMonitoringLog = AuditColumns & {
@@ -247,6 +261,9 @@ export type UtilityPaymentLog = AuditColumns & {
   invoice_number: string | null;
   bill_file_url: string | null;
   notes: string | null;
+  ai_summary: string | null;
+  ai_summary_model: string | null;
+  ai_summary_at: IsoTimestamptz | null;
 };
 
 export type TenantPaymentStatus = "paid" | "unpaid" | "partial" | "overdue";
@@ -258,6 +275,9 @@ export type Tenant = AuditColumns & {
   payment_status: TenantPaymentStatus;
   payment_date: IsoDate | null;
   outstanding_amount: number | null;
+  agreement_expiry: IsoDate | null;
+  agreement_file_url: string | null;
+  payment_file_url: string | null;
   notes: string | null;
 };
 
@@ -268,6 +288,7 @@ export type TenantRentLog = AuditColumns & {
   payment_status: TenantPaymentStatus;
   payment_date: IsoDate | null;
   outstanding_amount: number | null;
+  payment_file_url: string | null;
   notes: string | null;
 };
 
@@ -335,6 +356,11 @@ export type Database = {
       };
       solar_specs: { Row: SolarSpecs; Insert: SolarSpecsInsert; Update: SolarSpecsUpdate };
       solar_monitoring_log: { Row: SolarMonitoringLog; Insert: SolarMonitoringLogInsert; Update: SolarMonitoringLogUpdate };
+      solar_maintenance: {
+        Row: SolarMaintenance;
+        Insert: SolarMaintenanceInsert;
+        Update: SolarMaintenanceUpdate;
+      };
       solar_live_snapshot: {
         Row: SolarLiveSnapshot;
         Insert: SolarLiveSnapshotUpsert;
@@ -425,6 +451,12 @@ export type ChartOfAccountsEntryUpdate = Partial<
 export type SolarSpecsInsert = Partial<OmitAuditOnWrite<SolarSpecs>>;
 export type SolarSpecsUpdate = Partial<OmitAuditOnWrite<SolarSpecs>>;
 
+export type SolarMaintenanceInsert = Partial<OmitAuditOnWrite<SolarMaintenance>> & {
+  site_id: string;
+  service_date: IsoDate;
+};
+export type SolarMaintenanceUpdate = Partial<OmitAuditOnWrite<SolarMaintenance>>;
+
 export type SolarMonitoringLogInsert = Partial<OmitAuditOnWrite<SolarMonitoringLog>> & {
   log_date: IsoDate;
 };
@@ -467,3 +499,4 @@ export type TenantElectricBillUpdate = Partial<
 export const SOLAR_SPECS_BUCKET = "solar-specs" as const;
 export const UTILITY_BILLS_BUCKET = "utility-bills" as const;
 export const WARRANTY_CARDS_BUCKET = "warranty-cards" as const;
+export const TENANT_DOCUMENTS_BUCKET = "tenant-documents" as const;

@@ -76,7 +76,7 @@ function buildLatestUserParts(
 async function runWithModel(
   genAI: GoogleGenerativeAI,
   modelName: string,
-  ctx: { supabase: SupabaseClient; user: User },
+  ctx: { supabase: SupabaseClient; user: User; attachments?: ChatAttachmentInput[] },
   messages: ChatMessage[],
   latestParts: string | Part[],
   hasAttachments: boolean,
@@ -232,7 +232,7 @@ export async function runFacilityOpsAgent(
 
   const candidates = getGeminiModelCandidates();
   const failures: string[] = [];
-  const ctx = { supabase, user };
+  const ctx = { supabase, user, attachments };
   const latestParts = buildLatestUserParts(latest.content, attachments);
 
   for (const { key, label, index } of apiKeys) {

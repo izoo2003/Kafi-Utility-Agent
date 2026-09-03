@@ -7,7 +7,7 @@ import {
 export const BUILTIN_STATIC_SOLAR_SITES = [
   {
     id: SUNGROW_OFFICE_SITE_ID,
-    label: "SunGrow Office",
+    label: "Sungrow Office",
     static: true as const,
     stationId: SUNGROW_OFFICE_STATION_ID,
     stationName: "SunGrow Office SG33CX",

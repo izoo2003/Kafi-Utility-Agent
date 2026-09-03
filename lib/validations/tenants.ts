@@ -23,6 +23,7 @@ export const tenantInsertSchema = z.object({
   payment_status: tenantPaymentStatusSchema.optional(),
   payment_date: optionalDate,
   outstanding_amount: moneyField,
+  agreement_expiry: optionalDate,
   notes: optionalText,
 });
 

@@ -6,6 +6,12 @@ export const solarSections = [
     description: "System specs and monitoring logs",
   },
   {
+    value: "service",
+    href: "/dashboard/solar/service",
+    label: "Service logs",
+    description: "Service logs and maintenance for each solar plant",
+  },
+  {
     value: "summary",
     href: "/dashboard/solar/summary",
     label: "Energy Summary",
@@ -38,5 +44,6 @@ export function solarSectionFromPath(pathname: string): SolarSectionValue {
   if (pathname.startsWith("/dashboard/solar/sems")) return "sems";
   if (pathname.startsWith("/dashboard/solar/consumption")) return "consumption";
   if (pathname.startsWith("/dashboard/solar/summary")) return "summary";
+  if (pathname.startsWith("/dashboard/solar/service")) return "service";
   return "records";
 }

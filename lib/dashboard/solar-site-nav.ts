@@ -1,7 +1,7 @@
 import type { SolarSitePublic } from "@/lib/sems/sites";
 
 export function solarSiteNavLabel(label: string) {
-  return /\bsolar\b/i.test(label) ? label : `${label} Solar`;
+  return label.trim();
 }
 
 export function resolveSolarSiteId(

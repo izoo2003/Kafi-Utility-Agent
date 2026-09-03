@@ -64,3 +64,22 @@ export const solarMonitoringLogUpdateSchema = solarMonitoringLogInsertSchema
   .extend({
     id: z.string().uuid().optional(),
   });
+
+export const solarCheckupStatusSchema = z.enum(["done", "not_done"]);
+
+export const solarMaintenanceInsertSchema = z.object({
+  site_id: z.string().trim().min(1, "Solar plant is required"),
+  service_date: requiredDate,
+  next_service_due: optionalDate,
+  service_type: optionalText,
+  vendor: optionalText,
+  cost: optionalNumber.pipe(z.union([z.number().nonnegative(), z.null()])),
+  notes: optionalText,
+  checkup_status: solarCheckupStatusSchema.optional(),
+});
+
+export const solarMaintenanceUpdateSchema = solarMaintenanceInsertSchema
+  .partial()
+  .extend({
+    id: z.string().uuid().optional(),
+  });

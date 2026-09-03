@@ -12,6 +12,7 @@ import {
   listGeneratorVendors,
 } from "@/lib/supabase/generator";
 import {
+  listSolarMaintenance,
   listSolarMonitoringLog,
   listSolarSpecs,
 } from "@/lib/supabase/solar";
@@ -22,6 +23,7 @@ import {
   listTenants,
 } from "@/lib/supabase/tenants";
 import { listChartOfAccountsEntries } from "@/lib/supabase/chart-of-accounts";
+import { solarSiteDisplayLabel } from "@/lib/sems/sites";
 import type {
   ChartOfAccountsEntry,
   GeneratorExpense,
@@ -33,6 +35,7 @@ import type {
   Appliance,
   ApplianceSite,
   KitchenInventory,
+  SolarMaintenance,
   SolarMonitoringLog,
   SolarSpecs,
   Tenant,
@@ -54,6 +57,7 @@ export const EXPORT_RESOURCES = [
   "generator-vendors",
   "solar-specs",
   "solar-monitoring",
+  "solar-maintenance",
   "utilities",
   "tenants",
   "tenant-rent",
@@ -327,6 +331,26 @@ export async function loadExportBundle(
         rows: asRows(data),
       };
     }
+    case "solar-maintenance": {
+      const { data, error } = await listSolarMaintenance(supabase);
+      if (error) throw new Error(error.message);
+      return {
+        title: "Solar service / maintenance",
+        filename: "solar-maintenance",
+        columns: cols<SolarMaintenance>([
+          { key: "site_id", header: "Plant", value: (r) => solarSiteDisplayLabel(r.site_id) },
+          { key: "service_date", header: "Service date", value: (r) => r.service_date },
+          { key: "next_service_due", header: "Next due", value: (r) => r.next_service_due },
+          { key: "checkup_status", header: "Status", value: (r) => r.checkup_status },
+          { key: "service_type", header: "Type", value: (r) => r.service_type },
+          { key: "vendor", header: "Vendor", value: (r) => r.vendor },
+          { key: "cost", header: "Cost", value: (r) => r.cost },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(data),
+      };
+    }
     case "utilities": {
       const { data, error } = await listUtilityAccounts(supabase);
       if (error) throw new Error(error.message);
@@ -363,6 +387,11 @@ export async function loadExportBundle(
             key: "outstanding_amount",
             header: "Outstanding / overdue",
             value: (r) => r.outstanding_amount,
+          },
+          {
+            key: "agreement_expiry",
+            header: "Agreement expiry",
+            value: (r) => r.agreement_expiry,
           },
           { key: "notes", header: "Notes", value: (r) => r.notes },
           { key: "updated_at", header: "Updated", value: (r) => r.updated_at },

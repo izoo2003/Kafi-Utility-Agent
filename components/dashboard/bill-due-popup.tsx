@@ -86,7 +86,13 @@ export function BillDuePopup({ alerts }: { alerts: OpsAlert[] }) {
               key={alert.id}
               className="rounded-lg border border-[oklch(0.86_0.07_85)] bg-[oklch(0.98_0.02_85)] px-3 py-2.5"
             >
-              <p className="text-sm font-medium">{alert.title}</p>
+              <Link
+                href={alert.href}
+                onClick={dismiss}
+                className="text-sm font-medium hover:underline"
+              >
+                {alert.title}
+              </Link>
               <p className="mt-1 text-xs text-muted-foreground">{alert.detail}</p>
             </li>
           ))}
@@ -96,11 +102,7 @@ export function BillDuePopup({ alerts }: { alerts: OpsAlert[] }) {
             Dismiss for now
           </Button>
           <Link
-            href={
-              utilityAlerts.some((a) => a.id.startsWith("generator-oil"))
-                ? "/dashboard/generator"
-                : "/dashboard/utilities"
-            }
+            href={utilityAlerts[0]?.href ?? "/dashboard"}
             onClick={dismiss}
             className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/80"
           >

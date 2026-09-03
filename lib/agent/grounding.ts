@@ -1,6 +1,6 @@
 /** Questions that must be answered from live site records, not chat memory. */
 const RECORD_HINT =
-  /\b(stock|inventory|qty|quantity|reorder|kitchen|tenant|rent|outstanding|overdue|bill|paid|due|k-?electric|ssgc|kwsb|ptcl|jazz|generator|fuel|oil|maintenance|expense|debit|solar|sems|warranty|alert|status|summary|update|overview|anything|everything|site|ops|how many|what(?:'s| is)|list|show|latest|last|current|log|logs|tell me|about)\b/i;
+  /\b(stock|inventory|qty|quantity|reorder|kitchen|tenant|rent|outstanding|overdue|bill|paid|due|k-?electric|ssgc|kwsb|ptcl|jazz|tanker|drinking water|generator|fuel|oil|maintenance|expense|debit|solar|sems|warranty|alert|status|summary|update|overview|anything|everything|site|ops|how many|what(?:'s| is)|list|show|latest|last|current|log|logs|tell me|about)\b/i;
 
 const SMALL_TALK =
   /^(hi|hello|hey|thanks|thank you|ok|okay|yes|no|yo|good morning|good evening)\b/i;
