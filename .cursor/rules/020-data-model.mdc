@@ -114,6 +114,14 @@ Dashboard plants (display names): Good We Office, Sungrow Office, KMP Home Solar
 - notes text
 - checkup_status text (`done` | `not_done`)
 
+`solar_net_metering_logs` (KE credit ledger — dashboard Solar → Net Metering; one ledger per plant):
+- solar_site_id text (same plant slugs as maintenance)
+- ke_account_number, consumer_name, bill_period_label, bill_month
+- previous_balance_rs, net_metering_rs, consumed_rs
+- gross_balance_rs, refund_rs, net_balance_rs, estimated_refund_rs
+- units_import_kwh, units_export_kwh, payable_rs
+- bill_file_path, ai_extraction, ai_narrative, sems_export_kwh, notes
+
 ## 5. Internet & utility accounts (`utility_accounts`)
 - utility_type text (internet, electricity, gas, water, mobile)
 - provider text — dashboard sections: K-Electric (4 sites), SSGC (2), KWSB Clifton, Water tanker (Home, Office, 239G Mill, 234G Mill), Drinking water (Clifton Office), PTCL (2), Jazz (2)

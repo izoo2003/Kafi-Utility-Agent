@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Upload, Calculator, RefreshCw } from "lucide-react";
 import type { SolarSitePublic } from "@/lib/sems/sites";
 import type { KeBillExtraction } from "@/lib/solar/net-metering-ai";
@@ -8,6 +8,8 @@ import type { NetMeteringRowResult } from "@/lib/solar/net-metering-calc";
 import { formatRs } from "@/lib/solar/net-metering-calc";
 import type { SolarNetMeteringLog } from "@/lib/supabase/solar-net-metering";
 import { apiFetch } from "@/lib/dashboard/api-client";
+import { solarSiteNavLabel } from "@/lib/dashboard/solar-site-nav";
+import { upsertById } from "@/lib/dashboard/sort";
 import { useSolarSiteId } from "@/lib/dashboard/use-solar-site";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SolarSectionNav } from "@/components/dashboard/solar-section-nav";
@@ -61,7 +63,8 @@ function SolarNetMeteringPanelInner({
   initialSiteId: string;
   initialLogs: SolarNetMeteringLog[];
 }) {
-  const { siteId } = useSolarSiteId(sites, initialSiteId);
+  const { siteId, site } = useSolarSiteId(sites, initialSiteId);
+  const plantName = site ? solarSiteNavLabel(site.label) : "this plant";
   const [file, setFile] = useState<File | null>(null);
   const [previousBalance, setPreviousBalance] = useState("");
   const [logs, setLogs] = useState(initialLogs);
@@ -71,10 +74,10 @@ function SolarNetMeteringPanelInner({
 
   const ledger = useMemo(
     () =>
-      [...logs].sort((a, b) =>
-        (b.bill_month ?? "").localeCompare(a.bill_month ?? ""),
-      ),
-    [logs],
+      logs
+        .filter((row) => row.solar_site_id === siteId)
+        .sort((a, b) => (b.bill_month ?? "").localeCompare(a.bill_month ?? "")),
+    [logs, siteId],
   );
 
   const loadLogs = useCallback(async () => {
@@ -92,7 +95,25 @@ function SolarNetMeteringPanelInner({
     void loadLogs();
   }, [loadLogs]);
 
+  const lastSiteId = useRef<string | null>(null);
+  useEffect(() => {
+    const switched = lastSiteId.current !== null && lastSiteId.current !== siteId;
+    lastSiteId.current = siteId;
+    if (switched) {
+      setResult(null);
+      setError(null);
+    }
+    const latest = ledger[0];
+    setPreviousBalance(
+      latest?.net_balance_rs != null ? String(latest.net_balance_rs) : "",
+    );
+  }, [siteId, ledger]);
+
   async function analyze() {
+    if (!siteId) {
+      setError("Select a solar plant first. Each plant has its own ledger.");
+      return;
+    }
     if (!file) {
       setError("Upload a K-Electric bill PDF first.");
       return;
@@ -123,9 +144,13 @@ function SolarNetMeteringPanelInner({
       }
       if (!payload.data) throw new Error("Empty response");
       setResult(payload.data);
-      setLogs(payload.data.ledger);
-      if (payload.data.extraction.previous_balance_rs != null && !previousBalance) {
-        setPreviousBalance(String(payload.data.extraction.previous_balance_rs));
+      if (payload.data.log) {
+        setLogs((prev) => upsertById(prev, payload.data!.log!));
+      } else if (payload.data.ledger.length) {
+        setLogs((prev) => {
+          const others = prev.filter((row) => row.solar_site_id !== siteId);
+          return [...payload.data!.ledger, ...others];
+        });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Analysis failed");
@@ -138,7 +163,7 @@ function SolarNetMeteringPanelInner({
     <div className="space-y-6">
       <PageHeader
         title="Solar · Net Metering"
-        description="Upload a K-Electric bill to extract net metering credits, compute your running balance, and estimate the refundable amount from KE."
+        description="Each solar plant has its own KE ledger. Upload a bill to extract credits, compute that plant's running balance, and estimate the refundable amount from KE."
         icon="solar"
         accent="teal"
       />
@@ -151,7 +176,7 @@ function SolarNetMeteringPanelInner({
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground">How the balance works</p>
             <p className="mt-1">
-              Each month:{" "}
+              Each plant keeps its own running ledger. Each month:{" "}
               <span className="font-mono text-xs">
                 Gross balance = Previous balance + Net metering credit − Grid
                 consumed cost
@@ -178,8 +203,8 @@ function SolarNetMeteringPanelInner({
               onChange={(e) => setPreviousBalance(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Leave blank to use the bill&apos;s carry-forward or your last
-              saved net balance for this account.
+              Leave blank to use this plant&apos;s last saved net balance, then
+              the bill&apos;s carry-forward.
             </p>
           </div>
           <div className="space-y-2 sm:col-span-2">
@@ -200,7 +225,11 @@ function SolarNetMeteringPanelInner({
         ) : null}
 
         <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={() => void analyze()} disabled={loading}>
+          <Button
+            type="button"
+            onClick={() => void analyze()}
+            disabled={loading || !siteId}
+          >
             {loading ? (
               <>
                 <RefreshCw className="mr-1 size-4 animate-spin" />
@@ -262,6 +291,7 @@ function SolarNetMeteringPanelInner({
               ) : null}
             </div>
             <dl className="grid gap-2 text-sm sm:grid-cols-2">
+              <Row label="Plant ledger" value={plantName} />
               <Row label="Account" value={result.extraction.ke_account_number} />
               <Row label="Consumer" value={result.extraction.consumer_name} />
               <Row
@@ -304,7 +334,15 @@ function SolarNetMeteringPanelInner({
       ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Net metering ledger</h2>
+        <h2 className="text-lg font-medium">
+          Net metering ledger
+          {site ? (
+            <span className="font-normal text-muted-foreground">
+              {" "}
+              · {plantName}
+            </span>
+          ) : null}
+        </h2>
         <div className="overflow-x-auto rounded-xl border">
           <Table>
             <TableHeader>
@@ -325,7 +363,8 @@ function SolarNetMeteringPanelInner({
                     colSpan={7}
                     className="py-8 text-center text-muted-foreground"
                   >
-                    No saved calculations yet. Upload a KE bill above.
+                    No saved calculations for {plantName} yet. Upload a KE
+                    bill above.
                   </TableCell>
                 </TableRow>
               ) : (

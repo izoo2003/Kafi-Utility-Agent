@@ -33,7 +33,7 @@ export const solarSections = [
     value: "net-metering",
     href: "/dashboard/solar/net-metering",
     label: "Net Metering",
-    description: "KE bill upload, credit balance, refund estimate",
+    description: "Per-plant KE ledger, credit balance, refund estimate",
   },
 ] as const;
 

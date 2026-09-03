@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/require-user";
 import { supabaseErrorResponse } from "@/lib/api/parse";
-import { getSolarSite } from "@/lib/sems/config";
+import { findSolarSite } from "@/lib/sems/config";
 import { buildSolarEnergySummary } from "@/lib/solar/energy-summary";
 import { computeNetMeteringRow, formatRs } from "@/lib/solar/net-metering-calc";
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/lib/solar/net-metering-ai";
 import {
   createSolarNetMeteringLog,
-  getLatestNetBalanceForAccount,
+  getLatestNetBalanceForSite,
   listSolarNetMeteringLogs,
   netMeteringBillPath,
 } from "@/lib/supabase/solar-net-metering";
@@ -31,8 +31,13 @@ export async function GET(request: Request) {
   const { supabase, errorResponse } = await requireUser();
   if (errorResponse) return errorResponse;
 
-  const account = new URL(request.url).searchParams.get("account")?.trim();
-  const { data, error } = await listSolarNetMeteringLogs(supabase, account);
+  const params = new URL(request.url).searchParams;
+  const site = params.get("site")?.trim();
+  const account = params.get("account")?.trim();
+  const { data, error } = await listSolarNetMeteringLogs(supabase, {
+    siteId: site,
+    accountNumber: account,
+  });
   if (error) return supabaseErrorResponse(error.message);
   return NextResponse.json({ ok: true, data: { logs: data ?? [] } });
 }
@@ -62,7 +67,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "File must be under 10 MB" }, { status: 400 });
   }
 
-  const siteId = String(form.get("site") ?? "").trim() || null;
+  const site = findSolarSite(String(form.get("site") ?? "").trim());
+  if (!site) {
+    return NextResponse.json(
+      { error: "Select a solar plant. Each plant has its own net metering ledger." },
+      { status: 400 },
+    );
+  }
   const previousBalanceInput = parseOptionalNumber(form.get("previous_balance_rs"));
   const refundInput = parseOptionalNumber(form.get("refund_rs")) ?? 0;
   const save = form.get("save") !== "0";
@@ -89,20 +100,14 @@ export async function POST(request: Request) {
     }
 
     let previousBalance = previousBalanceInput;
-    if (previousBalance == null && extraction.previous_balance_rs != null) {
-      previousBalance = extraction.previous_balance_rs;
-    }
-    if (
-      previousBalance == null &&
-      extraction.ke_account_number?.trim()
-    ) {
-      const latest = await getLatestNetBalanceForAccount(
-        supabase,
-        extraction.ke_account_number,
-      );
+    if (previousBalance == null) {
+      const latest = await getLatestNetBalanceForSite(supabase, site.id);
       if (latest.data?.net_balance_rs != null) {
         previousBalance = Number(latest.data.net_balance_rs);
       }
+    }
+    if (previousBalance == null && extraction.previous_balance_rs != null) {
+      previousBalance = extraction.previous_balance_rs;
     }
     if (previousBalance == null) previousBalance = 0;
 
@@ -117,8 +122,7 @@ export async function POST(request: Request) {
     });
 
     let semsExportKwh: number | null = null;
-    const site = siteId ? getSolarSite(siteId) : getSolarSite(null);
-    if (site && extraction.bill_month) {
+    if (extraction.bill_month) {
       try {
         const summary = await buildSolarEnergySummary(
           supabase,
@@ -136,6 +140,7 @@ export async function POST(request: Request) {
         extraction,
         { ...calc, previous_balance_rs: previousBalance },
         semsExportKwh,
+        site.label,
       );
 
     let log = null;
@@ -143,7 +148,7 @@ export async function POST(request: Request) {
 
     if (save) {
       const insertResult = await createSolarNetMeteringLog(supabase, {
-        solar_site_id: site?.id ?? null,
+        solar_site_id: site.id,
         ke_account_number: extraction.ke_account_number,
         consumer_name: extraction.consumer_name,
         bill_period_label: extraction.bill_period_label,
@@ -188,10 +193,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const ledger = await listSolarNetMeteringLogs(
-      supabase,
-      extraction.ke_account_number,
-    );
+    const ledger = await listSolarNetMeteringLogs(supabase, {
+      siteId: site.id,
+    });
 
     return NextResponse.json({
       ok: true,

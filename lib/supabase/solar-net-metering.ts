@@ -29,7 +29,7 @@ export type SolarNetMeteringLog = {
 };
 
 export type SolarNetMeteringLogInsert = {
-  solar_site_id?: string | null;
+  solar_site_id: string;
   ke_account_number?: string | null;
   consumer_name?: string | null;
   bill_period_label?: string | null;
@@ -54,13 +54,21 @@ export type SolarNetMeteringLogInsert = {
 
 const TABLE = "solar_net_metering_logs" as const;
 
+export type ListSolarNetMeteringFilters = {
+  siteId?: string | null;
+  accountNumber?: string | null;
+};
+
 export async function listSolarNetMeteringLogs(
   supabase: SupabaseClient,
-  accountNumber?: string | null,
+  filters: ListSolarNetMeteringFilters = {},
 ) {
   let query = supabase.from(TABLE).select("*");
-  if (accountNumber?.trim()) {
-    query = query.eq("ke_account_number", accountNumber.trim());
+  if (filters.siteId?.trim()) {
+    query = query.eq("solar_site_id", filters.siteId.trim());
+  }
+  if (filters.accountNumber?.trim()) {
+    query = query.eq("ke_account_number", filters.accountNumber.trim());
   }
   return query
     .order("bill_month", { ascending: false, nullsFirst: false })
@@ -68,15 +76,16 @@ export async function listSolarNetMeteringLogs(
     .returns<SolarNetMeteringLog[]>();
 }
 
-export async function getLatestNetBalanceForAccount(
+export async function getLatestNetBalanceForSite(
   supabase: SupabaseClient,
-  accountNumber: string,
+  siteId: string,
 ) {
   const { data, error } = await supabase
     .from(TABLE)
-    .select("net_balance_rs, bill_month, bill_period_label")
-    .eq("ke_account_number", accountNumber.trim())
+    .select("net_balance_rs, bill_month, bill_period_label, ke_account_number")
+    .eq("solar_site_id", siteId.trim())
     .order("bill_month", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) return { data: null, error };
@@ -85,6 +94,7 @@ export async function getLatestNetBalanceForAccount(
       net_balance_rs: number | null;
       bill_month: string | null;
       bill_period_label: string | null;
+      ke_account_number: string | null;
     } | null,
     error: null,
   };

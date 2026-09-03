@@ -105,10 +105,12 @@ function buildNarrativePrompt(
     monthly_delta_rs: number;
   },
   semsExportKwh: number | null,
+  plantLabel?: string | null,
 ) {
   return `Write a concise net metering briefing (150–220 words) for facility ops.
 
 Use ONLY these facts:
+Plant / ledger: ${plantLabel?.trim() || "unknown"}
 Bill period: ${extraction.bill_period_label ?? "unknown"} (${extraction.bill_month ?? "?"})
 Account: ${extraction.ke_account_number ?? "?"}
 Consumer: ${extraction.consumer_name ?? "?"}
@@ -195,6 +197,7 @@ export async function generateNetMeteringNarrative(
     monthly_delta_rs: number;
   },
   semsExportKwh: number | null,
+  plantLabel?: string | null,
 ): Promise<{ narrative: string; model: string }> {
   const keys = getNetMeteringGeminiApiKeys();
   if (!keys.length) {
@@ -202,7 +205,12 @@ export async function generateNetMeteringNarrative(
   }
 
   const models = getGeminiModelCandidates();
-  const prompt = buildNarrativePrompt(extraction, calc, semsExportKwh);
+  const prompt = buildNarrativePrompt(
+    extraction,
+    calc,
+    semsExportKwh,
+    plantLabel,
+  );
   let lastError: unknown;
 
   for (const entry of keys) {
