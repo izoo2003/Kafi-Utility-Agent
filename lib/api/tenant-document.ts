@@ -3,15 +3,21 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { supabaseErrorResponse } from "@/lib/api/parse";
 import { isAllowedTenantDocumentFile } from "@/lib/supabase/tenant-storage";
 import {
+  clearElectricBillFile,
   clearRentPaymentFile,
   clearTenantAgreementFile,
   clearTenantPaymentFile,
+  setElectricBillFile,
   setRentPaymentFile,
   setTenantAgreementFile,
   setTenantPaymentFile,
 } from "@/lib/supabase/tenant-documents";
 import { createTenantDocumentSignedUrl } from "@/lib/supabase/tenant-storage";
-import { getTenant, getTenantRentPayment } from "@/lib/supabase/tenants";
+import {
+  getTenant,
+  getTenantElectricBill,
+  getTenantRentPayment,
+} from "@/lib/supabase/tenants";
 
 async function readUploadFile(request: Request) {
   const form = await request.formData();
@@ -164,6 +170,53 @@ export async function getRentPaymentReceiptUrl(
   const signed = await createTenantDocumentSignedUrl(
     supabase,
     data.payment_file_url,
+  );
+  if (signed.error || !signed.data?.signedUrl) {
+    return supabaseErrorResponse(signed.error?.message ?? "Could not sign URL");
+  }
+  return NextResponse.json({ data: { url: signed.data.signedUrl } });
+}
+
+export async function postElectricBillFile(
+  request: Request,
+  id: string,
+  user: User,
+  supabase: SupabaseClient,
+) {
+  const parsed = await readUploadFile(request);
+  if ("error" in parsed && parsed.error) return parsed.error;
+  const { data, error } = await setElectricBillFile(
+    supabase,
+    user,
+    id,
+    parsed.file!,
+  );
+  if (error) return supabaseErrorResponse(error.message);
+  return NextResponse.json({ data });
+}
+
+export async function deleteElectricBillFile(
+  id: string,
+  user: User,
+  supabase: SupabaseClient,
+) {
+  const { data, error } = await clearElectricBillFile(supabase, user, id);
+  if (error) return supabaseErrorResponse(error.message);
+  return NextResponse.json({ data });
+}
+
+export async function getElectricBillFileUrl(
+  id: string,
+  supabase: SupabaseClient,
+) {
+  const { data, error } = await getTenantElectricBill(supabase, id);
+  if (error) return supabaseErrorResponse(error.message);
+  if (!data?.bill_file_url) {
+    return NextResponse.json({ error: "No bill file attached" }, { status: 404 });
+  }
+  const signed = await createTenantDocumentSignedUrl(
+    supabase,
+    data.bill_file_url,
   );
   if (signed.error || !signed.data?.signedUrl) {
     return supabaseErrorResponse(signed.error?.message ?? "Could not sign URL");

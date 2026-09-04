@@ -87,7 +87,9 @@ import {
   updateTenantElectricBill,
 } from "@/lib/supabase/tenants";
 import {
+  clearElectricBillFile,
   clearTenantAgreementFile,
+  setElectricBillFile,
   setRentPaymentFile,
   setTenantAgreementFile,
   type ChatFilePayload,
@@ -263,16 +265,29 @@ function injectTenantChatFiles(
       pickChatAttachment(ctx, input.payment_attachment_index, defaultIdx);
     if (picked) next._payment_file = picked;
   }
+  if (input.attach_bill === true) {
+    const existing = asChatFile(input._bill_file);
+    const defaultIdx =
+      (input.attach_agreement === true ? 1 : 0) +
+      (input.attach_payment === true ? 1 : 0);
+    const picked =
+      existing ??
+      pickChatAttachment(ctx, input.bill_attachment_index, defaultIdx);
+    if (picked) next._bill_file = picked;
+  }
   return next;
 }
 
 const TENANT_FILE_FLAG_KEYS = [
   "attach_agreement",
   "attach_payment",
+  "attach_bill",
   "clear_agreement_file",
   "clear_payment_file",
+  "clear_bill_file",
   "agreement_attachment_index",
   "payment_attachment_index",
+  "bill_attachment_index",
 ] as const;
 
 function omitTenantFileFlags<T extends Record<string, unknown>>(obj: T) {
@@ -280,6 +295,7 @@ function omitTenantFileFlags<T extends Record<string, unknown>>(obj: T) {
   for (const key of TENANT_FILE_FLAG_KEYS) delete next[key];
   delete next._agreement_file;
   delete next._payment_file;
+  delete next._bill_file;
   return next;
 }
 
@@ -1552,7 +1568,13 @@ export async function executeWriteTool(
     case "tenant_electric_bill_create": {
       const parsed = tenantElectricBillCreateSchema.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
-      const { tenant_id, tenant_name, ...rest } = parsed.data;
+      const {
+        tenant_id,
+        tenant_name,
+        attach_bill,
+        bill_attachment_index,
+        ...rest
+      } = parsed.data;
       let tenantId = tenant_id;
       if (!tenantId && tenant_name) {
         const found = await findTenantByName(supabase, tenant_name);
@@ -1563,48 +1585,123 @@ export async function executeWriteTool(
       if (tenant.error) throw new Error(tenant.error.message);
       if (!tenant.data) return { error: "Tenant not found" };
       const label = tenant.data.tenant_name;
-      const summary = `Log electricity bill for ${label}${rest.ke_charges_amount != null ? ` — KE charges ${rest.ke_charges_amount}` : ""}${rest.due_date ? ` due ${formatDate(rest.due_date)}` : ""}.`;
+      const periodLabel =
+        rest.period_from && rest.period_to
+          ? ` ${rest.period_from} to ${rest.period_to}`
+          : "";
+      const summary = `Log electricity bill for ${label}${periodLabel}${attach_bill ? " — save attached bill file" : ""}.`;
       if (!isConfirmed(input)) {
-        return needsConfirmation(name, summary, {
-          tenant_id: tenantId,
-          ...rest,
-        });
+        return needsConfirmation(
+          name,
+          summary,
+          injectTenantChatFiles(
+            {
+              tenant_id: tenantId,
+              ...rest,
+              attach_bill,
+              bill_attachment_index,
+            },
+            input,
+            ctx,
+          ),
+        );
       }
       const { data, error, outcome } = await createTenantElectricBill(
         supabase,
         withUpdatedBy({ tenant_id: tenantId, ...rest }, user),
       );
       if (error) throw new Error(error.message);
+      if (!data) throw new Error("Electricity bill create failed");
+      const billFile = asChatFile(input._bill_file);
+      if (billFile) {
+        const uploaded = await setElectricBillFile(
+          supabase,
+          user,
+          data.id,
+          billFile,
+        );
+        if (uploaded.error) throw new Error(uploaded.error.message);
+      }
+      const refreshed = await getTenantElectricBill(supabase, data.id);
       return {
         status: "ok",
         outcome,
         summary: finalizeCreateSummary(summary, outcome),
-        item: data,
+        item: refreshed.data ?? data,
       };
     }
 
     case "tenant_electric_bill_update": {
       const parsed = tenantElectricBillUpdateSchemaAgent.safeParse(input);
       if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
-      const { id, ...fields } = parsed.data;
-      const patch = stripUndefined(fields as Record<string, unknown>);
-      if (Object.keys(patch).length === 0) {
+      const {
+        id,
+        attach_bill,
+        clear_bill_file,
+        bill_attachment_index,
+        ...fields
+      } = parsed.data;
+      const patch = omitTenantFileFlags(
+        stripUndefined(fields as Record<string, unknown>),
+      );
+      const fileOps = attach_bill === true || clear_bill_file === true;
+      if (Object.keys(patch).length === 0 && !fileOps) {
         return { error: "Provide at least one field to update" };
       }
       const existing = await getTenantElectricBill(supabase, id);
       if (existing.error) throw new Error(existing.error.message);
       if (!existing.data) return { error: "Electricity bill not found" };
-      const summary = `Update tenant electricity bill ${id}: set ${summarizeFields(patch)}.`;
+      const fileBits = [
+        attach_bill ? "save attached bill file" : null,
+        clear_bill_file ? "remove bill file" : null,
+      ].filter(Boolean);
+      const summary = `Update tenant electricity bill ${id}${Object.keys(patch).length ? `: set ${summarizeFields(patch)}` : ""}${fileBits.length ? ` — ${fileBits.join("; ")}` : ""}.`;
       if (!isConfirmed(input)) {
-        return needsConfirmation(name, summary, { id, ...patch });
+        return needsConfirmation(
+          name,
+          summary,
+          injectTenantChatFiles(
+            {
+              id,
+              ...patch,
+              attach_bill,
+              clear_bill_file,
+              bill_attachment_index,
+            },
+            input,
+            ctx,
+          ),
+        );
       }
-      const { data, error } = await updateTenantElectricBill(
-        supabase,
-        id,
-        withUpdatedBy(patch, user),
-      );
-      if (error) throw new Error(error.message);
-      return { status: "ok", summary, item: data };
+      if (Object.keys(patch).length > 0) {
+        const { data, error } = await updateTenantElectricBill(
+          supabase,
+          id,
+          withUpdatedBy(patch, user),
+        );
+        if (error) throw new Error(error.message);
+        if (!data) return { error: "Electricity bill update failed" };
+      }
+      if (clear_bill_file) {
+        const cleared = await clearElectricBillFile(supabase, user, id);
+        if (cleared.error) throw new Error(cleared.error.message);
+      }
+      const billFile = asChatFile(input._bill_file);
+      if (billFile) {
+        const uploaded = await setElectricBillFile(
+          supabase,
+          user,
+          id,
+          billFile,
+        );
+        if (uploaded.error) throw new Error(uploaded.error.message);
+      }
+      const refreshed = await getTenantElectricBill(supabase, id);
+      return {
+        status: "ok",
+        summary,
+        item: refreshed.data,
+      };
     }
 
     case "tenant_electric_bill_delete": {

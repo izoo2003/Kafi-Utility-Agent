@@ -174,11 +174,14 @@ export function importPromptFor(target: ImportTarget): string {
       ].join(" ");
     case "tenant-electricity":
       return [
-        "IMPORT TARGET: Tenant electricity (K-Electric) bills ONLY.",
+        "IMPORT TARGET: Tenant electricity (K-Electric) meter bills ONLY.",
         "ALWAYS call tenants_list first so you can resolve tenant_name.",
         "For EACH bill row call tenant_electric_bill_create with confirmed=false.",
-        "Map: tenant name → tenant_name; KE charges / amount → ke_charges_amount; due date → due_date;",
-        "payment status → payment_status; payment date → payment_date; outstanding → outstanding_amount; notes.",
+        "Map: tenant name → tenant_name; From / start date → period_from; To / end date → period_to;",
+        "Last reading → last_reading; Current reading → current_reading; Rate (incl. govt) → rate_inclusive_govt;",
+        "Amount received → amount_received; Date received / payment date → payment_date; notes.",
+        "Consumed units and Amount are calculated automatically — do not invent them unless readings/rate are missing.",
+        "If a bill PDF/photo is attached for a row, set attach_bill=true.",
         "Dates are DD/MM/YYYY. These are tenant-billed KE charges, NOT site utility meters (239G/234G/Clifton/KMP).",
         "Do not write rent logs or utility_payment_create.",
       ].join(" ");

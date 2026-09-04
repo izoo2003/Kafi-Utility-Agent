@@ -39,6 +39,7 @@ import {
   utilityPaymentLogInsertSchema,
 } from "@/lib/validations/utilities";
 import {
+  tenantElectricBillFieldsSchema,
   tenantElectricBillInsertSchema,
   tenantElectricBillUpdateSchema,
   tenantInsertSchema,
@@ -309,14 +310,38 @@ export const tenantRentPaymentCreateSchema = tenantRentPaymentInsertSchema
     message: "Provide schedule_id, tenant_id, or tenant_name",
   });
 
-export const tenantElectricBillCreateSchema = tenantElectricBillInsertSchema
+export const tenantElectricBillCreateSchema = tenantElectricBillFieldsSchema
   .omit({ tenant_id: true })
-  .extend(tenantRef)
+  .extend({
+    ...tenantRef,
+    attach_bill: z.boolean().optional(),
+    bill_attachment_index: z.number().int().min(0).max(7).optional(),
+  })
   .refine((v) => Boolean(v.tenant_id || v.tenant_name), {
     message: "Provide tenant_id or tenant_name",
-  });
+  })
+  .refine((v) => v.period_to >= v.period_from, {
+    message: "Period To must be on or after Period From",
+    path: ["period_to"],
+  })
+  .refine(
+    (v) =>
+      v.last_reading == null ||
+      v.current_reading == null ||
+      v.current_reading >= v.last_reading,
+    {
+      message: "Current reading must be ≥ last reading",
+      path: ["current_reading"],
+    },
+  );
 export const tenantElectricBillUpdateSchemaAgent =
-  tenantElectricBillUpdateSchema.required({ id: true });
+  tenantElectricBillUpdateSchema
+    .extend({
+      attach_bill: z.boolean().optional(),
+      clear_bill_file: z.boolean().optional(),
+      bill_attachment_index: z.number().int().min(0).max(7).optional(),
+    })
+    .required({ id: true });
 
 export const chartOfAccountsEntryCreateSchema = chartOfAccountsEntryInsertSchema;
 export const chartOfAccountsEntryUpdateSchemaAgent =

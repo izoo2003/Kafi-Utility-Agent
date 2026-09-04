@@ -22,6 +22,10 @@ export async function uploadRentPaymentReceipt<T>(id: string, file: File) {
   return uploadForm<T>(`/api/tenants/payments/${id}/receipt`, file);
 }
 
+export async function uploadElectricBillFile<T>(id: string, file: File) {
+  return uploadForm<T>(`/api/tenants/electric-bills/${id}/bill`, file);
+}
+
 export async function openTenantDocument(url: string) {
   const data = await apiFetch<{ url: string }>(url);
   window.open(data.url, "_blank", "noopener,noreferrer");

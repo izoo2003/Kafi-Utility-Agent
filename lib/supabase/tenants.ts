@@ -27,6 +27,7 @@ import {
   toLedgerRows,
   type LedgerRow,
 } from "@/lib/tenants/ledger";
+import { deriveElectricBillFields } from "@/lib/tenants/electricity";
 
 const TENANTS = "tenants" as const;
 const LINE_ITEMS = "tenant_rent_line_items" as const;
@@ -164,7 +165,7 @@ export async function listTenantElectricBills(
   let q = supabase
     .from(ELECTRIC)
     .select("*")
-    .order("due_date", { ascending: false, nullsFirst: false })
+    .order("period_to", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (tenantId) q = q.eq("tenant_id", tenantId);
   return q.returns<TenantElectricBill[]>();
@@ -537,10 +538,12 @@ export async function deleteTenant(supabase: SupabaseClient, id: string) {
     supabase,
     (schedule.data ?? []).map((row) => row.id),
   );
+  const bills = await listTenantElectricBills(supabase, id);
   const paths = [
     existing.data?.agreement_file_url,
     existing.data?.payment_file_url,
     ...(payments.data ?? []).map((row) => row.payment_file_url),
+    ...(bills.data ?? []).map((row) => row.bill_file_url),
   ].filter((p): p is string => Boolean(p));
   for (const path of [...new Set(paths)]) {
     await removeTenantDocument(supabase, path);
@@ -585,29 +588,94 @@ export async function deleteTenantRentPayment(
   return supabase.from(PAYMENTS).delete().eq("id", id);
 }
 
-async function upsertElectricBillForDueDate(
+function buildElectricBillRow(
+  tenantId: string,
+  input: {
+    period_from?: string | null;
+    period_to?: string | null;
+    last_reading?: number | null;
+    current_reading?: number | null;
+    rate_inclusive_govt?: number | null;
+    amount_received?: number | null;
+    payment_date?: string | null;
+    notes?: string | null;
+    updated_by?: string | null;
+  },
+  existing?: TenantElectricBill | null,
+): TenantElectricBillInsert {
+  const derived = deriveElectricBillFields({
+    period_from: input.period_from ?? existing?.period_from ?? null,
+    period_to: input.period_to ?? existing?.period_to ?? null,
+    last_reading:
+      input.last_reading !== undefined
+        ? input.last_reading
+        : (existing?.last_reading ?? null),
+    current_reading:
+      input.current_reading !== undefined
+        ? input.current_reading
+        : (existing?.current_reading ?? null),
+    rate_inclusive_govt:
+      input.rate_inclusive_govt !== undefined
+        ? input.rate_inclusive_govt
+        : (existing?.rate_inclusive_govt ?? null),
+    amount_received:
+      input.amount_received !== undefined
+        ? input.amount_received
+        : (existing?.amount_received ?? null),
+    payment_date:
+      input.payment_date !== undefined
+        ? input.payment_date
+        : (existing?.payment_date ?? null),
+    notes:
+      input.notes !== undefined ? input.notes : (existing?.notes ?? null),
+  });
+  return {
+    tenant_id: tenantId,
+    ...derived,
+    ...(input.updated_by !== undefined
+      ? { updated_by: input.updated_by }
+      : {}),
+  };
+}
+
+async function upsertElectricBillForPeriod(
   supabase: SupabaseClient,
-  input: TenantElectricBillInsert,
+  input: TenantElectricBillInsert & {
+    period_from?: string | null;
+    period_to?: string | null;
+    last_reading?: number | null;
+    current_reading?: number | null;
+    rate_inclusive_govt?: number | null;
+    amount_received?: number | null;
+  },
 ): Promise<DomainWriteResult<TenantElectricBill>> {
-  const due = input.due_date?.trim() || null;
-  if (due) {
+  const row = buildElectricBillRow(input.tenant_id, input);
+  const periodFrom = row.period_from;
+  const periodTo = row.period_to;
+
+  if (periodFrom && periodTo) {
     const { data: existingRows } = await supabase
       .from(ELECTRIC)
       .select("*")
       .eq("tenant_id", input.tenant_id)
-      .eq("due_date", due)
+      .eq("period_from", periodFrom)
+      .eq("period_to", periodTo)
       .returns<TenantElectricBill[]>();
     const existing = existingRows?.[0] ?? null;
     if (existing) {
       const overwrite = incomingShouldOverwrite({
-        incomingDate: input.payment_date ?? due,
-        existingDate: existing.payment_date ?? existing.due_date,
+        incomingDate: row.payment_date ?? periodTo,
+        existingDate:
+          existing.payment_date ?? existing.period_to ?? existing.due_date,
         existingUpdatedAt: existing.updated_at,
       });
       if (!overwrite) return writeOk(existing, "skipped");
       const { data, error } = await supabase
         .from(ELECTRIC)
-        .update(input)
+        .update({
+          ...row,
+          bill_file_url: existing.bill_file_url,
+        })
         .eq("id", existing.id)
         .select("*")
         .single<TenantElectricBill>();
@@ -618,7 +686,7 @@ async function upsertElectricBillForDueDate(
 
   const { data, error } = await supabase
     .from(ELECTRIC)
-    .insert(input)
+    .insert(row)
     .select("*")
     .single<TenantElectricBill>();
   if (error) return writeErr(error.message);
@@ -627,19 +695,57 @@ async function upsertElectricBillForDueDate(
 
 export async function createTenantElectricBill(
   supabase: SupabaseClient,
-  input: TenantElectricBillInsert,
+  input: TenantElectricBillInsert & {
+    period_from?: string | null;
+    period_to?: string | null;
+    last_reading?: number | null;
+    current_reading?: number | null;
+    rate_inclusive_govt?: number | null;
+    amount_received?: number | null;
+  },
 ): Promise<DomainWriteResult<TenantElectricBill>> {
-  return upsertElectricBillForDueDate(supabase, input);
+  return upsertElectricBillForPeriod(supabase, input);
 }
 
 export async function updateTenantElectricBill(
   supabase: SupabaseClient,
   id: string,
-  input: TenantElectricBillUpdate,
+  input: TenantElectricBillUpdate & {
+    period_from?: string | null;
+    period_to?: string | null;
+    last_reading?: number | null;
+    current_reading?: number | null;
+    rate_inclusive_govt?: number | null;
+    amount_received?: number | null;
+  },
 ) {
+  const existing = await getTenantElectricBill(supabase, id);
+  if (existing.error) return { data: null, error: existing.error };
+  if (!existing.data) {
+    return { data: null, error: { message: "Electricity bill not found" } };
+  }
+  const row = buildElectricBillRow(
+    existing.data.tenant_id,
+    {
+      ...input,
+      period_from:
+        input.period_from !== undefined
+          ? input.period_from
+          : existing.data.period_from,
+      period_to:
+        input.period_to !== undefined
+          ? input.period_to
+          : existing.data.period_to,
+    },
+    existing.data,
+  );
+  const { tenant_id: _tid, ...patch } = row;
   return supabase
     .from(ELECTRIC)
-    .update(input)
+    .update({
+      ...patch,
+      bill_file_url: existing.data.bill_file_url,
+    })
     .eq("id", id)
     .select("*")
     .single<TenantElectricBill>();
@@ -649,5 +755,10 @@ export async function deleteTenantElectricBill(
   supabase: SupabaseClient,
   id: string,
 ) {
+  const existing = await getTenantElectricBill(supabase, id);
+  if (existing.error) return { error: existing.error };
+  if (existing.data?.bill_file_url) {
+    await removeTenantDocument(supabase, existing.data.bill_file_url);
+  }
   return supabase.from(ELECTRIC).delete().eq("id", id);
 }

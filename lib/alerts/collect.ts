@@ -118,7 +118,7 @@ export async function collectOpsAlerts(
       supabase
         .from("tenant_electric_bills")
         .select("*")
-        .order("due_date", { ascending: false }),
+        .order("period_to", { ascending: false }),
     ]);
 
   const alerts: OpsAlert[] = [];
@@ -529,9 +529,10 @@ export async function collectOpsAlerts(
       }
     }
     for (const bill of latestByTenant.values()) {
+      const dueRef = bill.period_to ?? bill.due_date;
       const status = effectivePaymentStatus(
         bill.payment_status,
-        bill.due_date,
+        dueRef,
         today,
       );
       const outstanding = Number(bill.outstanding_amount ?? 0);
@@ -539,8 +540,8 @@ export async function collectOpsAlerts(
       const overdue = status === "overdue";
       const dueSoon =
         !overdue &&
-        bill.due_date != null &&
-        bill.due_date <= serviceHorizon &&
+        dueRef != null &&
+        dueRef <= serviceHorizon &&
         status !== "paid";
       if (!overdue && !dueSoon && !(status !== "paid" && outstanding > 0)) {
         continue;
@@ -553,9 +554,9 @@ export async function collectOpsAlerts(
           ? `Tenant electricity overdue: ${name}`
           : `Tenant electricity due: ${name}`,
         detail: [
-          bill.due_date ? `Due ${formatDate(bill.due_date)}` : null,
+          dueRef ? `Period ending ${formatDate(dueRef)}` : null,
           bill.ke_charges_amount != null
-            ? `KE charges ${formatMoney(bill.ke_charges_amount)}`
+            ? `Amount ${formatMoney(bill.ke_charges_amount)}`
             : null,
           outstanding > 0
             ? `outstanding ${formatMoney(outstanding)}`

@@ -350,11 +350,20 @@ export type TenantRentLog = AuditColumns & {
 
 export type TenantElectricBill = AuditColumns & {
   tenant_id: Uuid;
+  period_from: IsoDate | null;
+  period_to: IsoDate | null;
+  months: number | null;
+  last_reading: number | null;
+  current_reading: number | null;
+  consumed_units: number | null;
+  rate_inclusive_govt: number | null;
   ke_charges_amount: number | null;
   due_date: IsoDate | null;
   payment_status: TenantPaymentStatus;
   payment_date: IsoDate | null;
+  amount_received: number | null;
   outstanding_amount: number | null;
+  bill_file_url: string | null;
   notes: string | null;
 };
 

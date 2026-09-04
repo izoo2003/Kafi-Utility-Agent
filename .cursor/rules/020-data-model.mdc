@@ -186,11 +186,18 @@ Deprecated snapshot columns may still exist (`rent_amount`, `rent_due_date`, `pa
 
 `tenant_electric_bills` (K-Electric charges billed to the tenant — not site utility meters):
 - tenant_id uuid → tenants
-- ke_charges_amount numeric
-- due_date date
-- payment_status text (`paid` | `unpaid` | `partial` | `overdue`)
-- payment_date date
-- outstanding_amount numeric
+- period_from / period_to date (billing From/To; months derived as calendar-month delta)
+- months numeric (derived)
+- last_reading / current_reading numeric
+- consumed_units numeric (derived: current − last)
+- rate_inclusive_govt numeric
+- ke_charges_amount numeric (Amount — derived: consumed_units × rate)
+- amount_received numeric
+- payment_date date (date received)
+- outstanding_amount numeric (derived: max(0, amount − amount_received))
+- payment_status text (`paid` | `unpaid` | `partial` | `overdue` — derived from amount vs received; overdue when not paid and period_to past)
+- due_date date (synced to period_to for back-compat / alerts)
+- bill_file_url text (bill PDF/photo in `tenant-documents` bucket, kind `electric-bills`)
 - notes text
 
 ## 7. Chart of Accounts (`chart_of_accounts_entries`)

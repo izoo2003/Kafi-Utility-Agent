@@ -3,6 +3,7 @@ import { withUpdatedBy } from "@/lib/api/with-user";
 import type { User } from "@supabase/supabase-js";
 import {
   getTenant,
+  getTenantElectricBill,
   getTenantRentPayment,
   listTenantRentPayments,
   listTenantSchedule,
@@ -223,4 +224,61 @@ export async function clearTenantPaymentFile(
   }
   const tenant = await getTenant(supabase, tenantId);
   return { data: tenant.data, error: tenant.error };
+}
+
+export async function setElectricBillFile(
+  supabase: SupabaseClient,
+  user: User,
+  billId: string,
+  file: File | ChatFilePayload,
+) {
+  const existing = await getTenantElectricBill(supabase, billId);
+  if (existing.error) return { data: null, error: existing.error };
+  if (!existing.data) {
+    return { data: null, error: { message: "Electricity bill not found" } };
+  }
+  if (!(file instanceof File) && !isAllowedTenantDocumentMime(file.mimeType, file.name)) {
+    return {
+      data: null,
+      error: { message: "Only PDF or image files (JPG/PNG/WebP) are allowed" },
+    };
+  }
+  const uploaded = await replacePath(
+    supabase,
+    existing.data.bill_file_url,
+    "electric-bills",
+    billId,
+    file,
+  );
+  if (uploaded.error || !uploaded.path) {
+    return {
+      data: null,
+      error: uploaded.error ?? { message: "Upload failed" },
+    };
+  }
+  return supabase
+    .from("tenant_electric_bills")
+    .update(withUpdatedBy({ bill_file_url: uploaded.path }, user))
+    .eq("id", billId)
+    .select("*")
+    .single();
+}
+
+export async function clearElectricBillFile(
+  supabase: SupabaseClient,
+  user: User,
+  billId: string,
+) {
+  const existing = await getTenantElectricBill(supabase, billId);
+  if (existing.error) return { data: null, error: existing.error };
+  if (!existing.data) {
+    return { data: null, error: { message: "Electricity bill not found" } };
+  }
+  await removeTenantDocument(supabase, existing.data.bill_file_url);
+  return supabase
+    .from("tenant_electric_bills")
+    .update(withUpdatedBy({ bill_file_url: null }, user))
+    .eq("id", billId)
+    .select("*")
+    .single();
 }

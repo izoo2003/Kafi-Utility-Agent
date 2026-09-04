@@ -84,20 +84,76 @@ export const tenantRentPaymentUpdateSchema = tenantRentPaymentInsertSchema
     id: z.string().uuid().optional(),
   });
 
-export const tenantElectricBillInsertSchema = z.object({
+const tenantElectricBillFieldsSchema = z.object({
   tenant_id: z.string().uuid(),
-  ke_charges_amount: moneyField,
-  due_date: optionalDate,
-  payment_status: tenantPaymentStatusSchema.optional(),
+  period_from: requiredDate,
+  period_to: requiredDate,
+  last_reading: optionalNumber.pipe(z.union([z.number(), z.null()])),
+  current_reading: optionalNumber.pipe(z.union([z.number(), z.null()])),
+  rate_inclusive_govt: moneyField,
+  amount_received: moneyField,
   payment_date: optionalDate,
-  outstanding_amount: moneyField,
   notes: optionalText,
 });
 
-export const tenantElectricBillUpdateSchema = tenantElectricBillInsertSchema
-  .partial()
-  .extend({
+export { tenantElectricBillFieldsSchema };
+
+export const tenantElectricBillInsertSchema = tenantElectricBillFieldsSchema
+  .refine((v) => v.period_to >= v.period_from, {
+    message: "Period To must be on or after Period From",
+    path: ["period_to"],
+  })
+  .refine(
+    (v) =>
+      v.last_reading == null ||
+      v.current_reading == null ||
+      v.current_reading >= v.last_reading,
+    {
+      message: "Current reading must be ≥ last reading",
+      path: ["current_reading"],
+    },
+  );
+
+export const tenantElectricBillUpdateSchema = z
+  .object({
     id: z.string().uuid().optional(),
+    tenant_id: z.string().uuid().optional(),
+    period_from: optionalDate.optional(),
+    period_to: optionalDate.optional(),
+    last_reading: optionalNumber
+      .pipe(z.union([z.number(), z.null()]))
+      .optional(),
+    current_reading: optionalNumber
+      .pipe(z.union([z.number(), z.null()]))
+      .optional(),
+    rate_inclusive_govt: moneyField.optional(),
+    amount_received: moneyField.optional(),
+    payment_date: optionalDate.optional(),
+    notes: optionalText.optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (
+      v.period_from &&
+      v.period_to &&
+      v.period_to < v.period_from
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Period To must be on or after Period From",
+        path: ["period_to"],
+      });
+    }
+    if (
+      v.last_reading != null &&
+      v.current_reading != null &&
+      v.current_reading < v.last_reading
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Current reading must be ≥ last reading",
+        path: ["current_reading"],
+      });
+    }
   });
 
 export type TenantInsertInput = z.infer<typeof tenantInsertSchema>;
@@ -107,4 +163,7 @@ export type TenantRentPaymentInsertInput = z.infer<
 >;
 export type TenantElectricBillInsertInput = z.infer<
   typeof tenantElectricBillInsertSchema
+>;
+export type TenantElectricBillUpdateInput = z.infer<
+  typeof tenantElectricBillUpdateSchema
 >;

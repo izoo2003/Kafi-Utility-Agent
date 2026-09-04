@@ -8,7 +8,7 @@ const ALLOWED_TYPES = new Set([
   "image/webp",
 ]);
 
-export type TenantDocumentKind = "agreements" | "payments";
+export type TenantDocumentKind = "agreements" | "payments" | "electric-bills";
 
 export function isAllowedTenantDocumentFile(file: File) {
   if (ALLOWED_TYPES.has(file.type)) return true;

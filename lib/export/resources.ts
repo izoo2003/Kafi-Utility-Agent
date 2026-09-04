@@ -493,13 +493,52 @@ export async function loadExportBundle(
         columns: cols<TenantElectricBill & { tenant_name: string }>([
           { key: "tenant_name", header: "Tenant name", value: (r) => r.tenant_name },
           {
+            key: "period_from",
+            header: "From date",
+            value: (r) => r.period_from,
+          },
+          {
+            key: "period_to",
+            header: "To date",
+            value: (r) => r.period_to,
+          },
+          { key: "months", header: "Months", value: (r) => r.months },
+          {
+            key: "last_reading",
+            header: "Last reading",
+            value: (r) => r.last_reading,
+          },
+          {
+            key: "current_reading",
+            header: "Current reading",
+            value: (r) => r.current_reading,
+          },
+          {
+            key: "consumed_units",
+            header: "Consumed units",
+            value: (r) => r.consumed_units,
+          },
+          {
+            key: "rate_inclusive_govt",
+            header: "Rate inclusive govt chg",
+            value: (r) => r.rate_inclusive_govt,
+          },
+          {
             key: "ke_charges_amount",
-            header: "KE charges amount",
+            header: "Amount",
             value: (r) => r.ke_charges_amount,
           },
-          { key: "due_date", header: "Due date", value: (r) => r.due_date },
+          {
+            key: "amount_received",
+            header: "Amount received",
+            value: (r) => r.amount_received,
+          },
+          {
+            key: "payment_date",
+            header: "Date received",
+            value: (r) => r.payment_date,
+          },
           { key: "payment_status", header: "Payment status", value: (r) => r.payment_status },
-          { key: "payment_date", header: "Payment date", value: (r) => r.payment_date },
           {
             key: "outstanding_amount",
             header: "Outstanding amount",

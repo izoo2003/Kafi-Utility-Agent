@@ -396,7 +396,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "tenant_electric_bills_list",
     description:
-      "List tenant electricity (K-Electric) bills: tenant name, KE charges, due date, payment status, payment date, outstanding. Filter by tenant_id or tenant_name. These are tenant-billed KE charges, not site utility meters.",
+      "List tenant electricity (K-Electric) bills: period from/to, months, readings, consumed units, rate, amount, amount received, date received, status, outstanding. Filter by tenant_id or tenant_name. These are tenant-billed KE charges, not site utility meters.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
