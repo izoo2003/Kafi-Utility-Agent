@@ -1,10 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Tenant,
+  TenantContractExtension,
+  TenantContractExtensionChange,
   TenantElectricBill,
   TenantElectricBillInsert,
   TenantElectricBillUpdate,
   TenantInsert,
+  TenantRateType,
   TenantRentLineItem,
   TenantRentPayment,
   TenantRentPaymentInsert,
@@ -28,12 +31,15 @@ import {
   type LedgerRow,
 } from "@/lib/tenants/ledger";
 import { deriveElectricBillFields } from "@/lib/tenants/electricity";
+import { withholdingForTenant } from "@/lib/tenants/withholding-tax";
+import { listWithholdingTaxSlabs } from "@/lib/supabase/withholding-tax-slabs";
 
 const TENANTS = "tenants" as const;
 const LINE_ITEMS = "tenant_rent_line_items" as const;
 const SCHEDULE = "tenant_rent_schedule" as const;
 const PAYMENTS = "tenant_rent_payments" as const;
 const ELECTRIC = "tenant_electric_bills" as const;
+const CONTRACT_EXTENSIONS = "tenant_contract_extensions" as const;
 
 export type TenantLineItemInput = { label: string; amount: number };
 
@@ -184,14 +190,16 @@ export async function getTenantElectricBill(
 }
 
 export async function getTenantLedger(supabase: SupabaseClient, tenantId: string) {
-  const [tenant, lineItems, schedule] = await Promise.all([
+  const [tenant, lineItems, schedule, extensions] = await Promise.all([
     getTenant(supabase, tenantId),
     listTenantLineItems(supabase, tenantId),
     listTenantSchedule(supabase, tenantId),
+    listTenantContractExtensions(supabase, tenantId),
   ]);
   if (tenant.error) return { error: tenant.error, data: null };
   if (lineItems.error) return { error: lineItems.error, data: null };
   if (schedule.error) return { error: schedule.error, data: null };
+  if (extensions.error) return { error: extensions.error, data: null };
   const payments = await listTenantRentPayments(
     supabase,
     (schedule.data ?? []).map((row) => row.id),
@@ -205,6 +213,7 @@ export async function getTenantLedger(supabase: SupabaseClient, tenantId: string
       line_items: lineItems.data ?? [],
       schedule: rows,
       outstanding: tenantOutstanding(rows),
+      extensions: extensions.data ?? [],
     },
   };
 }
@@ -355,7 +364,14 @@ export async function regenerateTenantSchedule(
     label: item.label,
     amount: Number(item.amount ?? 0),
   }));
-  const totalDue = monthlyTotal(tenant.data.gross_rent, snapshot);
+  const rentTotal = monthlyTotal(tenant.data.gross_rent, snapshot);
+  const slabs = await listWithholdingTaxSlabs(supabase);
+  if (slabs.error) return { error: { message: slabs.error.message } };
+  const wht = withholdingForTenant({
+    classification: tenant.data.classification,
+    monthlyRent: rentTotal,
+    slabs: slabs.data ?? [],
+  });
   const periods = calendarMonthsOverlapping(start, end);
   const keepKeys = new Set(
     periods.map((p) => `${p.period_year}-${p.period_month}`),
@@ -379,7 +395,8 @@ export async function regenerateTenantSchedule(
       rate_type: tenant.data.rate_type,
       gross_rent: tenant.data.gross_rent,
       line_items: snapshot,
-      total_due: totalDue,
+      withholding_tax: wht.withholding_tax,
+      total_due: wht.total_due,
       updated_by: options?.updatedBy ?? null,
     };
     const found = byKey.get(key);
@@ -412,6 +429,206 @@ export async function regenerateTenantSchedule(
   }
 
   return { error: null, paymentCount };
+}
+
+export type TenantContractExtensionInput = {
+  extension_from: string;
+  extension_till: string;
+  rent_terms?: {
+    rate_type: TenantRateType;
+    sqft: number | null;
+    rate: number | null;
+    gross_rent: number | null;
+  };
+  line_items?: TenantLineItemInput[];
+  notes?: string | null;
+  updated_by?: string | null;
+};
+
+export async function listTenantContractExtensions(
+  supabase: SupabaseClient,
+  tenantId: string,
+) {
+  return supabase
+    .from(CONTRACT_EXTENSIONS)
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .order("extension_from", { ascending: false })
+    .returns<TenantContractExtension[]>();
+}
+
+/**
+ * Appends a new period to the ledger under new terms without touching any
+ * existing (possibly already-paid) schedule rows.
+ */
+export async function createContractExtension(
+  supabase: SupabaseClient,
+  tenantId: string,
+  input: TenantContractExtensionInput,
+): Promise<DomainWriteResult<TenantContractExtension>> {
+  const tenant = await getTenant(supabase, tenantId);
+  if (tenant.error) return writeErr(tenant.error.message);
+  if (!tenant.data) return writeErr("Tenant not found");
+  if (
+    !tenant.data.contract_end_date ||
+    input.extension_from <= tenant.data.contract_end_date
+  ) {
+    return writeErr(
+      "Extension from date must be after the current contract end date",
+    );
+  }
+
+  const changes: TenantContractExtensionChange[] = [];
+  const tenantPatch: Partial<TenantUpdate> = {
+    contract_end_date: input.extension_till,
+    updated_by: input.updated_by ?? null,
+  };
+
+  if (input.rent_terms) {
+    const rt = input.rent_terms;
+    const grossRent = computeGrossRent({
+      rate_type: rt.rate_type,
+      sqft: rt.sqft,
+      rate: rt.rate,
+      gross_rent: rt.gross_rent,
+    });
+    if (tenant.data.rate_type !== rt.rate_type) {
+      changes.push({
+        field: "rate_type",
+        label: "Rate type",
+        old_value: tenant.data.rate_type,
+        new_value: rt.rate_type,
+      });
+    }
+    if (Number(tenant.data.sqft ?? 0) !== Number(rt.sqft ?? 0)) {
+      changes.push({
+        field: "sqft",
+        label: "Sqft",
+        old_value: tenant.data.sqft,
+        new_value: rt.sqft,
+      });
+    }
+    if (Number(tenant.data.rate ?? 0) !== Number(rt.rate ?? 0)) {
+      changes.push({
+        field: "rate",
+        label: "Rate",
+        old_value: tenant.data.rate,
+        new_value: rt.rate,
+      });
+    }
+    if (Number(tenant.data.gross_rent ?? 0) !== Number(grossRent ?? 0)) {
+      changes.push({
+        field: "gross_rent",
+        label: "Gross rent",
+        old_value: tenant.data.gross_rent,
+        new_value: grossRent,
+      });
+    }
+    tenantPatch.rate_type = rt.rate_type;
+    tenantPatch.sqft = rt.sqft;
+    tenantPatch.rate = rt.rate;
+    tenantPatch.gross_rent = grossRent;
+  }
+
+  if (input.line_items) {
+    const existingItems = await listTenantLineItems(supabase, tenantId);
+    if (existingItems.error) return writeErr(existingItems.error.message);
+    const oldSnapshot = (existingItems.data ?? []).map((item) => ({
+      label: item.label,
+      amount: Number(item.amount ?? 0),
+    }));
+    const newSnapshot = input.line_items.map((item) => ({
+      label: item.label.trim(),
+      amount: Number(item.amount ?? 0),
+    }));
+    changes.push({
+      field: "line_items",
+      label: "Other monthly charges",
+      old_value: oldSnapshot,
+      new_value: newSnapshot,
+    });
+    const replaced = await replaceLineItems(
+      supabase,
+      tenantId,
+      input.line_items,
+      input.updated_by ?? null,
+    );
+    if (replaced.error) return writeErr(replaced.error.message);
+  }
+
+  const { error: tenantUpdateError } = await supabase
+    .from(TENANTS)
+    .update(tenantPatch)
+    .eq("id", tenantId);
+  if (tenantUpdateError) return writeErr(tenantUpdateError.message);
+
+  const effectiveTenant: Tenant = { ...tenant.data, ...tenantPatch };
+
+  const [lineItemsRes, slabsRes, existingSchedule] = await Promise.all([
+    listTenantLineItems(supabase, tenantId),
+    listWithholdingTaxSlabs(supabase),
+    listTenantSchedule(supabase, tenantId),
+  ]);
+  if (lineItemsRes.error) return writeErr(lineItemsRes.error.message);
+  if (slabsRes.error) return writeErr(slabsRes.error.message);
+  if (existingSchedule.error) return writeErr(existingSchedule.error.message);
+
+  const snapshot = (lineItemsRes.data ?? []).map((item) => ({
+    label: item.label,
+    amount: Number(item.amount ?? 0),
+  }));
+  const baseSerial = (existingSchedule.data ?? []).reduce(
+    (max, row) => Math.max(max, row.serial_no ?? 0),
+    0,
+  );
+  const rentTotal = monthlyTotal(effectiveTenant.gross_rent, snapshot);
+  const wht = withholdingForTenant({
+    classification: effectiveTenant.classification,
+    monthlyRent: rentTotal,
+    slabs: slabsRes.data ?? [],
+  });
+
+  const periods = calendarMonthsOverlapping(
+    input.extension_from,
+    input.extension_till,
+  );
+  const rows = periods.map((period, index) => ({
+    tenant_id: tenantId,
+    serial_no: baseSerial + index + 1,
+    period_year: period.period_year,
+    period_month: period.period_month,
+    period_start: period.period_start,
+    period_end: period.period_end,
+    survey_no: effectiveTenant.survey_no,
+    sqft: effectiveTenant.sqft,
+    rate: effectiveTenant.rate,
+    rate_type: effectiveTenant.rate_type,
+    gross_rent: effectiveTenant.gross_rent,
+    line_items: snapshot,
+    withholding_tax: wht.withholding_tax,
+    total_due: wht.total_due,
+    updated_by: input.updated_by ?? null,
+  }));
+
+  if (rows.length > 0) {
+    const { error: insertError } = await supabase.from(SCHEDULE).insert(rows);
+    if (insertError) return writeErr(insertError.message);
+  }
+
+  const { data, error } = await supabase
+    .from(CONTRACT_EXTENSIONS)
+    .insert({
+      tenant_id: tenantId,
+      extension_from: input.extension_from,
+      extension_till: input.extension_till,
+      changes,
+      notes: input.notes ?? null,
+      updated_by: input.updated_by ?? null,
+    })
+    .select("*")
+    .single<TenantContractExtension>();
+  if (error) return writeErr(error.message);
+  return writeOk(data, "created");
 }
 
 export async function createTenant(
@@ -482,7 +699,8 @@ function contractTermsChanged(input: TenantUpdate) {
     input.rate !== undefined ||
     input.rate_type !== undefined ||
     input.gross_rent !== undefined ||
-    input.survey_no !== undefined
+    input.survey_no !== undefined ||
+    input.classification !== undefined
   );
 }
 

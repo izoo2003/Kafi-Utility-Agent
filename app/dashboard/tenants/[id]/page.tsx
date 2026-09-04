@@ -55,6 +55,7 @@ export default async function TenantDetailPage({
         tenant={data.tenant}
         schedule={data.schedule}
         bills={(bills.data ?? []).filter((b) => b.tenant_id === id)}
+        extensions={data.extensions}
       />
     </div>
   );

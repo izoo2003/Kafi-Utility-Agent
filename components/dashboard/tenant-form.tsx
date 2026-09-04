@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { Tenant, TenantRateType, TenantRentLineItem } from "@/lib/types/database";
+import type {
+  Tenant,
+  TenantClassification,
+  TenantRateType,
+  TenantRentLineItem,
+} from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { DocumentFileField } from "@/components/dashboard/document-file-field";
 import {
@@ -11,6 +16,7 @@ import {
   uploadTenantAgreement,
 } from "@/lib/dashboard/tenant-documents";
 import { computeGrossRent } from "@/lib/tenants/ledger";
+import { TENANT_CLASSIFICATION_LABELS } from "@/lib/tenants/withholding-tax";
 import { countCalendarMonths } from "@/lib/tenants/schedule";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,6 +29,7 @@ type LineForm = { label: string; amount: string };
 type FormState = {
   tenant_name: string;
   survey_no: string;
+  classification: TenantClassification;
   contract_start_date: string;
   contract_end_date: string;
   security_deposit_amount: string;
@@ -41,6 +48,7 @@ type FormState = {
 const emptyForm = (): FormState => ({
   tenant_name: "",
   survey_no: "",
+  classification: "unofficial",
   contract_start_date: "",
   contract_end_date: "",
   security_deposit_amount: "",
@@ -64,6 +72,7 @@ function toForm(tenant: Tenant, lineItems: TenantRentLineItem[]): FormState {
   return {
     tenant_name: tenant.tenant_name,
     survey_no: tenant.survey_no ?? "",
+    classification: tenant.classification === "official" ? "official" : "unofficial",
     contract_start_date: tenant.contract_start_date ?? "",
     contract_end_date: tenant.contract_end_date ?? "",
     security_deposit_amount:
@@ -125,6 +134,7 @@ export function TenantForm({
     return {
       tenant_name: form.tenant_name.trim(),
       survey_no: form.survey_no,
+      classification: form.classification,
       contract_start_date: form.contract_start_date,
       contract_end_date: form.contract_end_date,
       security_deposit_amount: numOrNull(form.security_deposit_amount),
@@ -226,6 +236,30 @@ export function TenantForm({
             value={form.survey_no}
             onChange={(e) => setForm((p) => ({ ...p, survey_no: e.target.value }))}
           />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="classification">Classification</Label>
+          <select
+            id="classification"
+            className="flex h-9 w-full rounded-lg border border-input bg-white px-3 text-sm"
+            value={form.classification}
+            onChange={(e) =>
+              setForm((p) => ({
+                ...p,
+                classification: e.target.value as TenantClassification,
+              }))
+            }
+          >
+            {Object.entries(TENANT_CLASSIFICATION_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Official tenants have withholding tax deducted per the slabs.
+            Unofficial tenants never have WHT applied.
+          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="contract_start_date">Agreement from</Label>

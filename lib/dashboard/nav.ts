@@ -144,6 +144,18 @@ export const dashboardNav = [
     description: "Tenant accounts, rent ledger, and electricity bills",
     icon: "tenants",
     accent: "violet",
+    children: [
+      {
+        href: "/dashboard/tenants",
+        label: "Tenants",
+        match: "exact" as const,
+      },
+      {
+        href: "/dashboard/tenants/withholding-tax",
+        label: "Withholding Tax Slabs",
+        match: "prefix" as const,
+      },
+    ],
   },
   {
     href: "/dashboard/chart-of-accounts",

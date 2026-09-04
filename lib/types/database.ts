@@ -269,6 +269,7 @@ export type UtilityPaymentLog = AuditColumns & {
 export type TenantPaymentStatus = "paid" | "unpaid" | "partial" | "overdue";
 
 export type TenantRateType = "per_sqft" | "lum_sum";
+export type TenantClassification = "official" | "unofficial";
 
 export type TenantRentLineItemSnapshot = {
   label: string;
@@ -278,6 +279,7 @@ export type TenantRentLineItemSnapshot = {
 export type Tenant = AuditColumns & {
   tenant_name: string;
   survey_no: string | null;
+  classification: TenantClassification;
   contract_start_date: IsoDate | null;
   contract_end_date: IsoDate | null;
   security_deposit_amount: number | null;
@@ -322,6 +324,7 @@ export type TenantRentSchedule = AuditColumns & {
   rate_type: TenantRateType;
   gross_rent: number | null;
   line_items: TenantRentLineItemSnapshot[];
+  withholding_tax: number;
   total_due: number;
 };
 
@@ -364,6 +367,29 @@ export type TenantElectricBill = AuditColumns & {
   amount_received: number | null;
   outstanding_amount: number | null;
   bill_file_url: string | null;
+  notes: string | null;
+};
+
+export type WithholdingTaxSlab = AuditColumns & {
+  label: string | null;
+  min_amount: number;
+  max_amount: number | null;
+  rate_percent: number;
+  notes: string | null;
+};
+
+export type TenantContractExtensionChange = {
+  field: "rate_type" | "sqft" | "rate" | "gross_rent" | "line_items";
+  label: string;
+  old_value: unknown;
+  new_value: unknown;
+};
+
+export type TenantContractExtension = AuditColumns & {
+  tenant_id: string;
+  extension_from: IsoDate;
+  extension_till: IsoDate;
+  changes: TenantContractExtensionChange[];
   notes: string | null;
 };
 
@@ -462,6 +488,16 @@ export type Database = {
         Row: TenantElectricBill;
         Insert: TenantElectricBillInsert;
         Update: TenantElectricBillUpdate;
+      };
+      withholding_tax_slabs: {
+        Row: WithholdingTaxSlab;
+        Insert: WithholdingTaxSlabInsert;
+        Update: WithholdingTaxSlabUpdate;
+      };
+      tenant_contract_extensions: {
+        Row: TenantContractExtension;
+        Insert: TenantContractExtensionInsert;
+        Update: TenantContractExtensionUpdate;
       };
       alert_notifications: {
         Row: AlertNotification;
@@ -607,6 +643,26 @@ export type TenantElectricBillInsert = Partial<
 };
 export type TenantElectricBillUpdate = Partial<
   OmitAuditOnWrite<TenantElectricBill>
+>;
+
+export type WithholdingTaxSlabInsert = Partial<
+  OmitAuditOnWrite<WithholdingTaxSlab>
+> & {
+  rate_percent: number;
+};
+export type WithholdingTaxSlabUpdate = Partial<
+  OmitAuditOnWrite<WithholdingTaxSlab>
+>;
+
+export type TenantContractExtensionInsert = Partial<
+  OmitAuditOnWrite<TenantContractExtension>
+> & {
+  tenant_id: string;
+  extension_from: IsoDate;
+  extension_till: IsoDate;
+};
+export type TenantContractExtensionUpdate = Partial<
+  OmitAuditOnWrite<TenantContractExtension>
 >;
 
 export const SOLAR_SPECS_BUCKET = "solar-specs" as const;

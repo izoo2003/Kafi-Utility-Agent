@@ -11,6 +11,7 @@ import {
 } from "@/lib/tenants/agreement";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TenantContractExtensionDialog } from "@/components/dashboard/tenant-contract-extension-dialog";
 
 export function TenantDetailHeader({
   tenant,
@@ -39,12 +40,15 @@ export function TenantDetailHeader({
         <h2 className="font-heading text-lg font-semibold uppercase tracking-wide">
           {tenant.tenant_name}
         </h2>
-        <Link
-          href={`/dashboard/tenants/${tenant.id}/edit`}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-        >
-          Edit tenant
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <TenantContractExtensionDialog tenant={tenant} lineItems={lineItems} />
+          <Link
+            href={`/dashboard/tenants/${tenant.id}/edit`}
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            Edit tenant
+          </Link>
+        </div>
       </div>
       <div className="space-y-2 px-4 py-3 text-sm">
         <p>
@@ -65,7 +69,17 @@ export function TenantDetailHeader({
         {tenant.notes ? (
           <p className="text-muted-foreground">{tenant.notes}</p>
         ) : null}
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <span
+            className={cn(
+              "inline-flex rounded-md px-2 py-1 text-xs font-medium",
+              tenant.classification === "official"
+                ? "bg-[oklch(0.95_0.04_150)] text-[oklch(0.4_0.12_150)]"
+                : "bg-[oklch(0.94_0.01_230)] text-[oklch(0.45_0.02_230)]",
+            )}
+          >
+            {tenant.classification === "official" ? "Official" : "Unofficial"}
+          </span>
           <span
             className={cn(
               "inline-flex rounded-md px-2 py-1 text-xs font-medium",

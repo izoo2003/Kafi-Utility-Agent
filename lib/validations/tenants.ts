@@ -15,6 +15,8 @@ export const tenantPaymentStatusSchema = z.enum([
 
 export const tenantRateTypeSchema = z.enum(["per_sqft", "lum_sum"]);
 
+export const tenantClassificationSchema = z.enum(["official", "unofficial"]);
+
 const moneyField = optionalNumber.pipe(
   z.union([z.number().nonnegative(), z.null()]),
 );
@@ -28,6 +30,7 @@ export const tenantInsertSchema = z
   .object({
     tenant_name: z.string().trim().min(1, "Tenant name is required"),
     survey_no: optionalText,
+    classification: tenantClassificationSchema.optional().default("unofficial"),
     contract_start_date: requiredDate,
     contract_end_date: requiredDate,
     security_deposit_amount: moneyField,
@@ -51,6 +54,7 @@ export const tenantUpdateSchema = z.object({
   id: z.string().uuid().optional(),
   tenant_name: z.string().trim().min(1).optional(),
   survey_no: optionalText,
+  classification: tenantClassificationSchema.optional(),
   contract_start_date: optionalDate,
   contract_end_date: optionalDate,
   security_deposit_amount: moneyField,
@@ -166,4 +170,77 @@ export type TenantElectricBillInsertInput = z.infer<
 >;
 export type TenantElectricBillUpdateInput = z.infer<
   typeof tenantElectricBillUpdateSchema
+>;
+
+export const withholdingTaxSlabInsertSchema = z
+  .object({
+    label: optionalText,
+    min_amount: optionalNumber
+      .pipe(z.union([z.number().nonnegative(), z.null()]))
+      .transform((v) => v ?? 0),
+    max_amount: moneyField,
+    rate_percent: optionalNumber.pipe(z.number().nonnegative()),
+    notes: optionalText,
+  })
+  .refine((v) => v.max_amount == null || v.max_amount >= v.min_amount, {
+    message: "Max amount must be ≥ min amount",
+    path: ["max_amount"],
+  });
+
+export const withholdingTaxSlabUpdateSchema = z
+  .object({
+    id: z.string().uuid().optional(),
+    label: optionalText,
+    min_amount: optionalNumber
+      .pipe(z.union([z.number().nonnegative(), z.null()]))
+      .transform((v) => v ?? undefined),
+    max_amount: moneyField,
+    rate_percent: optionalNumber
+      .pipe(z.union([z.number().nonnegative(), z.null()]))
+      .transform((v) => v ?? undefined),
+    notes: optionalText,
+  })
+  .superRefine((v, ctx) => {
+    if (
+      v.min_amount != null &&
+      v.max_amount != null &&
+      v.max_amount < v.min_amount
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Max amount must be ≥ min amount",
+        path: ["max_amount"],
+      });
+    }
+  });
+
+export type WithholdingTaxSlabInsertInput = z.infer<
+  typeof withholdingTaxSlabInsertSchema
+>;
+export type WithholdingTaxSlabUpdateInput = z.infer<
+  typeof withholdingTaxSlabUpdateSchema
+>;
+
+export const tenantContractExtensionRentTermsSchema = z.object({
+  rate_type: tenantRateTypeSchema,
+  sqft: moneyField,
+  rate: moneyField,
+  gross_rent: moneyField,
+});
+
+export const tenantContractExtensionSchema = z
+  .object({
+    extension_from: requiredDate,
+    extension_till: requiredDate,
+    rent_terms: tenantContractExtensionRentTermsSchema.optional(),
+    line_items: z.array(tenantLineItemInputSchema).optional(),
+    notes: optionalText,
+  })
+  .refine((v) => v.extension_till >= v.extension_from, {
+    message: "Extension till must be on or after extension from",
+    path: ["extension_till"],
+  });
+
+export type TenantContractExtensionInput = z.infer<
+  typeof tenantContractExtensionSchema
 >;

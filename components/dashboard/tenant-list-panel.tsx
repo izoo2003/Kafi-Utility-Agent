@@ -82,6 +82,7 @@ export function TenantListPanel({
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Survey no.</TableHead>
+              <TableHead>Classification</TableHead>
               <TableHead>Contract</TableHead>
               <TableHead>Monthly total</TableHead>
               <TableHead>Outstanding</TableHead>
@@ -93,7 +94,7 @@ export function TenantListPanel({
             {pageRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="max-w-none py-8 text-center text-muted-foreground"
                 >
                   No tenants yet. Add a tenant to generate their monthly ledger.
@@ -115,6 +116,20 @@ export function TenantListPanel({
                     </TableCell>
                     <TableCell>
                       <CellText>{tenant.survey_no ?? "—"}</CellText>
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={cn(
+                          "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
+                          tenant.classification === "official"
+                            ? "bg-[oklch(0.95_0.04_150)] text-[oklch(0.4_0.12_150)]"
+                            : "bg-[oklch(0.94_0.01_230)] text-[oklch(0.45_0.02_230)]",
+                        )}
+                      >
+                        {tenant.classification === "official"
+                          ? "Official"
+                          : "Unofficial"}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <CellText>

@@ -23,6 +23,12 @@ export function lastDayOfMonth(year: number, month: number) {
   return new Date(Date.UTC(year, month, 0)).getUTCDate();
 }
 
+export function addDaysIso(iso: string, days: number) {
+  const { year, month, day } = parseIsoDateParts(iso);
+  const d = new Date(Date.UTC(year, month - 1, day + days));
+  return isoDate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+}
+
 export function countCalendarMonths(startIso: string, endIso: string) {
   return calendarMonthsOverlapping(startIso, endIso).length;
 }

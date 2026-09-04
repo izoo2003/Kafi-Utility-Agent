@@ -77,6 +77,7 @@ export function TenantRentLedger({
   const totals = useMemo(() => {
     return {
       gross: rows.reduce((s, r) => s + Number(r.gross_rent ?? 0), 0),
+      withholding: rows.reduce((s, r) => s + Number(r.withholding_tax ?? 0), 0),
       extras: Object.fromEntries(
         extraLabels.map((label) => [
           label,
@@ -148,7 +149,7 @@ export function TenantRentLedger({
     }
   }
 
-  const colCount = 9 + extraLabels.length;
+  const colCount = 10 + extraLabels.length;
 
   return (
     <div className="space-y-3">
@@ -165,6 +166,7 @@ export function TenantRentLedger({
               {extraLabels.map((label) => (
                 <TableHead key={label}>{label}</TableHead>
               ))}
+              <TableHead>Withholding</TableHead>
               <TableHead>Received</TableHead>
               <TableHead>Balance</TableHead>
               <TableHead>Cheque / ref</TableHead>
@@ -200,6 +202,11 @@ export function TenantRentLedger({
                       )}
                     </TableCell>
                   ))}
+                  <TableCell>
+                    {row.withholding_tax
+                      ? formatMoney(row.withholding_tax)
+                      : "—"}
+                  </TableCell>
                   <TableCell>{row.received ? formatMoney(row.received) : ""}</TableCell>
                   <TableCell>
                     {row.received > 0 && row.balance === 0
@@ -246,6 +253,7 @@ export function TenantRentLedger({
                     {formatMoney(totals.extras[label])}
                   </TableCell>
                 ))}
+                <TableCell>{formatMoney(totals.withholding)}</TableCell>
                 <TableCell>{formatMoney(totals.received)}</TableCell>
                 <TableCell>{formatMoney(totals.balance)}</TableCell>
                 <TableCell colSpan={2} />
