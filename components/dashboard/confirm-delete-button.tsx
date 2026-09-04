@@ -26,12 +26,16 @@ export function ConfirmDeleteButton({
 }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleConfirm() {
     setLoading(true);
+    setError(null);
     try {
       await onConfirm();
       setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setLoading(false);
     }
@@ -39,7 +43,14 @@ export function ConfirmDeleteButton({
 
   return (
     <>
-      <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
+      >
         {label}
       </Button>
       <AlertDialog open={open} onOpenChange={setOpen}>
@@ -48,6 +59,11 @@ export function ConfirmDeleteButton({
             <AlertDialogTitle>{title}</AlertDialogTitle>
             <AlertDialogDescription>{description}</AlertDialogDescription>
           </AlertDialogHeader>
+          {error ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
             <AlertDialogAction

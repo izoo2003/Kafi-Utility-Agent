@@ -22,7 +22,7 @@ import {
   writeOk,
   type DomainWriteResult,
 } from "@/lib/supabase/write-result";
-import { calendarMonthsOverlapping } from "@/lib/tenants/schedule";
+import { addDaysIso, calendarMonthsOverlapping } from "@/lib/tenants/schedule";
 import {
   computeGrossRent,
   monthlyTotal,
@@ -667,14 +667,13 @@ async function revertContractExtension(
       },
     };
   }
-  if (!extension.previous_contract_end_date) {
-    return {
-      error: {
-        message:
-          "This extension predates change tracking and cannot be safely reverted.",
-      },
-    };
-  }
+  // Extensions created before previous_contract_end_date was tracked don't
+  // have it recorded. The day before extension_from is what the dialog
+  // itself defaults new extensions to, so it's the correct value whenever
+  // the extension wasn't backdated past a gap.
+  const previousContractEndDate =
+    extension.previous_contract_end_date ??
+    addDaysIso(extension.extension_from, -1);
 
   const { data: rows, error: rowsErr } = await supabase
     .from(SCHEDULE)
@@ -698,7 +697,7 @@ async function revertContractExtension(
   }
 
   const tenantPatch: Partial<TenantUpdate> = {
-    contract_end_date: extension.previous_contract_end_date,
+    contract_end_date: previousContractEndDate,
     updated_by: updatedBy ?? null,
   };
   for (const change of extension.changes) {

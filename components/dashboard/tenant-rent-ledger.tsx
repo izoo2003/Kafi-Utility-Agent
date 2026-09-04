@@ -190,20 +190,22 @@ export function TenantRentLedger({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>S.No</TableHead>
-              <TableHead>Month</TableHead>
-              <TableHead>Survey no.</TableHead>
-              <TableHead>Sqft</TableHead>
-              <TableHead>Rate</TableHead>
-              <TableHead>Gross rent</TableHead>
+              <TableHead className="w-12">S.No</TableHead>
+              <TableHead className="w-20">Month</TableHead>
+              <TableHead className="w-20">Survey no.</TableHead>
+              <TableHead className="w-16">Sqft</TableHead>
+              <TableHead className="w-16">Rate</TableHead>
+              <TableHead className="w-24">Gross rent</TableHead>
               {extraLabels.map((label) => (
-                <TableHead key={label}>{label}</TableHead>
+                <TableHead key={label} className="w-24">
+                  {label}
+                </TableHead>
               ))}
-              <TableHead>Withholding</TableHead>
-              <TableHead>Received</TableHead>
-              <TableHead>Balance</TableHead>
-              <TableHead>Cheque / ref</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="w-24">Withholding</TableHead>
+              <TableHead className="w-24">Received</TableHead>
+              <TableHead className="w-24">Balance</TableHead>
+              <TableHead className="w-28">Cheque / ref</TableHead>
+              <TableHead className="w-44 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -303,7 +305,7 @@ export function TenantRentLedger({
                       : formatMoney(row.balance)}
                   </TableCell>
                   <TableCell>{paymentRefLabel(row.payments)}</TableCell>
-                  <TableCell className="max-w-none text-right">
+                  <TableCell className="text-right">
                     <div className="flex flex-wrap justify-end gap-1">
                       <Button
                         variant="outline"
