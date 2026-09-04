@@ -10,7 +10,6 @@ import { ImportFilesButton } from "@/components/dashboard/import-files-button";
 import { TablePagination } from "@/components/dashboard/table-pagination";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import {
-  CellPrimary,
   CellText,
   TableActions,
   TableShell,
@@ -20,10 +19,9 @@ import { apiFetch } from "@/lib/dashboard/api-client";
 import { formatDate } from "@/lib/format/datetime";
 import { formatMoney } from "@/lib/tenants/payment-status";
 import {
-  agreementExpiryLabel,
+  type AgreementExpiryStatus,
   agreementExpiryStatus,
 } from "@/lib/tenants/agreement";
-import { tenantListStatus } from "@/lib/tenants/ledger";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -34,6 +32,48 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+function expiryPillClass(status: AgreementExpiryStatus) {
+  switch (status) {
+    case "expired":
+      return "bg-[oklch(0.95_0.04_25)] text-[oklch(0.45_0.14_25)]";
+    case "soon":
+      return "bg-[oklch(0.95_0.04_85)] text-[oklch(0.45_0.12_70)]";
+    case "ok":
+      return "bg-[oklch(0.95_0.03_155)] text-[oklch(0.4_0.1_155)]";
+    default:
+      return "bg-[oklch(0.95_0.01_230)] text-[oklch(0.5_0.02_230)]";
+  }
+}
+
+function expiryLabel(status: AgreementExpiryStatus) {
+  switch (status) {
+    case "expired":
+      return "Expired";
+    case "soon":
+      return "Expiring";
+    case "ok":
+      return "Active";
+    default:
+      return "No date";
+  }
+}
+
+function statusPillClass(hasDates: boolean, outstanding: number) {
+  if (!hasDates) {
+    return "bg-[oklch(0.95_0.01_230)] text-[oklch(0.5_0.02_230)]";
+  }
+  if (outstanding > 0) {
+    return "bg-[oklch(0.95_0.04_85)] text-[oklch(0.45_0.12_70)]";
+  }
+  return "bg-[oklch(0.95_0.03_155)] text-[oklch(0.4_0.1_155)]";
+}
+
+function statusLabel(hasDates: boolean, outstanding: number) {
+  if (!hasDates) return "No dates";
+  if (outstanding > 0) return "Due";
+  return "Current";
+}
 
 export function TenantListPanel({
   initialItems,
@@ -77,24 +117,25 @@ export function TenantListPanel({
       </div>
 
       <TableShell>
-        <Table>
+        <Table style={{ minWidth: "68rem" }}>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Survey no.</TableHead>
-              <TableHead>Classification</TableHead>
-              <TableHead>Contract</TableHead>
-              <TableHead>Monthly total</TableHead>
-              <TableHead>Outstanding</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="w-52">Tenant</TableHead>
+              <TableHead className="w-20">Sqft</TableHead>
+              <TableHead className="w-28">Rate</TableHead>
+              <TableHead className="w-44">Contract</TableHead>
+              <TableHead className="w-28">Expiry</TableHead>
+              <TableHead className="w-28">Monthly total</TableHead>
+              <TableHead className="w-32">Electricity due</TableHead>
+              <TableHead className="w-24">Status</TableHead>
+              <TableHead className="w-24 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pageRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="max-w-none py-8 text-center text-muted-foreground"
                 >
                   No tenants yet. Add a tenant to generate their monthly ledger.
@@ -102,9 +143,10 @@ export function TenantListPanel({
               </TableRow>
             ) : (
               pageRows.map((tenant) => {
-                const expiry = agreementExpiryStatus(
-                  tenant.contract_end_date ?? tenant.agreement_expiry,
-                );
+                const expiryDate =
+                  tenant.contract_end_date ?? tenant.agreement_expiry;
+                const expiryStatus = agreementExpiryStatus(expiryDate);
+                const electricityDue = tenant.electricity_due_month;
                 return (
                   <TableRow
                     key={tenant.id}
@@ -112,48 +154,111 @@ export function TenantListPanel({
                     onClick={() => router.push(`/dashboard/tenants/${tenant.id}`)}
                   >
                     <TableCell>
-                      <CellPrimary title={tenant.tenant_name} />
+                      <div className="min-w-0">
+                        <div className="break-words font-medium leading-snug text-foreground">
+                          {tenant.tenant_name}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                          <span
+                            className={cn(
+                              "inline-flex shrink-0 rounded-md px-1.5 py-0.5 font-medium",
+                              tenant.classification === "official"
+                                ? "bg-[oklch(0.95_0.04_150)] text-[oklch(0.4_0.12_150)]"
+                                : "bg-[oklch(0.94_0.01_230)] text-[oklch(0.45_0.02_230)]",
+                            )}
+                          >
+                            {tenant.classification === "official"
+                              ? "Official"
+                              : "Unofficial"}
+                          </span>
+                          {tenant.survey_no ? (
+                            <span className="truncate">{tenant.survey_no}</span>
+                          ) : null}
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell>
-                      <CellText>{tenant.survey_no ?? "—"}</CellText>
+                    <TableCell className="align-top">
+                      <CellText className="whitespace-nowrap tabular-nums">
+                        {tenant.sqft == null
+                          ? "—"
+                          : Number(tenant.sqft).toLocaleString()}
+                      </CellText>
                     </TableCell>
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
-                          tenant.classification === "official"
-                            ? "bg-[oklch(0.95_0.04_150)] text-[oklch(0.4_0.12_150)]"
-                            : "bg-[oklch(0.94_0.01_230)] text-[oklch(0.45_0.02_230)]",
-                        )}
-                      >
-                        {tenant.classification === "official"
-                          ? "Official"
-                          : "Unofficial"}
-                      </span>
+                    <TableCell className="align-top">
+                      {tenant.rate_type === "lum_sum" ? (
+                        <span className="text-muted-foreground">Lum sum</span>
+                      ) : tenant.rate == null ? (
+                        <CellText>—</CellText>
+                      ) : (
+                        <CellText className="whitespace-nowrap tabular-nums">
+                          {formatMoney(tenant.rate)}{" "}
+                          <span className="text-muted-foreground">/sqft</span>
+                        </CellText>
+                      )}
                     </TableCell>
-                    <TableCell>
-                      <CellText>
+                    <TableCell className="align-top">
+                      <span className="break-words leading-snug">
                         {tenant.contract_start_date && tenant.contract_end_date
                           ? `${formatDate(tenant.contract_start_date)} – ${formatDate(tenant.contract_end_date)}`
                           : "—"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <span
+                        className={cn(
+                          "inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium",
+                          expiryPillClass(expiryStatus),
+                        )}
+                        title={
+                          expiryDate
+                            ? `Agreement ends ${formatDate(expiryDate)}`
+                            : "No agreement expiry set"
+                        }
+                      >
+                        {expiryLabel(expiryStatus)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <CellText className="whitespace-nowrap tabular-nums">
+                        {formatMoney(tenant.monthly_total)}
                       </CellText>
                     </TableCell>
-                    <TableCell>
-                      <CellText>{formatMoney(tenant.monthly_total)}</CellText>
+                    <TableCell className="align-top">
+                      {electricityDue == null ? (
+                        <CellText className="text-muted-foreground">
+                          —
+                        </CellText>
+                      ) : (
+                        <CellText
+                          className={cn(
+                            "whitespace-nowrap tabular-nums",
+                            electricityDue > 0 &&
+                              "font-medium text-[oklch(0.5_0.14_25)]",
+                          )}
+                        >
+                          {formatMoney(electricityDue)}
+                        </CellText>
+                      )}
                     </TableCell>
-                    <TableCell>
-                      <CellText>{formatMoney(tenant.outstanding)}</CellText>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs">
-                        {tenantListStatus(tenant, tenant.outstanding)}
-                        {expiry === "soon" || expiry === "expired"
-                          ? ` · ${agreementExpiryLabel(expiry)}`
-                          : ""}
+                    <TableCell className="align-top">
+                      <span
+                        className={cn(
+                          "inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium",
+                          statusPillClass(Boolean(expiryDate), tenant.outstanding),
+                        )}
+                        title={
+                          !expiryDate
+                            ? "No contract dates set"
+                            : tenant.outstanding > 0
+                              ? "Rent balance due across the ledger"
+                              : "Rent is up to date"
+                        }
+                      >
+                        {statusLabel(Boolean(expiryDate), tenant.outstanding)}
                       </span>
                     </TableCell>
                     <TableCell
-                      className="max-w-none"
+                      className="max-w-none align-top"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <TableActions>

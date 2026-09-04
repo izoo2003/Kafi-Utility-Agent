@@ -254,47 +254,7 @@ from (
 where s.id = n.id
   and s.serial_no is distinct from n.rn;
 
--- Payments from historical rent logs
-insert into public.tenant_rent_payments (
-  schedule_id,
-  amount_received,
-  payment_reference,
-  payment_file_url,
-  updated_by
-)
-select
-  s.id,
-  case
-    when l.payment_status = 'paid' then coalesce(l.rent_amount, s.total_due, 0)
-    when l.payment_status = 'partial' then
-      greatest(
-        coalesce(l.rent_amount, s.total_due, 0) - coalesce(l.outstanding_amount, 0),
-        0
-      )
-    when l.payment_date is not null then coalesce(l.rent_amount, 0)
-    else 0
-  end,
-  null,
-  l.payment_file_url,
-  l.updated_by
-from public.tenant_rent_logs l
-join public.tenant_rent_schedule s
-  on s.tenant_id = l.tenant_id
- and extract(year from l.rent_due_date)::int = s.period_year
- and extract(month from l.rent_due_date)::int = s.period_month
-where l.rent_due_date is not null
-  and (
-    l.payment_status in ('paid', 'partial')
-    or l.payment_date is not null
-    or coalesce(l.outstanding_amount, 0) > 0
-  )
-  and case
-    when l.payment_status = 'paid' then coalesce(l.rent_amount, s.total_due, 0)
-    when l.payment_status = 'partial' then
-      greatest(
-        coalesce(l.rent_amount, s.total_due, 0) - coalesce(l.outstanding_amount, 0),
-        0
-      )
-    when l.payment_date is not null then coalesce(l.rent_amount, 0)
-    else 0
-  end > 0;
+-- NOTE: no payments are created here. A ledger must never auto-record a
+-- "received" amount. Received amounts only ever come from the app's
+-- Record payment action, where the user enters the amount they actually
+-- received. (Historical tenant_rent_logs rows are left as reference only.)

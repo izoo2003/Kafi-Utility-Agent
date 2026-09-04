@@ -12,7 +12,9 @@ import type {
   TenantRentPayment,
   TenantRentPaymentInsert,
   TenantRentPaymentUpdate,
+  TenantPaymentStatus,
   TenantRentSchedule,
+  TenantRentScheduleInsert,
   TenantUpdate,
 } from "@/lib/types/database";
 import { removeTenantDocument } from "@/lib/supabase/tenant-storage";
@@ -22,7 +24,7 @@ import {
   writeOk,
   type DomainWriteResult,
 } from "@/lib/supabase/write-result";
-import { addDaysIso, calendarMonthsOverlapping } from "@/lib/tenants/schedule";
+import { addDaysIso, ledgerPeriods } from "@/lib/tenants/schedule";
 import {
   computeGrossRent,
   monthlyTotal,
@@ -222,7 +224,20 @@ export type TenantListSummary = Tenant & {
   monthly_total: number;
   outstanding: number;
   month_count: number;
+  /** What's still unpaid on the tenant's most recent electricity bill. */
+  electricity_due_month: number | null;
 };
+
+function latestBillDue(bill: TenantElectricBill | undefined): number | null {
+  if (!bill) return null;
+  if (bill.outstanding_amount != null) {
+    return Math.max(0, Number(bill.outstanding_amount));
+  }
+  return Math.max(
+    0,
+    Number(bill.ke_charges_amount ?? 0) - Number(bill.amount_received ?? 0),
+  );
+}
 
 export async function listTenantSummaries(supabase: SupabaseClient) {
   const tenants = await listTenants(supabase);
@@ -234,6 +249,15 @@ export async function listTenantSummaries(supabase: SupabaseClient) {
     (schedule.data ?? []).map((row) => row.id),
   );
   if (payments.error) return { data: null, error: payments.error };
+  const bills = await listTenantElectricBills(supabase);
+  if (bills.error) return { data: null, error: bills.error };
+  // Bills come back newest-first; the first bill seen per tenant is the latest.
+  const latestBillByTenant = new Map<string, TenantElectricBill>();
+  for (const bill of bills.data ?? []) {
+    if (!latestBillByTenant.has(bill.tenant_id)) {
+      latestBillByTenant.set(bill.tenant_id, bill);
+    }
+  }
   const lineItemsByTenant = new Map<string, { amount: number }[]>();
   const { data: allItems, error: itemsError } = await supabase
     .from(LINE_ITEMS)
@@ -263,6 +287,7 @@ export async function listTenantSummaries(supabase: SupabaseClient) {
       ),
       outstanding: tenantOutstanding(rows),
       month_count: rows.length,
+      electricity_due_month: latestBillDue(latestBillByTenant.get(tenant.id)),
     };
   });
   return { data, error: null };
@@ -372,7 +397,7 @@ export async function regenerateTenantSchedule(
     monthlyRent: rentTotal,
     slabs: slabs.data ?? [],
   });
-  const periods = calendarMonthsOverlapping(start, end);
+  const periods = ledgerPeriods(start, end);
   const keepKeys = new Set(
     periods.map((p) => `${p.period_year}-${p.period_month}`),
   );
@@ -458,8 +483,11 @@ export async function listTenantContractExtensions(
 }
 
 /**
- * Appends a new period to the ledger under new terms without touching any
- * existing (possibly already-paid) schedule rows.
+ * Appends a new period to the ledger under new terms. Months before the
+ * extension window are never touched; months inside the window that already
+ * have a ledger row (e.g. generated earlier from rent logs) are rolled
+ * forward to the new terms rather than colliding with the unique
+ * (tenant_id, period_year, period_month) key.
  */
 export async function createContractExtension(
   supabase: SupabaseClient,
@@ -556,12 +584,6 @@ export async function createContractExtension(
     if (replaced.error) return writeErr(replaced.error.message);
   }
 
-  const { error: tenantUpdateError } = await supabase
-    .from(TENANTS)
-    .update(tenantPatch)
-    .eq("id", tenantId);
-  if (tenantUpdateError) return writeErr(tenantUpdateError.message);
-
   const effectiveTenant: Tenant = { ...tenant.data, ...tenantPatch };
 
   const [lineItemsRes, slabsRes, existingSchedule] = await Promise.all([
@@ -588,32 +610,68 @@ export async function createContractExtension(
     slabs: slabsRes.data ?? [],
   });
 
-  const periods = calendarMonthsOverlapping(
+  const periods = ledgerPeriods(
     input.extension_from,
     input.extension_till,
   );
-  const rows = periods.map((period, index) => ({
-    tenant_id: tenantId,
-    serial_no: baseSerial + index + 1,
-    period_year: period.period_year,
-    period_month: period.period_month,
-    period_start: period.period_start,
-    period_end: period.period_end,
-    survey_no: effectiveTenant.survey_no,
-    sqft: effectiveTenant.sqft,
-    rate: effectiveTenant.rate,
-    rate_type: effectiveTenant.rate_type,
-    gross_rent: effectiveTenant.gross_rent,
-    line_items: snapshot,
-    withholding_tax: wht.withholding_tax,
-    total_due: wht.total_due,
-    updated_by: input.updated_by ?? null,
-  }));
-
-  if (rows.length > 0) {
-    const { error: insertError } = await supabase.from(SCHEDULE).insert(rows);
+  const existingByKey = new Map(
+    (existingSchedule.data ?? []).map((row) => [
+      `${row.period_year}-${row.period_month}`,
+      row,
+    ]),
+  );
+  let nextSerial = baseSerial;
+  const rowsToInsert: TenantRentScheduleInsert[] = [];
+  for (const period of periods) {
+    const key = `${period.period_year}-${period.period_month}`;
+    const payload = {
+      tenant_id: tenantId,
+      period_year: period.period_year,
+      period_month: period.period_month,
+      period_start: period.period_start,
+      period_end: period.period_end,
+      survey_no: effectiveTenant.survey_no,
+      sqft: effectiveTenant.sqft,
+      rate: effectiveTenant.rate,
+      rate_type: effectiveTenant.rate_type,
+      gross_rent: effectiveTenant.gross_rent,
+      line_items: snapshot,
+      withholding_tax: wht.withholding_tax,
+      total_due: wht.total_due,
+      updated_by: input.updated_by ?? null,
+    };
+    const existing = existingByKey.get(key);
+    if (existing) {
+      // The extension window can include months that already have a ledger
+      // row (e.g. one generated earlier from rent logs that ran past the
+      // recorded contract end date). Roll such rows forward in place instead
+      // of colliding with the unique (tenant_id, period_year, period_month)
+      // key; their billing dates, serial number and recorded payments stay.
+      const { error: updateError } = await supabase
+        .from(SCHEDULE)
+        .update(payload)
+        .eq("id", existing.id);
+      if (updateError) return writeErr(updateError.message);
+    } else {
+      nextSerial += 1;
+      rowsToInsert.push({ ...payload, serial_no: nextSerial });
+    }
+  }
+  if (rowsToInsert.length > 0) {
+    const { error: insertError } = await supabase
+      .from(SCHEDULE)
+      .insert(rowsToInsert);
     if (insertError) return writeErr(insertError.message);
   }
+
+  // Advance the contract end date only after the new months are settled in
+  // the ledger, so a failed save leaves the tenant retryable rather than
+  // half-extended with no way to save again.
+  const { error: tenantUpdateError } = await supabase
+    .from(TENANTS)
+    .update(tenantPatch)
+    .eq("id", tenantId);
+  if (tenantUpdateError) return writeErr(tenantUpdateError.message);
 
   const { data, error } = await supabase
     .from(CONTRACT_EXTENSIONS)
@@ -963,6 +1021,7 @@ function buildElectricBillRow(
     rate_inclusive_govt?: number | null;
     amount_received?: number | null;
     payment_date?: string | null;
+    payment_status?: TenantPaymentStatus | null;
     notes?: string | null;
     updated_by?: string | null;
   },
@@ -991,6 +1050,10 @@ function buildElectricBillRow(
       input.payment_date !== undefined
         ? input.payment_date
         : (existing?.payment_date ?? null),
+    payment_status:
+      input.payment_status !== undefined
+        ? input.payment_status
+        : (existing?.payment_status ?? null),
     notes:
       input.notes !== undefined ? input.notes : (existing?.notes ?? null),
   });

@@ -87,6 +87,7 @@ export type ElectricBillDeriveInput = {
   rate_inclusive_govt?: number | null;
   amount_received?: number | null;
   payment_date?: string | null;
+  payment_status?: TenantPaymentStatus | null;
   notes?: string | null;
 };
 
@@ -140,7 +141,9 @@ export function deriveElectricBillFields(
     amount_received,
     payment_date: input.payment_date ?? null,
     outstanding_amount: payment.outstanding_amount,
-    payment_status: payment.payment_status,
+    // Manually set on the ledger (Unpaid/Paid/Processing); falls back to the
+    // amount-vs-received heuristic when no explicit status was given (e.g. imports).
+    payment_status: input.payment_status ?? payment.payment_status,
     due_date: period_to,
     notes: input.notes ?? null,
   };

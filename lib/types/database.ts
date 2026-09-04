@@ -266,7 +266,12 @@ export type UtilityPaymentLog = AuditColumns & {
   ai_summary_at: IsoTimestamptz | null;
 };
 
-export type TenantPaymentStatus = "paid" | "unpaid" | "partial" | "overdue";
+export type TenantPaymentStatus =
+  | "paid"
+  | "unpaid"
+  | "partial"
+  | "overdue"
+  | "processing";
 
 export type TenantRateType = "per_sqft" | "lum_sum";
 export type TenantClassification = "official" | "unofficial";

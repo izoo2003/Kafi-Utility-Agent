@@ -54,9 +54,11 @@ export function CellPrimary({
 export function CellText({
   children,
   title,
+  className,
 }: {
   children: React.ReactNode;
   title?: string;
+  className?: string;
 }) {
   const tip =
     title ??
@@ -65,7 +67,7 @@ export function CellText({
       : undefined);
 
   return (
-    <span className="block truncate" title={tip}>
+    <span className={cn("block truncate", className)} title={tip}>
       {children}
     </span>
   );

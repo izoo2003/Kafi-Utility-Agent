@@ -11,6 +11,13 @@ export const tenantPaymentStatusSchema = z.enum([
   "unpaid",
   "partial",
   "overdue",
+  "processing",
+]);
+
+export const electricBillPaymentStatusSchema = z.enum([
+  "unpaid",
+  "paid",
+  "processing",
 ]);
 
 export const tenantRateTypeSchema = z.enum(["per_sqft", "lum_sum"]);
@@ -97,6 +104,7 @@ const tenantElectricBillFieldsSchema = z.object({
   rate_inclusive_govt: moneyField,
   amount_received: moneyField,
   payment_date: optionalDate,
+  payment_status: electricBillPaymentStatusSchema.optional(),
   notes: optionalText,
 });
 
@@ -133,6 +141,7 @@ export const tenantElectricBillUpdateSchema = z
     rate_inclusive_govt: moneyField.optional(),
     amount_received: moneyField.optional(),
     payment_date: optionalDate.optional(),
+    payment_status: electricBillPaymentStatusSchema.optional(),
     notes: optionalText.optional(),
   })
   .superRefine((v, ctx) => {

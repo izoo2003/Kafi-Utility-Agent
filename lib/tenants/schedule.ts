@@ -29,8 +29,76 @@ export function addDaysIso(iso: string, days: number) {
   return isoDate(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
 }
 
+/**
+ * Number of monthly ledger rows the given contract dates will produce.
+ * Same-day ranges follow the rent-day cycle; everything else counts the
+ * calendar months that overlap the range.
+ */
 export function countCalendarMonths(startIso: string, endIso: string) {
-  return calendarMonthsOverlapping(startIso, endIso).length;
+  return ledgerPeriods(startIso, endIso).length;
+}
+
+function addMonthsClamped(iso: string, months: number) {
+  const { year, month, day } = parseIsoDateParts(iso);
+  const total = (year - 1) * 12 + (month - 1) + months;
+  const y = Math.floor(total / 12) + 1;
+  const m = (total % 12) + 1;
+  const last = lastDayOfMonth(y, m);
+  return isoDate(y, m, Math.min(day, last));
+}
+
+/**
+ * Monthly ledger rows for a contract range.
+ *
+ * When the start and end date share the same rent day (e.g. 26/05 to 26/08,
+ * or 26/05 to 25/08), the ledger follows the agreement's day cycle: one row
+ * per rent month from the start date, e.g. 26/05–25/06, 26/06–25/07,
+ * 26/07–26/08 = 3 rows. Each row is keyed to the month it ends in (the bill
+ * month), so a 26/05–25/06 row is the June bill and the May tail days are
+ * covered inside it. Any leftover tail days beyond the last full rent month
+ * are folded into the final row rather than creating a stray extra row.
+ *
+ * Any other range keeps the old behaviour: one row per calendar month that
+ * overlaps the range.
+ */
+export function ledgerPeriods(
+  startIso: string,
+  endIso: string,
+): CalendarPeriod[] {
+  if (!startIso || !endIso || endIso < startIso) return [];
+  const start = parseIsoDateParts(startIso);
+  const end = parseIsoDateParts(endIso);
+  const sameRentDay =
+    end.day === start.day || (start.day > 1 && end.day === start.day - 1);
+  if (!sameRentDay) return calendarMonthsOverlapping(startIso, endIso);
+
+  const spans: { start: string; end: string }[] = [];
+  let cursor = startIso;
+  while (cursor <= endIso) {
+    const nextCursor = addMonthsClamped(cursor, 1);
+    const fullEnd = addDaysIso(nextCursor, -1);
+    if (fullEnd > endIso) {
+      if (spans.length > 0) {
+        spans[spans.length - 1]!.end = endIso;
+      } else {
+        spans.push({ start: cursor, end: endIso });
+      }
+      break;
+    }
+    spans.push({ start: cursor, end: fullEnd });
+    cursor = nextCursor;
+  }
+
+  return spans.map((span, index) => {
+    const endParts = parseIsoDateParts(span.end);
+    return {
+      serial_no: index + 1,
+      period_year: endParts.year,
+      period_month: endParts.month,
+      period_start: span.start,
+      period_end: span.end,
+    };
+  });
 }
 
 /** One row per calendar month that overlaps [start, end] inclusive. */

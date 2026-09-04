@@ -44,6 +44,7 @@ import {
 import { withDefaultNextServiceDue } from "@/lib/generator/maintenance";
 import { findSolarSite, listSolarSites, solarSiteDisplayLabel } from "@/lib/sems/sites";
 import { outcomeSummary, type DedupeOutcome } from "@/lib/dashboard/dedupe";
+import { agentWriteTools } from "@/lib/agent/write-tools";
 
 function finalizeCreateSummary(base: string, outcome: DedupeOutcome) {
   if (outcome === "created") return base;
@@ -51,6 +52,34 @@ function finalizeCreateSummary(base: string, outcome: DedupeOutcome) {
     return base.replace(/^Create\b/i, "Update duplicate").replace(/\.$/, "") + " (more recent — overwrote existing).";
   }
   return outcomeSummary(outcome, base.replace(/^Create\s+/i, "").replace(/\.$/, ""));
+}
+
+const writeToolPropsByTool = new Map(
+  agentWriteTools.map((tool) => [
+    tool.name,
+    Object.keys(tool.parameters?.properties ?? {}),
+  ]),
+);
+
+/**
+ * Gemini omits properties it couldn't read from an attachment. Zod v4 rejects
+ * a MISSING key on any field that isn't declared `.optional()` — even when the
+ * field's own schema accepts `undefined` — so an omitted optional field fails
+ * with "expected nonoptional, received undefined" and the whole import dies.
+ * Materialize the tool's declared properties as `undefined` so optional fields
+ * validate (truly required fields still fail, as they should).
+ */
+function normalizeOmittedToolArgs(
+  name: WriteToolName,
+  input: Record<string, unknown>,
+): Record<string, unknown> {
+  const props = writeToolPropsByTool.get(name);
+  if (!props?.length) return input;
+  const next = { ...input };
+  for (const key of props) {
+    if (!(key in next)) next[key] = undefined;
+  }
+  return next;
 }
 import {
   createSolarMaintenance,
@@ -371,6 +400,7 @@ export async function executeWriteTool(
   input: Record<string, unknown>,
 ): Promise<unknown> {
   const { supabase, user } = ctx;
+  input = normalizeOmittedToolArgs(name, input);
 
   switch (name) {
     case "kitchen_inventory_create": {

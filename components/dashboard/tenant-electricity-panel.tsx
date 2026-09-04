@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Tenant, TenantElectricBill } from "@/lib/types/database";
+import type {
+  Tenant,
+  TenantElectricBill,
+  TenantPaymentStatus,
+} from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { sortNewestFirst, upsertById } from "@/lib/dashboard/sort";
 import { usePagedRows } from "@/lib/dashboard/use-paged-rows";
@@ -20,6 +24,7 @@ import {
 } from "@/components/dashboard/table-shell";
 import {
   effectivePaymentStatus,
+  ELECTRIC_BILL_PAYMENT_STATUSES,
   formatMoney,
   paymentStatusBadgeClass,
   TENANT_PAYMENT_STATUS_LABELS,
@@ -59,6 +64,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+type ElectricBillStatus = (typeof ELECTRIC_BILL_PAYMENT_STATUSES)[number];
+
 type BillForm = {
   period_from: string;
   period_to: string;
@@ -67,8 +74,16 @@ type BillForm = {
   rate_inclusive_govt: string;
   amount_received: string;
   payment_date: string;
+  payment_status: ElectricBillStatus;
   notes: string;
 };
+
+/** Legacy auto-derived statuses (partial/overdue) map onto the manual dropdown. */
+function toDropdownStatus(status: TenantPaymentStatus): ElectricBillStatus {
+  if (status === "paid") return "paid";
+  if (status === "processing" || status === "partial") return "processing";
+  return "unpaid";
+}
 
 const emptyBill = (lastReading = ""): BillForm => ({
   period_from: "",
@@ -78,6 +93,7 @@ const emptyBill = (lastReading = ""): BillForm => ({
   rate_inclusive_govt: "",
   amount_received: "",
   payment_date: todayIso(),
+  payment_status: "unpaid",
   notes: "",
 });
 
@@ -93,6 +109,7 @@ function toBillForm(log: TenantElectricBill): BillForm {
     amount_received:
       log.amount_received == null ? "" : String(log.amount_received),
     payment_date: log.payment_date ?? "",
+    payment_status: toDropdownStatus(log.payment_status),
     notes: log.notes ?? "",
   };
 }
@@ -113,6 +130,7 @@ function toBillPayload(form: BillForm, tenantId: string) {
     rate_inclusive_govt: parseOptionalNumber(form.rate_inclusive_govt),
     amount_received: parseOptionalNumber(form.amount_received),
     payment_date: form.payment_date || null,
+    payment_status: form.payment_status,
     notes: form.notes,
   };
 }
@@ -499,7 +517,7 @@ export function TenantElectricityPanel({
                                 size="sm"
                                 onClick={() => openEdit(bill)}
                               >
-                                Edit
+                                Record payment
                               </Button>
                               <ConfirmDeleteButton
                                 onConfirm={() => remove(bill.id)}
@@ -528,7 +546,7 @@ export function TenantElectricityPanel({
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Edit electricity bill" : "Log electricity bill"}
+              {editing ? "Record payment" : "Log electricity bill"}
               {tenant ? ` — ${tenant.tenant_name}` : ""}
             </DialogTitle>
           </DialogHeader>
@@ -651,15 +669,27 @@ export function TenantElectricityPanel({
               />
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
-              <div
+              <Label htmlFor="electric-bill-status">Status</Label>
+              <select
+                id="electric-bill-status"
                 className={cn(
-                  "flex h-10 items-center rounded-lg border px-3 text-sm",
-                  paymentStatusBadgeClass(derived.payment.payment_status),
+                  "flex h-10 w-full rounded-lg border px-3 text-sm",
+                  paymentStatusBadgeClass(form.payment_status),
                 )}
+                value={form.payment_status}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    payment_status: e.target.value as ElectricBillStatus,
+                  }))
+                }
               >
-                {TENANT_PAYMENT_STATUS_LABELS[derived.payment.payment_status]}
-              </div>
+                {ELECTRIC_BILL_PAYMENT_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {TENANT_PAYMENT_STATUS_LABELS[status]}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label>Bill attachment (optional)</Label>

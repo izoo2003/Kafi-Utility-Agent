@@ -518,7 +518,7 @@ export function TenantForm({
         removing={removingAgreement}
       />
 
-      {editing && paymentCount > 0 ? (
+      {editing ? (
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -527,10 +527,10 @@ export function TenantForm({
             onChange={(e) => setRegenerate(e.target.checked)}
           />
           <span>
-            Rebuild the monthly ledger from these dates and rent terms. This
-            tenant already has {paymentCount} payment
-            {paymentCount === 1 ? "" : "s"}; months that drop off the contract
-            will lose those payments.
+            Rebuild the monthly ledger from these dates and rent terms.
+            {paymentCount > 0
+              ? ` This tenant already has ${paymentCount} payment${paymentCount === 1 ? "" : "s"}; months that drop off the contract will lose those payments.`
+              : " Existing monthly rows will be regenerated to match the dates."}
           </span>
         </label>
       ) : null}
