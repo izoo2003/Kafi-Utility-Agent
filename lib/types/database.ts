@@ -391,6 +391,7 @@ export type TenantContractExtension = AuditColumns & {
   extension_till: IsoDate;
   changes: TenantContractExtensionChange[];
   notes: string | null;
+  previous_contract_end_date: IsoDate | null;
 };
 
 export type AlertNotificationChannel = "email" | "console";

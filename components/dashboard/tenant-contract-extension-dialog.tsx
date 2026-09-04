@@ -2,7 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Tenant, TenantRateType, TenantRentLineItem } from "@/lib/types/database";
+import type {
+  Tenant,
+  TenantContractExtension,
+  TenantRateType,
+  TenantRentLineItem,
+} from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { computeGrossRent } from "@/lib/tenants/ledger";
 import { addDaysIso } from "@/lib/tenants/schedule";
@@ -24,36 +29,77 @@ function numOrNull(value: string) {
   return value === "" ? null : Number(value);
 }
 
+function findChange(extension: TenantContractExtension, field: string) {
+  return extension.changes.find((change) => change.field === field);
+}
+
 export function TenantContractExtensionDialog({
   tenant,
   lineItems,
+  extension,
+  trigger,
 }: {
   tenant: Tenant;
   lineItems: TenantRentLineItem[];
+  /** When set, the dialog edits this extension instead of creating a new one. */
+  extension?: TenantContractExtension;
+  /** Custom trigger renderer; defaults to a "Contract extension" button. */
+  trigger?: (openDialog: () => void) => React.ReactNode;
 }) {
   const router = useRouter();
+  const editing = extension ?? null;
+
+  const rentChange = editing ? findChange(editing, "rate_type") : undefined;
+  const sqftChange = editing ? findChange(editing, "sqft") : undefined;
+  const rateChange = editing ? findChange(editing, "rate") : undefined;
+  const grossChange = editing ? findChange(editing, "gross_rent") : undefined;
+  const lineItemsChange = editing ? findChange(editing, "line_items") : undefined;
+  const rentTermsInitiallyChecked = Boolean(
+    rentChange || sqftChange || rateChange || grossChange,
+  );
+
   const [open, setOpen] = useState(false);
   const [extensionFrom, setExtensionFrom] = useState(() =>
-    tenant.contract_end_date ? addDaysIso(tenant.contract_end_date, 1) : "",
+    editing
+      ? editing.extension_from
+      : tenant.contract_end_date
+        ? addDaysIso(tenant.contract_end_date, 1)
+        : "",
   );
-  const [extensionTill, setExtensionTill] = useState("");
-
-  const [rentTermsChecked, setRentTermsChecked] = useState(false);
-  const [rateType, setRateType] = useState<TenantRateType>(
-    tenant.rate_type === "lum_sum" ? "lum_sum" : "per_sqft",
-  );
-  const [sqft, setSqft] = useState(tenant.sqft == null ? "" : String(tenant.sqft));
-  const [rate, setRate] = useState(tenant.rate == null ? "" : String(tenant.rate));
-  const [grossRent, setGrossRent] = useState(
-    tenant.gross_rent == null ? "" : String(tenant.gross_rent),
+  const [extensionTill, setExtensionTill] = useState(
+    editing ? editing.extension_till : "",
   );
 
-  const [chargesChecked, setChargesChecked] = useState(false);
-  const [charges, setCharges] = useState<LineForm[]>(() =>
-    lineItems.map((item) => ({ label: item.label, amount: String(item.amount ?? "") })),
-  );
+  const [rentTermsChecked, setRentTermsChecked] = useState(rentTermsInitiallyChecked);
+  const [rateType, setRateType] = useState<TenantRateType>(() => {
+    const v = rentChange ? (rentChange.new_value as TenantRateType) : tenant.rate_type;
+    return v === "lum_sum" ? "lum_sum" : "per_sqft";
+  });
+  const [sqft, setSqft] = useState(() => {
+    const v = sqftChange ? sqftChange.new_value : tenant.sqft;
+    return v == null ? "" : String(v);
+  });
+  const [rate, setRate] = useState(() => {
+    const v = rateChange ? rateChange.new_value : tenant.rate;
+    return v == null ? "" : String(v);
+  });
+  const [grossRent, setGrossRent] = useState(() => {
+    const v = grossChange ? grossChange.new_value : tenant.gross_rent;
+    return v == null ? "" : String(v);
+  });
 
-  const [notes, setNotes] = useState("");
+  const [chargesChecked, setChargesChecked] = useState(Boolean(lineItemsChange));
+  const [charges, setCharges] = useState<LineForm[]>(() => {
+    const source = lineItemsChange
+      ? (lineItemsChange.new_value as Array<{ label: string; amount: number }>)
+      : lineItems;
+    return source.map((item) => ({
+      label: item.label,
+      amount: String(item.amount ?? ""),
+    }));
+  });
+
+  const [notes, setNotes] = useState(editing?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -70,19 +116,41 @@ export function TenantContractExtensionDialog({
 
   function reset() {
     setExtensionFrom(
-      tenant.contract_end_date ? addDaysIso(tenant.contract_end_date, 1) : "",
+      editing
+        ? editing.extension_from
+        : tenant.contract_end_date
+          ? addDaysIso(tenant.contract_end_date, 1)
+          : "",
     );
-    setExtensionTill("");
-    setRentTermsChecked(false);
-    setRateType(tenant.rate_type === "lum_sum" ? "lum_sum" : "per_sqft");
-    setSqft(tenant.sqft == null ? "" : String(tenant.sqft));
-    setRate(tenant.rate == null ? "" : String(tenant.rate));
-    setGrossRent(tenant.gross_rent == null ? "" : String(tenant.gross_rent));
-    setChargesChecked(false);
-    setCharges(
-      lineItems.map((item) => ({ label: item.label, amount: String(item.amount ?? "") })),
-    );
-    setNotes("");
+    setExtensionTill(editing ? editing.extension_till : "");
+    setRentTermsChecked(rentTermsInitiallyChecked);
+    setRateType(() => {
+      const v = rentChange ? (rentChange.new_value as TenantRateType) : tenant.rate_type;
+      return v === "lum_sum" ? "lum_sum" : "per_sqft";
+    });
+    setSqft(() => {
+      const v = sqftChange ? sqftChange.new_value : tenant.sqft;
+      return v == null ? "" : String(v);
+    });
+    setRate(() => {
+      const v = rateChange ? rateChange.new_value : tenant.rate;
+      return v == null ? "" : String(v);
+    });
+    setGrossRent(() => {
+      const v = grossChange ? grossChange.new_value : tenant.gross_rent;
+      return v == null ? "" : String(v);
+    });
+    setChargesChecked(Boolean(lineItemsChange));
+    setCharges(() => {
+      const source = lineItemsChange
+        ? (lineItemsChange.new_value as Array<{ label: string; amount: number }>)
+        : lineItems;
+      return source.map((item) => ({
+        label: item.label,
+        amount: String(item.amount ?? ""),
+      }));
+    });
+    setNotes(editing?.notes ?? "");
     setError(null);
   }
 
@@ -123,8 +191,11 @@ export function TenantContractExtensionDialog({
             }
           : {}),
       };
-      await apiFetch(`/api/tenants/${tenant.id}/contract-extension`, {
-        method: "POST",
+      const url = editing
+        ? `/api/tenants/${tenant.id}/contract-extension/${editing.id}`
+        : `/api/tenants/${tenant.id}/contract-extension`;
+      await apiFetch(url, {
+        method: editing ? "PATCH" : "POST",
         body: JSON.stringify(payload),
       });
       setOpen(false);
@@ -137,23 +208,28 @@ export function TenantContractExtensionDialog({
     }
   }
 
+  function openDialog() {
+    reset();
+    setOpen(true);
+  }
+
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => {
-          reset();
-          setOpen(true);
-        }}
-      >
-        Contract extension
-      </Button>
+      {trigger ? (
+        trigger(openDialog)
+      ) : (
+        <Button variant="outline" size="sm" onClick={openDialog}>
+          Contract extension
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Contract extension — {tenant.tenant_name}</DialogTitle>
+            <DialogTitle>
+              {editing ? "Edit contract extension" : "Contract extension"} —{" "}
+              {tenant.tenant_name}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -330,7 +406,7 @@ export function TenantContractExtensionDialog({
               Cancel
             </Button>
             <Button onClick={() => void save()} disabled={saving}>
-              {saving ? "Saving…" : "Save extension"}
+              {saving ? "Saving…" : editing ? "Save changes" : "Save extension"}
             </Button>
           </DialogFooter>
         </DialogContent>

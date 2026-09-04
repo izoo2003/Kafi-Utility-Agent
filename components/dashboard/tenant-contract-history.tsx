@@ -7,7 +7,7 @@ const FIELD_LABELS: Record<string, string> = {
   lum_sum: "Lum sum",
 };
 
-function formatChangeValue(field: string, value: unknown) {
+export function formatChangeValue(field: string, value: unknown) {
   if (value == null) return "—";
   if (field === "line_items") {
     const items = value as Array<{ label: string; amount: number }>;

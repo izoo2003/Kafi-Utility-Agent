@@ -5,6 +5,7 @@ import type {
   Tenant,
   TenantContractExtension,
   TenantElectricBill,
+  TenantRentLineItem,
 } from "@/lib/types/database";
 import type { LedgerRow } from "@/lib/tenants/ledger";
 import { TenantRentLedger } from "@/components/dashboard/tenant-rent-ledger";
@@ -17,11 +18,13 @@ export function TenantDetailTabs({
   schedule,
   bills,
   extensions,
+  lineItems,
 }: {
   tenant: Tenant;
   schedule: LedgerRow[];
   bills: TenantElectricBill[];
   extensions: TenantContractExtension[];
+  lineItems: TenantRentLineItem[];
 }) {
   const [tab, setTab] = useState<"rent" | "electricity" | "history">("rent");
 
@@ -66,7 +69,13 @@ export function TenantDetailTabs({
         </button>
       </div>
       {tab === "rent" ? (
-        <TenantRentLedger tenantId={tenant.id} rows={schedule} />
+        <TenantRentLedger
+          tenantId={tenant.id}
+          tenant={tenant}
+          rows={schedule}
+          extensions={extensions}
+          lineItems={lineItems}
+        />
       ) : tab === "electricity" ? (
         <TenantElectricityPanel
           initialTenants={[tenant]}

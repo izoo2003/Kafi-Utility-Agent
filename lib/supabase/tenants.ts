@@ -624,11 +624,159 @@ export async function createContractExtension(
       changes,
       notes: input.notes ?? null,
       updated_by: input.updated_by ?? null,
+      previous_contract_end_date: tenant.data.contract_end_date,
     })
     .select("*")
     .single<TenantContractExtension>();
   if (error) return writeErr(error.message);
   return writeOk(data, "created");
+}
+
+export async function getContractExtension(
+  supabase: SupabaseClient,
+  id: string,
+) {
+  const { data, error } = await supabase
+    .from(CONTRACT_EXTENSIONS)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  return { data: (data as TenantContractExtension | null) ?? null, error };
+}
+
+/**
+ * Undoes a contract extension: deletes the schedule rows it appended,
+ * restores the tenant's terms to their pre-extension values, and removes
+ * the log entry. Only permitted on the tenant's most recent extension, and
+ * blocked if any of its months already have a payment recorded.
+ */
+async function revertContractExtension(
+  supabase: SupabaseClient,
+  tenantId: string,
+  extension: TenantContractExtension,
+  updatedBy?: string | null,
+): Promise<{ error: { message: string } | null }> {
+  const tenant = await getTenant(supabase, tenantId);
+  if (tenant.error) return { error: { message: tenant.error.message } };
+  if (!tenant.data) return { error: { message: "Tenant not found" } };
+  if (tenant.data.contract_end_date !== extension.extension_till) {
+    return {
+      error: {
+        message:
+          "Only the most recent contract extension can be edited or deleted.",
+      },
+    };
+  }
+  if (!extension.previous_contract_end_date) {
+    return {
+      error: {
+        message:
+          "This extension predates change tracking and cannot be safely reverted.",
+      },
+    };
+  }
+
+  const { data: rows, error: rowsErr } = await supabase
+    .from(SCHEDULE)
+    .select("id")
+    .eq("tenant_id", tenantId)
+    .gte("period_start", extension.extension_from)
+    .lte("period_start", extension.extension_till);
+  if (rowsErr) return { error: { message: rowsErr.message } };
+  const rowIds = (rows ?? []).map((row) => row.id as string);
+  if (rowIds.length > 0) {
+    const payments = await listTenantRentPayments(supabase, rowIds);
+    if (payments.error) return { error: { message: payments.error.message } };
+    if ((payments.data ?? []).length > 0) {
+      return {
+        error: {
+          message:
+            "This extension's months already have payments recorded. Remove those payments before editing or deleting the extension.",
+        },
+      };
+    }
+  }
+
+  const tenantPatch: Partial<TenantUpdate> = {
+    contract_end_date: extension.previous_contract_end_date,
+    updated_by: updatedBy ?? null,
+  };
+  for (const change of extension.changes) {
+    if (change.field === "line_items") continue;
+    (tenantPatch as Record<string, unknown>)[change.field] = change.old_value;
+  }
+
+  const lineItemsChange = extension.changes.find(
+    (change) => change.field === "line_items",
+  );
+  if (lineItemsChange) {
+    const oldItems =
+      (lineItemsChange.old_value as TenantLineItemInput[] | null) ?? [];
+    const replaced = await replaceLineItems(
+      supabase,
+      tenantId,
+      oldItems,
+      updatedBy ?? null,
+    );
+    if (replaced.error) return { error: { message: replaced.error.message } };
+  }
+
+  if (rowIds.length > 0) {
+    const { error: delRowsErr } = await supabase
+      .from(SCHEDULE)
+      .delete()
+      .in("id", rowIds);
+    if (delRowsErr) return { error: { message: delRowsErr.message } };
+  }
+
+  const { error: tenantUpdateErr } = await supabase
+    .from(TENANTS)
+    .update(tenantPatch)
+    .eq("id", tenantId);
+  if (tenantUpdateErr) return { error: { message: tenantUpdateErr.message } };
+
+  const { error: deleteExtErr } = await supabase
+    .from(CONTRACT_EXTENSIONS)
+    .delete()
+    .eq("id", extension.id);
+  if (deleteExtErr) return { error: { message: deleteExtErr.message } };
+
+  return { error: null };
+}
+
+export async function deleteContractExtension(
+  supabase: SupabaseClient,
+  tenantId: string,
+  extensionId: string,
+  updatedBy?: string | null,
+): Promise<{ error: { message: string } | null }> {
+  const existing = await getContractExtension(supabase, extensionId);
+  if (existing.error) return { error: { message: existing.error.message } };
+  if (!existing.data || existing.data.tenant_id !== tenantId) {
+    return { error: { message: "Contract extension not found" } };
+  }
+  return revertContractExtension(supabase, tenantId, existing.data, updatedBy);
+}
+
+export async function updateContractExtension(
+  supabase: SupabaseClient,
+  tenantId: string,
+  extensionId: string,
+  input: TenantContractExtensionInput,
+): Promise<DomainWriteResult<TenantContractExtension>> {
+  const existing = await getContractExtension(supabase, extensionId);
+  if (existing.error) return writeErr(existing.error.message);
+  if (!existing.data || existing.data.tenant_id !== tenantId) {
+    return writeErr("Contract extension not found");
+  }
+  const reverted = await revertContractExtension(
+    supabase,
+    tenantId,
+    existing.data,
+    input.updated_by,
+  );
+  if (reverted.error) return writeErr(reverted.error.message);
+  return createContractExtension(supabase, tenantId, input);
 }
 
 export async function createTenant(

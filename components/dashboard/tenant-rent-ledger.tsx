@@ -1,17 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { TenantRentPayment } from "@/lib/types/database";
+import type {
+  Tenant,
+  TenantContractExtension,
+  TenantRentLineItem,
+  TenantRentPayment,
+} from "@/lib/types/database";
 import type { LedgerRow } from "@/lib/tenants/ledger";
 import { paymentRefLabel } from "@/lib/tenants/ledger";
 import { formatMoney } from "@/lib/tenants/payment-status";
+import { formatDate } from "@/lib/format/datetime";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import {
   openTenantDocument,
   uploadRentPaymentReceipt,
 } from "@/lib/dashboard/tenant-documents";
 import { TableShell } from "@/components/dashboard/table-shell";
+import { TenantContractExtensionDialog } from "@/components/dashboard/tenant-contract-extension-dialog";
+import { formatChangeValue } from "@/components/dashboard/tenant-contract-history";
+import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,12 +67,36 @@ function rateCell(row: LedgerRow) {
 
 export function TenantRentLedger({
   tenantId,
+  tenant,
   rows,
+  extensions,
+  lineItems,
 }: {
   tenantId: string;
+  tenant: Tenant;
   rows: LedgerRow[];
+  extensions: TenantContractExtension[];
+  lineItems: TenantRentLineItem[];
 }) {
   const router = useRouter();
+  const extensionByPeriodStart = useMemo(() => {
+    const map = new Map<string, TenantContractExtension>();
+    for (const ext of extensions) map.set(ext.extension_from, ext);
+    return map;
+  }, [extensions]);
+  const latestExtensionId = useMemo(() => {
+    const latest = extensions.find(
+      (ext) => ext.extension_till === tenant.contract_end_date,
+    );
+    return latest?.id ?? null;
+  }, [extensions, tenant.contract_end_date]);
+
+  async function removeExtension(ext: TenantContractExtension) {
+    await apiFetch(`/api/tenants/${tenantId}/contract-extension/${ext.id}`, {
+      method: "DELETE",
+    });
+    router.refresh();
+  }
   const extraLabels = useMemo(() => {
     const labels: string[] = [];
     for (const row of rows) {
@@ -184,7 +217,63 @@ export function TenantRentLedger({
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row) => (
+              rows.map((row) => {
+                const ext = extensionByPeriodStart.get(row.period_start);
+                const isLatestExt = ext != null && ext.id === latestExtensionId;
+                return (
+                <Fragment key={row.id}>
+                  {ext ? (
+                    <TableRow
+                      key={`ext-${ext.id}`}
+                      className="bg-[oklch(0.97_0.03_195)]"
+                    >
+                      <TableCell colSpan={colCount} className="max-w-none py-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs">
+                            <span className="font-medium">
+                              Extension started {formatDate(ext.extension_from)}
+                              {" – "}
+                              {formatDate(ext.extension_till)}
+                            </span>
+                            {ext.changes.length > 0 ? (
+                              <span className="text-muted-foreground">
+                                {" · "}
+                                {ext.changes
+                                  .map(
+                                    (c) =>
+                                      `${c.label}: ${formatChangeValue(c.field, c.old_value)} → ${formatChangeValue(c.field, c.new_value)}`,
+                                  )
+                                  .join("; ")}
+                              </span>
+                            ) : null}
+                          </div>
+                          {isLatestExt ? (
+                            <div className="flex shrink-0 gap-1">
+                              <TenantContractExtensionDialog
+                                tenant={tenant}
+                                lineItems={lineItems}
+                                extension={ext}
+                                trigger={(openDialog) => (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={openDialog}
+                                  >
+                                    Edit
+                                  </Button>
+                                )}
+                              />
+                              <ConfirmDeleteButton
+                                title="Delete this contract extension?"
+                                description="Removes the months it added and reverts the contract terms it changed. Only possible while none of those months have a payment recorded."
+                                onConfirm={() => removeExtension(ext)}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
                 <TableRow key={row.id}>
                   <TableCell>{row.serial_no}</TableCell>
                   <TableCell>{row.month_label}</TableCell>
@@ -242,7 +331,9 @@ export function TenantRentLedger({
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+                </Fragment>
+                );
+              })
             )}
             {rows.length > 0 ? (
               <TableRow className="font-medium">
