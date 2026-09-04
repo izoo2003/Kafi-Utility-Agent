@@ -365,7 +365,7 @@ export function TenantRentLedger({
                             size="sm"
                             onClick={() => openEditPayment(row, payment)}
                           >
-                            Record payment
+                            Edit
                           </Button>
                           <ConfirmDeleteButton
                             label="Delete"
@@ -405,7 +405,7 @@ export function TenantRentLedger({
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              Record payment
+              {editingPayment ? "Edit payment" : "Record payment"}
               {target ? ` — ${target.month_label}` : ""}
             </DialogTitle>
           </DialogHeader>
