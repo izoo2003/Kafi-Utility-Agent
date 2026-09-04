@@ -131,8 +131,6 @@ export function TenantRentLedger({
 
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<LedgerRow | null>(null);
-  const [editingPayment, setEditingPayment] =
-    useState<TenantRentPayment | null>(null);
   const [form, setForm] = useState<PayForm>(emptyPay);
   const [receipt, setReceipt] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -140,27 +138,9 @@ export function TenantRentLedger({
 
   function openPay(row: LedgerRow) {
     setTarget(row);
-    setEditingPayment(null);
     setForm({
       ...emptyPay(),
       amount_received: String(Math.max(row.balance, 0) || row.total_due || ""),
-    });
-    setReceipt(null);
-    setError(null);
-    setOpen(true);
-  }
-
-  function openEditPayment(row: LedgerRow, payment: TenantRentPayment) {
-    setTarget(row);
-    setEditingPayment(payment);
-    setForm({
-      amount_received: String(payment.amount_received ?? ""),
-      payer_bank_name: payment.payer_bank_name ?? "",
-      payer_bank_account: payment.payer_bank_account ?? "",
-      payee_bank_name: payment.payee_bank_name ?? "",
-      payee_bank_account: payment.payee_bank_account ?? "",
-      cheque_no: payment.cheque_no ?? "",
-      payment_reference: payment.payment_reference ?? "",
     });
     setReceipt(null);
     setError(null);
@@ -191,20 +171,14 @@ export function TenantRentLedger({
           form.payment_reference.trim() ||
           (cheque ? `CH # ${cheque}` : null),
       };
-      const payment = editingPayment
-        ? await apiFetch<TenantRentPayment>(
-            `/api/tenants/payments/${editingPayment.id}`,
-            { method: "PATCH", body: JSON.stringify(body) },
-          )
-        : await apiFetch<TenantRentPayment>(
-            `/api/tenants/${tenantId}/schedule/${target.id}/payments`,
-            { method: "POST", body: JSON.stringify(body) },
-          );
+      const payment = await apiFetch<TenantRentPayment>(
+        `/api/tenants/${tenantId}/schedule/${target.id}/payments`,
+        { method: "POST", body: JSON.stringify(body) },
+      );
       if (receipt) {
         await uploadRentPaymentReceipt(payment.id, receipt);
       }
       setOpen(false);
-      setEditingPayment(null);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -360,13 +334,6 @@ export function TenantRentLedger({
                               Receipt
                             </Button>
                           ) : null}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditPayment(row, payment)}
-                          >
-                            Edit
-                          </Button>
                           <ConfirmDeleteButton
                             label="Delete"
                             title="Delete this payment?"
@@ -405,7 +372,7 @@ export function TenantRentLedger({
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {editingPayment ? "Edit payment" : "Record payment"}
+              Record payment
               {target ? ` — ${target.month_label}` : ""}
             </DialogTitle>
           </DialogHeader>
@@ -496,11 +463,7 @@ export function TenantRentLedger({
               Cancel
             </Button>
             <Button onClick={() => void savePayment()} disabled={saving}>
-              {saving
-                ? "Saving…"
-                : editingPayment
-                  ? "Save changes"
-                  : "Save payment"}
+              {saving ? "Saving…" : "Save payment"}
             </Button>
           </DialogFooter>
         </DialogContent>
