@@ -243,7 +243,9 @@ export function TenantRentLedger({
                 </>
               ) : null}
               <TableHead className="w-28">Cheque / ref</TableHead>
-              <TableHead className="w-44 text-right">Actions</TableHead>
+              <TableHead className="w-44 text-right print:hidden" data-print="actions">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

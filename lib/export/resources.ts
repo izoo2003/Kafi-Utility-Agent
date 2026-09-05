@@ -25,6 +25,10 @@ import {
 } from "@/lib/supabase/tenants";
 import { listTenantBrokers } from "@/lib/supabase/tenant-brokers";
 import type { TenantBrokerListRow } from "@/lib/supabase/tenant-brokers";
+import {
+  breakdownFromStored,
+  stayLabel,
+} from "@/lib/tenants/broker-commission";
 import { listChartOfAccountsEntries } from "@/lib/supabase/chart-of-accounts";
 import { solarSiteDisplayLabel } from "@/lib/sems/sites";
 import type {
@@ -80,6 +84,7 @@ type ExportBundle = {
   filename: string;
   columns: CsvColumn<Record<string, unknown>>[];
   rows: Record<string, unknown>[];
+  layout?: "table" | "broker-slips";
 };
 
 function asRows<T extends object>(data: T[] | null): Record<string, unknown>[] {
@@ -577,6 +582,7 @@ export async function loadExportBundle(
       return {
         title: "Brokers",
         filename: "tenant-brokers",
+        layout: "broker-slips",
         columns: cols<TenantBrokerListRow>([
           { key: "broker_name", header: "Broker", value: (r) => r.broker_name },
           { key: "tenant_name", header: "Tenant", value: (r) => r.tenant_name },
@@ -584,11 +590,32 @@ export async function loadExportBundle(
           { key: "sqft", header: "Sqft", value: (r) => r.sqft },
           { key: "rate", header: "Rate", value: (r) => r.rate },
           { key: "monthly_rent", header: "Monthly rent", value: (r) => r.monthly_rent },
-          { key: "stay_months", header: "Stay months", value: (r) => r.stay_months },
-          { key: "stay_days", header: "Stay days", value: (r) => r.stay_days },
+          {
+            key: "stay",
+            header: "Stay",
+            value: (r) => stayLabel(breakdownFromStored(r)),
+          },
+          {
+            key: "contract",
+            header: "Contract",
+            value: (r) =>
+              r.contract_start_date && r.contract_end_date
+                ? `${r.contract_start_date} – ${r.contract_end_date}`
+                : "",
+          },
+          {
+            key: "month_commission",
+            header: "For months",
+            value: (r) => breakdownFromStored(r).month_commission,
+          },
+          {
+            key: "day_commission",
+            header: "For leftover days",
+            value: (r) => breakdownFromStored(r).day_commission,
+          },
           {
             key: "commission_amount",
-            header: "Commission",
+            header: "Total commission",
             value: (r) => r.commission_amount,
           },
           { key: "notes", header: "Notes", value: (r) => r.notes },

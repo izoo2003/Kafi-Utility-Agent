@@ -14,7 +14,7 @@ export function TableShell({
         className,
       )}
     >
-      <p className="border-b border-[oklch(0.92_0.015_220)] px-3 py-1.5 text-[11px] text-muted-foreground sm:hidden">
+      <p className="border-b border-[oklch(0.92_0.015_220)] px-3 py-1.5 text-[11px] text-muted-foreground print:hidden sm:hidden">
         Swipe sideways to see all columns
       </p>
       {children}
@@ -24,7 +24,10 @@ export function TableShell({
 
 export function TableActions({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1.5">
+    <div
+      data-slot="table-actions"
+      className="flex flex-wrap items-center justify-end gap-1.5 print:hidden"
+    >
       {children}
     </div>
   );

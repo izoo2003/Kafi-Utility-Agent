@@ -14,6 +14,7 @@ import {
   monthlyRentForBroker,
   stayLabel,
 } from "@/lib/tenants/broker-commission";
+import { BrokerCommissionDetail } from "@/components/dashboard/broker-commission-detail";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ExportButtons } from "@/components/dashboard/export-buttons";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
@@ -196,7 +197,7 @@ export function TenantBrokersPanel({
       ) : null}
 
       <TableShell>
-        <Table style={{ minWidth: "64rem" }}>
+        <Table className="print:min-w-0" style={{ minWidth: "64rem" }}>
           <TableHeader>
             <TableRow>
               <TableHead>Broker</TableHead>
@@ -205,7 +206,9 @@ export function TenantBrokersPanel({
               <TableHead>Rate</TableHead>
               <TableHead>Stay</TableHead>
               <TableHead>Commission</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right print:hidden" data-print="actions">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -267,6 +270,14 @@ export function TenantBrokersPanel({
                   </TableCell>
                   <TableCell className="max-w-none">
                     <TableActions>
+                      <a
+                        href={`/dashboard/export/tenant-brokers?print=1&id=${row.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+                      >
+                        Print
+                      </a>
                       <Button
                         variant="outline"
                         size="sm"
@@ -372,56 +383,19 @@ export function TenantBrokersPanel({
           </div>
 
           {preview && selected ? (
-            <div className="rounded-lg border border-[oklch(0.88_0.02_290)] bg-[oklch(0.99_0.01_290)] px-3 py-3 text-sm">
-              <p className="font-medium">
-                Commission — {selected.survey_no ? `Survey ${selected.survey_no}` : selected.tenant_name}
-              </p>
-              <dl className="mt-2 grid gap-1.5">
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Monthly rent</dt>
-                  <dd className="tabular-nums">
-                    {form.sqft && form.rate
-                      ? `${form.sqft} × ${form.rate} = ${formatMoney(preview.monthly_rent)}`
-                      : formatMoney(preview.monthly_rent)}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Stay</dt>
-                  <dd>
-                    {stayLabel(preview)}
-                    {selected.contract_start_date && selected.contract_end_date
-                      ? ` (${formatDate(selected.contract_start_date)} – ${formatDate(selected.contract_end_date)})`
-                      : ""}
-                  </dd>
-                </div>
-                {preview.full_months > 0 ? (
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">
-                      For {preview.full_months} month
-                      {preview.full_months === 1 ? "" : "s"}
-                    </dt>
-                    <dd className="tabular-nums">
-                      {formatMoney(preview.month_commission)}
-                    </dd>
-                  </div>
-                ) : null}
-                {preview.leftover_days > 0 ? (
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-muted-foreground">
-                      Day {preview.leftover_days}
-                    </dt>
-                    <dd className="tabular-nums">
-                      {formatMoney(preview.day_commission)}
-                    </dd>
-                  </div>
-                ) : null}
-                <div className="flex justify-between gap-4 border-t border-[oklch(0.9_0.02_290)] pt-1.5 font-medium">
-                  <dt>Total commission</dt>
-                  <dd className="tabular-nums">
-                    {formatMoney(preview.commission_amount)}
-                  </dd>
-                </div>
-              </dl>
+            <div className="rounded-lg border border-[oklch(0.88_0.02_290)] bg-[oklch(0.99_0.01_290)] px-3 py-3">
+              <BrokerCommissionDetail
+                title={
+                  selected.survey_no
+                    ? `Commission — Survey ${selected.survey_no}`
+                    : `Commission — ${selected.tenant_name}`
+                }
+                sqft={numOrNull(form.sqft)}
+                rate={numOrNull(form.rate)}
+                contractStart={selected.contract_start_date}
+                contractEnd={selected.contract_end_date}
+                breakdown={preview}
+              />
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">

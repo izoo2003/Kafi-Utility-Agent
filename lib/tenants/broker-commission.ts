@@ -109,3 +109,36 @@ export function stayLabel(stay: BrokerOccupancyStay) {
   }
   return parts.length ? parts.join(" + ") : "No contract dates";
 }
+
+/** Rebuild the edit-dialog breakdown from a saved broker row. */
+export function breakdownFromStored(row: {
+  monthly_rent: number | null | undefined;
+  stay_months: number | null | undefined;
+  stay_days: number | null | undefined;
+  stay_factor?: number | null;
+  commission_amount?: number | null;
+}): BrokerCommissionBreakdown {
+  const monthly_rent = money(Math.max(0, Number(row.monthly_rent) || 0));
+  const full_months = Math.max(0, Number(row.stay_months) || 0);
+  const leftover_days = Math.max(0, Number(row.stay_days) || 0);
+  const stay_factor = money(
+    row.stay_factor != null
+      ? Number(row.stay_factor)
+      : full_months + leftover_days / 30,
+  );
+  const commission_per_month = money(monthly_rent / 12);
+  return {
+    full_months,
+    leftover_days,
+    stay_factor,
+    monthly_rent,
+    commission_per_month,
+    month_commission: money(commission_per_month * full_months),
+    day_commission: money(commission_per_month * (leftover_days / 30)),
+    commission_amount: money(
+      row.commission_amount != null
+        ? Number(row.commission_amount)
+        : commission_per_month * stay_factor,
+    ),
+  };
+}

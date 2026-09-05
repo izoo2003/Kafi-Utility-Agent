@@ -125,7 +125,7 @@ export function TenantListPanel({
       </div>
 
       <TableShell>
-        <Table style={{ minWidth: "76rem" }}>
+        <Table className="print:min-w-0" style={{ minWidth: "76rem" }}>
           <TableHeader>
             <TableRow>
               <TableHead className="w-52">Tenant</TableHead>
@@ -137,7 +137,9 @@ export function TenantListPanel({
               <TableHead className="w-32">Electricity due</TableHead>
               <TableHead className="w-32">Other charges</TableHead>
               <TableHead className="w-40">Status</TableHead>
-              <TableHead className="w-40 text-right">Actions</TableHead>
+              <TableHead className="w-40 text-right print:hidden" data-print="actions">
+                Actions
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

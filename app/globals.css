@@ -144,3 +144,63 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: white !important;
+    background-image: none !important;
+    color: #111 !important;
+  }
+
+  .dashboard-page-enter {
+    animation: none !important;
+  }
+
+  [data-slot="table-container"],
+  .overflow-x-auto,
+  .overflow-hidden,
+  .overflow-x-hidden {
+    overflow: visible !important;
+    max-width: none !important;
+  }
+
+  table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: auto !important;
+    font-size: 9.5pt;
+  }
+
+  th,
+  td {
+    max-width: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    padding: 5px 6px !important;
+  }
+
+  .truncate {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  td:has([data-slot="table-actions"]),
+  th[data-print="actions"] {
+    display: none !important;
+  }
+
+  .broker-print-slip {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

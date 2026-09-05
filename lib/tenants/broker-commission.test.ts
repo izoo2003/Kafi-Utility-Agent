@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  breakdownFromStored,
   computeBrokerCommission,
   monthlyRentForBroker,
   occupancyStay,
@@ -43,5 +44,22 @@ describe("computeBrokerCommission", () => {
 
   it("uses sqft × rate as the monthly rent", () => {
     assert.equal(monthlyRentForBroker({ sqft: 24_000, rate: 25 }), 600_000);
+  });
+});
+
+describe("breakdownFromStored", () => {
+  it("rebuilds For months / Day leftover / Total from a saved slip", () => {
+    const c = breakdownFromStored({
+      monthly_rent: 600_000,
+      stay_months: 4,
+      stay_days: 15,
+      stay_factor: 4.5,
+      commission_amount: 225_000,
+    });
+    assert.equal(c.commission_per_month, 50_000);
+    assert.equal(c.month_commission, 200_000);
+    assert.equal(c.day_commission, 25_000);
+    assert.equal(c.commission_amount, 225_000);
+    assert.equal(stayLabel(c), "4 months + 15 days");
   });
 });

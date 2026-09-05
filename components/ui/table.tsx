@@ -13,7 +13,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       <table
         data-slot="table"
         className={cn(
-          "w-full min-w-[36rem] table-fixed caption-bottom border-collapse text-sm sm:min-w-[40rem]",
+          "w-full min-w-[36rem] table-fixed caption-bottom border-collapse text-sm sm:min-w-[40rem] print:min-w-0 print:table-auto",
           className,
         )}
         {...props}
@@ -86,7 +86,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "max-w-0 px-3 py-3 align-middle text-[0.95rem] leading-snug break-words [&:has([role=checkbox])]:pr-0",
+        "max-w-0 px-3 py-3 align-middle text-[0.95rem] leading-snug break-words print:max-w-none [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
