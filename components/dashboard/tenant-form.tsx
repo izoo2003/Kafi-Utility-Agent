@@ -8,6 +8,7 @@ import type {
   TenantClassification,
   TenantRateType,
   TenantRentLineItem,
+  WithholdingTaxSlab,
 } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { DocumentFileField } from "@/components/dashboard/document-file-field";
@@ -15,8 +16,12 @@ import {
   openTenantDocument,
   uploadTenantAgreement,
 } from "@/lib/dashboard/tenant-documents";
-import { computeGrossRent } from "@/lib/tenants/ledger";
-import { TENANT_CLASSIFICATION_LABELS } from "@/lib/tenants/withholding-tax";
+import { computeGrossRent, monthlyTotal } from "@/lib/tenants/ledger";
+import {
+  TENANT_CLASSIFICATION_LABELS,
+  withholdingForTenant,
+} from "@/lib/tenants/withholding-tax";
+import { formatMoney } from "@/lib/tenants/payment-status";
 import { countCalendarMonths } from "@/lib/tenants/schedule";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -99,10 +104,12 @@ export function TenantForm({
   tenant,
   lineItems = [],
   paymentCount = 0,
+  slabs = [],
 }: {
   tenant?: Tenant | null;
   lineItems?: TenantRentLineItem[];
   paymentCount?: number;
+  slabs?: WithholdingTaxSlab[];
 }) {
   const router = useRouter();
   const editing = tenant ?? null;
@@ -129,6 +136,21 @@ export function TenantForm({
       gross_rent: numOrNull(form.gross_rent),
     });
   }, [form.rate_type, form.sqft, form.rate, form.gross_rent]);
+
+  const rentPreview = useMemo(() => {
+    const extras = form.line_items
+      .filter((item) => item.label.trim())
+      .map((item) => ({ amount: Number(item.amount || 0) }));
+    const monthly = monthlyTotal(
+      form.rate_type === "per_sqft" ? autoGross : numOrNull(form.gross_rent),
+      extras,
+    );
+    return withholdingForTenant({
+      classification: form.classification,
+      monthlyRent: monthly,
+      slabs,
+    });
+  }, [form.classification, form.line_items, form.rate_type, form.gross_rent, autoGross, slabs]);
 
   function payload() {
     return {
@@ -403,6 +425,29 @@ export function TenantForm({
             }
           />
         </div>
+        {form.classification === "official" ? (
+          <>
+            <div className="space-y-2">
+              <Label>Withholding tax</Label>
+              <p className="flex h-9 items-center text-sm font-medium tabular-nums">
+                {formatMoney(rentPreview.withholding_tax)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Filer tax on yearly rent {formatMoney(rentPreview.yearly_rent)}
+                {rentPreview.yearly_tax
+                  ? ` (Rs. ${formatMoney(rentPreview.yearly_tax)} / year)`
+                  : " — first Rs. 300,000 / year is tax-free"}
+                .
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Net monthly after WHT</Label>
+              <p className="flex h-9 items-center text-sm font-medium tabular-nums">
+                {formatMoney(rentPreview.total_due)}
+              </p>
+            </div>
+          </>
+        ) : null}
         <div className="space-y-2 sm:col-span-2 lg:col-span-3">
           <Label htmlFor="contract_detail">Contract detail (optional)</Label>
           <Input

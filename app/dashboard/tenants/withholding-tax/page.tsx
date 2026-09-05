@@ -1,10 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { listWithholdingTaxSlabs } from "@/lib/supabase/withholding-tax-slabs";
+import { ensureFilerWithholdingSlabs } from "@/lib/supabase/withholding-tax-slabs";
 import { WithholdingTaxSlabsPanel } from "@/components/dashboard/withholding-tax-slabs-panel";
 
 export default async function WithholdingTaxSlabsPage() {
   const supabase = await createClient();
-  const { data, error } = await listWithholdingTaxSlabs(supabase);
+  const { data, error } = await ensureFilerWithholdingSlabs(supabase);
 
   if (error) {
     return (

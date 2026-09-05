@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { countSchedulePayments, getTenantLedger } from "@/lib/supabase/tenants";
+import { ensureFilerWithholdingSlabs } from "@/lib/supabase/withholding-tax-slabs";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { TenantForm } from "@/components/dashboard/tenant-form";
 
@@ -10,9 +11,10 @@ export default async function EditTenantPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [{ data, error }, payments] = await Promise.all([
+  const [{ data, error }, payments, slabs] = await Promise.all([
     getTenantLedger(supabase, id),
     countSchedulePayments(supabase, id),
+    ensureFilerWithholdingSlabs(supabase),
   ]);
 
   if (error || !data?.tenant) {
@@ -35,6 +37,7 @@ export default async function EditTenantPage({
         tenant={data.tenant}
         lineItems={data.line_items}
         paymentCount={payments.count}
+        slabs={slabs.data ?? []}
       />
     </div>
   );

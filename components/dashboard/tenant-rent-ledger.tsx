@@ -187,7 +187,8 @@ export function TenantRentLedger({
     }
   }
 
-  const colCount = 10 + extraLabels.length;
+  const showWithholding = tenant.classification === "official";
+  const colCount = (showWithholding ? 10 : 9) + extraLabels.length;
 
   return (
     <div className="space-y-3">
@@ -196,7 +197,7 @@ export function TenantRentLedger({
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">S.No</TableHead>
-              <TableHead className="w-20">Month</TableHead>
+              <TableHead className="w-52">Month</TableHead>
               <TableHead className="w-20">Survey no.</TableHead>
               <TableHead className="w-16">Sqft</TableHead>
               <TableHead className="w-16">Rate</TableHead>
@@ -206,9 +207,11 @@ export function TenantRentLedger({
                   {label}
                 </TableHead>
               ))}
-              <TableHead className="w-24">Withholding</TableHead>
               <TableHead className="w-24">Received</TableHead>
               <TableHead className="w-24">Balance</TableHead>
+              {showWithholding ? (
+                <TableHead className="w-28">Withholding tax</TableHead>
+              ) : null}
               <TableHead className="w-28">Cheque / ref</TableHead>
               <TableHead className="w-44 text-right">Actions</TableHead>
             </TableRow>
@@ -298,17 +301,19 @@ export function TenantRentLedger({
                       )}
                     </TableCell>
                   ))}
-                  <TableCell>
-                    {row.withholding_tax
-                      ? formatMoney(row.withholding_tax)
-                      : "—"}
-                  </TableCell>
                   <TableCell>{row.received ? formatMoney(row.received) : ""}</TableCell>
                   <TableCell>
                     {row.received > 0 && row.balance === 0
                       ? "—"
                       : formatMoney(row.balance)}
                   </TableCell>
+                  {showWithholding ? (
+                    <TableCell>
+                      {row.withholding_tax
+                        ? formatMoney(row.withholding_tax)
+                        : "—"}
+                    </TableCell>
+                  ) : null}
                   <TableCell>{paymentRefLabel(row.payments)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-wrap justify-end gap-1">
@@ -358,9 +363,11 @@ export function TenantRentLedger({
                     {formatMoney(totals.extras[label])}
                   </TableCell>
                 ))}
-                <TableCell>{formatMoney(totals.withholding)}</TableCell>
                 <TableCell>{formatMoney(totals.received)}</TableCell>
                 <TableCell>{formatMoney(totals.balance)}</TableCell>
+                {showWithholding ? (
+                  <TableCell>{formatMoney(totals.withholding)}</TableCell>
+                ) : null}
                 <TableCell colSpan={2} />
               </TableRow>
             ) : null}

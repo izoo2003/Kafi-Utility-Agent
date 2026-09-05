@@ -7,6 +7,7 @@ import type { WithholdingTaxSlab } from "@/lib/types/database";
 import { apiFetch } from "@/lib/dashboard/api-client";
 import { upsertById } from "@/lib/dashboard/sort";
 import { formatMoney } from "@/lib/tenants/payment-status";
+import { FILER_RENT_SLABS_2026_27 } from "@/lib/tenants/withholding-tax";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ConfirmDeleteButton } from "@/components/dashboard/confirm-delete-button";
 import {
@@ -128,7 +129,7 @@ export function WithholdingTaxSlabsPanel({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title="Withholding Tax Slabs"
-          description="Rate bands applied to official tenants' monthly rent. Unofficial tenants never have WHT deducted."
+          description="Filer tax on rent for 2026-27. Progressive yearly bands — unofficial tenants are never taxed."
           icon="tenants"
           accent="violet"
         />
@@ -139,6 +140,34 @@ export function WithholdingTaxSlabsPanel({
           >
             All tenants
           </Link>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void (async () => {
+                setSaving(true);
+                setError(null);
+                try {
+                  const data = await apiFetch<WithholdingTaxSlab[]>(
+                    "/api/withholding-tax-slabs/seed-filer",
+                    { method: "POST" },
+                  );
+                  setSlabs(data);
+                  router.refresh();
+                } catch (e) {
+                  setError(
+                    e instanceof Error
+                      ? e.message
+                      : "Could not load Filer slabs",
+                  );
+                } finally {
+                  setSaving(false);
+                }
+              })();
+            }}
+            disabled={saving}
+          >
+            {saving ? "Saving…" : "Load Filer 2026-27 slabs"}
+          </Button>
           <Button
             onClick={() => {
               setEditing(null);
@@ -158,15 +187,51 @@ export function WithholdingTaxSlabsPanel({
         </p>
       ) : null}
 
+      <section className="overflow-hidden rounded-xl border border-[oklch(0.88_0.02_220)] bg-white/70">
+        <div className="border-b border-[oklch(0.9_0.02_220)] px-4 py-3">
+          <h2 className="font-heading text-base font-semibold">
+            Tax on rent in Pakistan for 2026-27 (Filer)
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Rent is taxed in steps on the whole year. Each step only applies to
+            the rent inside that bracket. The first Rs. 300,000 is always
+            tax-free. Official tenants are taxed automatically from these bands;
+            unofficial tenants have no withholding tax.
+          </p>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Yearly rent bracket</TableHead>
+              <TableHead>Tax for Filer</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {FILER_RENT_SLABS_2026_27.map((band) => (
+              <TableRow key={band.label}>
+                <TableCell>
+                  <CellText className="font-medium">{band.label}</CellText>
+                </TableCell>
+                <TableCell>
+                  <CellText>
+                    {band.rate_percent === 0 ? "No tax" : band.notes}
+                  </CellText>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </section>
+
       <TableShell>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Label</TableHead>
-              <TableHead>Min amount</TableHead>
-              <TableHead>Max amount</TableHead>
-              <TableHead>Rate %</TableHead>
-              <TableHead>Notes</TableHead>
+              <TableHead>Yearly rent bracket</TableHead>
+              <TableHead>From (yearly)</TableHead>
+              <TableHead>To (yearly)</TableHead>
+              <TableHead>Rate on this band</TableHead>
+              <TableHead>How it is applied</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -177,8 +242,8 @@ export function WithholdingTaxSlabsPanel({
                   colSpan={6}
                   className="max-w-none py-8 text-center text-muted-foreground"
                 >
-                  No slabs yet. Official tenants get 0% withholding tax until
-                  you add one.
+                  No slabs stored yet. Use “Load Filer 2026-27 slabs” to write
+                  the official Filer bands.
                 </TableCell>
               </TableRow>
             ) : (
@@ -257,7 +322,7 @@ export function WithholdingTaxSlabsPanel({
               />
             </div>
             <div className="space-y-2">
-              <Label>Min amount</Label>
+              <Label>Yearly rent from</Label>
               <Input
                 type="number"
                 min="0"
@@ -269,7 +334,7 @@ export function WithholdingTaxSlabsPanel({
               />
             </div>
             <div className="space-y-2">
-              <Label>Max amount (blank = no limit)</Label>
+              <Label>Yearly rent to (blank = no limit)</Label>
               <Input
                 type="number"
                 min="0"
@@ -281,7 +346,7 @@ export function WithholdingTaxSlabsPanel({
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label>Rate %</Label>
+              <Label>Rate % on this band</Label>
               <Input
                 type="number"
                 min="0"

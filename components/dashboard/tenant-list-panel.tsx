@@ -117,7 +117,7 @@ export function TenantListPanel({
       </div>
 
       <TableShell>
-        <Table style={{ minWidth: "68rem" }}>
+        <Table style={{ minWidth: "76rem" }}>
           <TableHeader>
             <TableRow>
               <TableHead className="w-52">Tenant</TableHead>
@@ -127,7 +127,8 @@ export function TenantListPanel({
               <TableHead className="w-28">Expiry</TableHead>
               <TableHead className="w-28">Monthly total</TableHead>
               <TableHead className="w-32">Electricity due</TableHead>
-              <TableHead className="w-24">Status</TableHead>
+              <TableHead className="w-32">Other charges</TableHead>
+              <TableHead className="w-40">Status</TableHead>
               <TableHead className="w-24 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -135,7 +136,7 @@ export function TenantListPanel({
             {pageRows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="max-w-none py-8 text-center text-muted-foreground"
                 >
                   No tenants yet. Add a tenant to generate their monthly ledger.
@@ -222,6 +223,11 @@ export function TenantListPanel({
                       <CellText className="whitespace-nowrap tabular-nums">
                         {formatMoney(tenant.monthly_total)}
                       </CellText>
+                      {tenant.classification === "official" ? (
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          WHT {formatMoney(tenant.withholding_tax)}
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell className="align-top">
                       {electricityDue == null ? (
@@ -241,6 +247,15 @@ export function TenantListPanel({
                       )}
                     </TableCell>
                     <TableCell className="align-top">
+                      {tenant.other_charges > 0 ? (
+                        <CellText className="whitespace-nowrap tabular-nums">
+                          {formatMoney(tenant.other_charges)}
+                        </CellText>
+                      ) : (
+                        <CellText className="text-muted-foreground">—</CellText>
+                      )}
+                    </TableCell>
+                    <TableCell className="align-top">
                       <span
                         className={cn(
                           "inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-medium",
@@ -250,12 +265,22 @@ export function TenantListPanel({
                           !expiryDate
                             ? "No contract dates set"
                             : tenant.outstanding > 0
-                              ? "Rent balance due across the ledger"
+                              ? `Rent due for ${tenant.due_months.join(", ") || "unpaid months"}`
                               : "Rent is up to date"
                         }
                       >
                         {statusLabel(Boolean(expiryDate), tenant.outstanding)}
                       </span>
+                      {tenant.outstanding > 0 && tenant.due_months.length > 0 ? (
+                        <div
+                          className="mt-1 text-xs leading-snug text-[oklch(0.45_0.12_70)]"
+                          title={tenant.due_months.join(", ")}
+                        >
+                          {tenant.due_months.length <= 3
+                            ? tenant.due_months.join(", ")
+                            : `${tenant.due_months.slice(0, 2).join(", ")} +${tenant.due_months.length - 2} more`}
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell
                       className="max-w-none align-top"

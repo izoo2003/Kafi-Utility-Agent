@@ -26,8 +26,11 @@ import {
 } from "@/lib/supabase/write-result";
 import { addDaysIso, ledgerPeriods } from "@/lib/tenants/schedule";
 import {
+  amountsForPeriod,
   computeGrossRent,
+  dueMonthLabels,
   monthlyTotal,
+  otherChargesTotal,
   tenantOutstanding,
   toLedgerRows,
   type LedgerRow,
@@ -35,6 +38,21 @@ import {
 import { deriveElectricBillFields } from "@/lib/tenants/electricity";
 import { withholdingForTenant } from "@/lib/tenants/withholding-tax";
 import { listWithholdingTaxSlabs } from "@/lib/supabase/withholding-tax-slabs";
+
+function scheduleNeedsRebuild(
+  start: string,
+  end: string,
+  rows: { period_start: string; period_end: string; serial_no: number }[],
+) {
+  const expected = ledgerPeriods(start, end);
+  const actual = [...rows].sort((a, b) => a.serial_no - b.serial_no);
+  if (expected.length !== actual.length) return true;
+  return expected.some(
+    (period, index) =>
+      actual[index]!.period_start !== period.period_start ||
+      actual[index]!.period_end !== period.period_end,
+  );
+}
 
 const TENANTS = "tenants" as const;
 const LINE_ITEMS = "tenant_rent_line_items" as const;
@@ -191,7 +209,11 @@ export async function getTenantElectricBill(
   return { data: (data as TenantElectricBill | null) ?? null, error };
 }
 
-export async function getTenantLedger(supabase: SupabaseClient, tenantId: string) {
+export async function getTenantLedger(
+  supabase: SupabaseClient,
+  tenantId: string,
+  options?: { skipRebuild?: boolean },
+) {
   const [tenant, lineItems, schedule, extensions] = await Promise.all([
     getTenant(supabase, tenantId),
     listTenantLineItems(supabase, tenantId),
@@ -202,6 +224,19 @@ export async function getTenantLedger(supabase: SupabaseClient, tenantId: string
   if (lineItems.error) return { error: lineItems.error, data: null };
   if (schedule.error) return { error: schedule.error, data: null };
   if (extensions.error) return { error: extensions.error, data: null };
+  const start = tenant.data?.contract_start_date;
+  const end = tenant.data?.contract_end_date;
+  if (
+    !options?.skipRebuild &&
+    start &&
+    end &&
+    scheduleNeedsRebuild(start, end, schedule.data ?? [])
+  ) {
+    const regen = await regenerateTenantSchedule(supabase, tenantId);
+    if (!regen.error) {
+      return getTenantLedger(supabase, tenantId, { skipRebuild: true });
+    }
+  }
   const payments = await listTenantRentPayments(
     supabase,
     (schedule.data ?? []).map((row) => row.id),
@@ -222,7 +257,13 @@ export async function getTenantLedger(supabase: SupabaseClient, tenantId: string
 
 export type TenantListSummary = Tenant & {
   monthly_total: number;
+  /** Sum of extra monthly charges added on the tenant (Office Rent, etc.). */
+  other_charges: number;
+  /** Monthly Filer WHT on official tenants; 0 for unofficial. */
+  withholding_tax: number;
   outstanding: number;
+  /** Unpaid ledger months, e.g. ["Apr-26", "May-26"]. */
+  due_months: string[];
   month_count: number;
   /** What's still unpaid on the tenant's most recent electricity bill. */
   electricity_due_month: number | null;
@@ -251,6 +292,8 @@ export async function listTenantSummaries(supabase: SupabaseClient) {
   if (payments.error) return { data: null, error: payments.error };
   const bills = await listTenantElectricBills(supabase);
   if (bills.error) return { data: null, error: bills.error };
+  const slabs = await listWithholdingTaxSlabs(supabase);
+  if (slabs.error) return { data: null, error: slabs.error };
   // Bills come back newest-first; the first bill seen per tenant is the latest.
   const latestBillByTenant = new Map<string, TenantElectricBill>();
   for (const bill of bills.data ?? []) {
@@ -279,13 +322,19 @@ export async function listTenantSummaries(supabase: SupabaseClient) {
   }
   const data: TenantListSummary[] = (tenants.data ?? []).map((tenant) => {
     const rows = rowsByTenant.get(tenant.id) ?? [];
+    const extras = lineItemsByTenant.get(tenant.id) ?? [];
+    const monthly = monthlyTotal(tenant.gross_rent, extras);
     return {
       ...tenant,
-      monthly_total: monthlyTotal(
-        tenant.gross_rent,
-        lineItemsByTenant.get(tenant.id) ?? [],
-      ),
+      monthly_total: monthly,
+      other_charges: otherChargesTotal(extras),
+      withholding_tax: withholdingForTenant({
+        classification: tenant.classification,
+        monthlyRent: monthly,
+        slabs: slabs.data ?? [],
+      }).withholding_tax,
       outstanding: tenantOutstanding(rows),
+      due_months: dueMonthLabels(rows),
       month_count: rows.length,
       electricity_due_month: latestBillDue(latestBillByTenant.get(tenant.id)),
     };
@@ -373,7 +422,40 @@ export async function regenerateTenantSchedule(
   const payments = await listTenantRentPayments(supabase, existingIds);
   if (payments.error) return { error: { message: payments.error.message } };
   const paymentCount = payments.data?.length ?? 0;
-  if (paymentCount > 0 && !options?.force) {
+
+  const lineItems = await listTenantLineItems(supabase, tenantId);
+  if (lineItems.error) return { error: { message: lineItems.error.message } };
+  const snapshot = (lineItems.data ?? []).map((item) => ({
+    label: item.label,
+    amount: Number(item.amount ?? 0),
+  }));
+  const slabs = await listWithholdingTaxSlabs(supabase);
+  if (slabs.error) return { error: { message: slabs.error.message } };
+  const periods = ledgerPeriods(start, end);
+  const usedIds = new Set<string>();
+  const byStart = new Map(existingRows.map((row) => [row.period_start, row]));
+  const byYm = new Map(
+    existingRows.map((row) => [`${row.period_year}-${row.period_month}`, row]),
+  );
+  const planned: Array<{
+    period: (typeof periods)[number];
+    found?: (typeof existingRows)[number];
+  }> = [];
+  for (const period of periods) {
+    const ymKey = `${period.period_year}-${period.period_month}`;
+    const ymRow = byYm.get(ymKey);
+    const found =
+      byStart.get(period.period_start) ??
+      (ymRow && !usedIds.has(ymRow.id) ? ymRow : undefined);
+    if (found) usedIds.add(found.id);
+    planned.push({ period, found });
+  }
+
+  const stale = existingRows.filter((row) => !usedIds.has(row.id));
+  const staleHasPayments = stale.some((row) =>
+    (payments.data ?? []).some((p) => p.schedule_id === row.id),
+  );
+  if (staleHasPayments && !options?.force) {
     return {
       error: {
         message:
@@ -383,30 +465,15 @@ export async function regenerateTenantSchedule(
     };
   }
 
-  const lineItems = await listTenantLineItems(supabase, tenantId);
-  if (lineItems.error) return { error: { message: lineItems.error.message } };
-  const snapshot = (lineItems.data ?? []).map((item) => ({
-    label: item.label,
-    amount: Number(item.amount ?? 0),
-  }));
-  const rentTotal = monthlyTotal(tenant.data.gross_rent, snapshot);
-  const slabs = await listWithholdingTaxSlabs(supabase);
-  if (slabs.error) return { error: { message: slabs.error.message } };
-  const wht = withholdingForTenant({
-    classification: tenant.data.classification,
-    monthlyRent: rentTotal,
-    slabs: slabs.data ?? [],
-  });
-  const periods = ledgerPeriods(start, end);
-  const keepKeys = new Set(
-    periods.map((p) => `${p.period_year}-${p.period_month}`),
-  );
-  const byKey = new Map(
-    existingRows.map((row) => [`${row.period_year}-${row.period_month}`, row]),
-  );
-
-  for (const period of periods) {
-    const key = `${period.period_year}-${period.period_month}`;
+  for (const { period, found } of planned) {
+    const billed = amountsForPeriod({
+      period_start: period.period_start,
+      period_end: period.period_end,
+      gross_rent: tenant.data.gross_rent,
+      line_items: snapshot,
+      classification: tenant.data.classification,
+      slabs: slabs.data ?? [],
+    });
     const payload = {
       tenant_id: tenantId,
       serial_no: period.serial_no,
@@ -418,13 +485,12 @@ export async function regenerateTenantSchedule(
       sqft: tenant.data.sqft,
       rate: tenant.data.rate,
       rate_type: tenant.data.rate_type,
-      gross_rent: tenant.data.gross_rent,
-      line_items: snapshot,
-      withholding_tax: wht.withholding_tax,
-      total_due: wht.total_due,
+      gross_rent: billed.gross_rent,
+      line_items: billed.line_items,
+      withholding_tax: billed.withholding_tax,
+      total_due: billed.total_due,
       updated_by: options?.updatedBy ?? null,
     };
-    const found = byKey.get(key);
     if (found) {
       const { error } = await supabase
         .from(SCHEDULE)
@@ -437,9 +503,6 @@ export async function regenerateTenantSchedule(
     }
   }
 
-  const stale = existingRows.filter(
-    (row) => !keepKeys.has(`${row.period_year}-${row.period_month}`),
-  );
   for (const row of stale) {
     const rowPayments = (payments.data ?? []).filter(
       (p) => p.schedule_id === row.id,
@@ -603,27 +666,24 @@ export async function createContractExtension(
     (max, row) => Math.max(max, row.serial_no ?? 0),
     0,
   );
-  const rentTotal = monthlyTotal(effectiveTenant.gross_rent, snapshot);
-  const wht = withholdingForTenant({
-    classification: effectiveTenant.classification,
-    monthlyRent: rentTotal,
-    slabs: slabsRes.data ?? [],
-  });
-
   const periods = ledgerPeriods(
     input.extension_from,
     input.extension_till,
   );
-  const existingByKey = new Map(
-    (existingSchedule.data ?? []).map((row) => [
-      `${row.period_year}-${row.period_month}`,
-      row,
-    ]),
+  const existingByStart = new Map(
+    (existingSchedule.data ?? []).map((row) => [row.period_start, row]),
   );
   let nextSerial = baseSerial;
   const rowsToInsert: TenantRentScheduleInsert[] = [];
   for (const period of periods) {
-    const key = `${period.period_year}-${period.period_month}`;
+    const billed = amountsForPeriod({
+      period_start: period.period_start,
+      period_end: period.period_end,
+      gross_rent: effectiveTenant.gross_rent,
+      line_items: snapshot,
+      classification: effectiveTenant.classification,
+      slabs: slabsRes.data ?? [],
+    });
     const payload = {
       tenant_id: tenantId,
       period_year: period.period_year,
@@ -634,19 +694,14 @@ export async function createContractExtension(
       sqft: effectiveTenant.sqft,
       rate: effectiveTenant.rate,
       rate_type: effectiveTenant.rate_type,
-      gross_rent: effectiveTenant.gross_rent,
-      line_items: snapshot,
-      withholding_tax: wht.withholding_tax,
-      total_due: wht.total_due,
+      gross_rent: billed.gross_rent,
+      line_items: billed.line_items,
+      withholding_tax: billed.withholding_tax,
+      total_due: billed.total_due,
       updated_by: input.updated_by ?? null,
     };
-    const existing = existingByKey.get(key);
+    const existing = existingByStart.get(period.period_start);
     if (existing) {
-      // The extension window can include months that already have a ledger
-      // row (e.g. one generated earlier from rent logs that ran past the
-      // recorded contract end date). Roll such rows forward in place instead
-      // of colliding with the unique (tenant_id, period_year, period_month)
-      // key; their billing dates, serial number and recorded payments stay.
       const { error: updateError } = await supabase
         .from(SCHEDULE)
         .update(payload)

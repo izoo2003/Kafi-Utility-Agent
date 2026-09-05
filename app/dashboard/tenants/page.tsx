@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { listTenantSummaries } from "@/lib/supabase/tenants";
+import { ensureFilerWithholdingSlabs } from "@/lib/supabase/withholding-tax-slabs";
 import { TenantListPanel } from "@/components/dashboard/tenant-list-panel";
 
 export default async function TenantsPage() {
   const supabase = await createClient();
+  await ensureFilerWithholdingSlabs(supabase);
   const { data, error } = await listTenantSummaries(supabase);
 
   if (error) {

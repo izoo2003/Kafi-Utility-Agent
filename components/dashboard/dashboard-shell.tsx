@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { SidebarNav } from "@/components/dashboard/sidebar-nav";
+import { DashboardBackButton } from "@/components/dashboard/back-button";
 import { SignOutButton } from "@/components/sign-out-button";
 import { PageTransition } from "@/components/dashboard/page-transition";
 import { ChatSessionProvider } from "@/components/chat/chat-session-context";
@@ -126,7 +127,7 @@ export function DashboardShell({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-[oklch(0.9_0.02_220)] bg-[oklch(0.985_0.01_220_/_0.92)] px-3 py-3 backdrop-blur-md print:hidden md:hidden">
+        <header className="sticky top-0 z-40 flex items-center gap-2 border-b border-[oklch(0.9_0.02_220)] bg-[oklch(0.985_0.01_220_/_0.92)] px-3 py-3 backdrop-blur-md print:hidden md:hidden">
           <Button
             variant="outline"
             size="icon-sm"
@@ -136,6 +137,7 @@ export function DashboardShell({
           >
             <Menu className="size-4" />
           </Button>
+          <DashboardBackButton compact />
           <div className="min-w-0">
             <p className="font-heading truncate text-sm font-semibold text-[oklch(0.28_0.05_195)]">
               Facility Ops
@@ -144,6 +146,7 @@ export function DashboardShell({
         </header>
 
         <main className="min-w-0 flex-1 overflow-x-hidden px-3 py-5 print:p-0 sm:px-6 sm:py-7 lg:px-10 lg:py-8">
+          <DashboardBackButton className="mb-3 hidden print:hidden md:block" />
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

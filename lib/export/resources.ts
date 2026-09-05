@@ -460,11 +460,16 @@ export async function loadExportBundle(
           {
             key: "period",
             header: "Month",
-            value: (r) => `${r.period_year}-${String(r.period_month).padStart(2, "0")}`,
+            value: (r) => `${r.period_start} – ${r.period_end}`,
           },
           { key: "survey_no", header: "Survey no.", value: (r) => r.survey_no },
           { key: "sqft", header: "Sqft", value: (r) => r.sqft },
           { key: "gross_rent", header: "Gross rent", value: (r) => r.gross_rent },
+          {
+            key: "withholding_tax",
+            header: "Withholding tax",
+            value: (r) => r.withholding_tax,
+          },
           { key: "total_due", header: "Total due", value: (r) => r.total_due },
           { key: "received", header: "Received", value: (r) => r.received },
           { key: "balance", header: "Balance", value: (r) => r.balance },

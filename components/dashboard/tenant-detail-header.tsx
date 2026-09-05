@@ -1,9 +1,15 @@
 import Link from "next/link";
-import type { Tenant, TenantRentLineItem } from "@/lib/types/database";
+import type {
+  Tenant,
+  TenantRentLineItem,
+  WithholdingTaxSlab,
+} from "@/lib/types/database";
 import {
   contractDetailLine,
   contractDurationLabel,
+  monthlyTotal,
 } from "@/lib/tenants/ledger";
+import { withholdingForTenant } from "@/lib/tenants/withholding-tax";
 import { formatMoney } from "@/lib/tenants/payment-status";
 import {
   agreementExpiryLabel,
@@ -16,9 +22,11 @@ import { TenantContractExtensionDialog } from "@/components/dashboard/tenant-con
 export function TenantDetailHeader({
   tenant,
   lineItems,
+  slabs = [],
 }: {
   tenant: Tenant;
   lineItems: TenantRentLineItem[];
+  slabs?: WithholdingTaxSlab[];
 }) {
   const status = agreementExpiryStatus(
     tenant.contract_end_date ?? tenant.agreement_expiry,
@@ -33,6 +41,12 @@ export function TenantDetailHeader({
       : null,
     tenant.security_deposit_bank_account,
   ].filter(Boolean);
+
+  const wht = withholdingForTenant({
+    classification: tenant.classification,
+    monthlyRent: monthlyTotal(tenant.gross_rent, lineItems),
+    slabs,
+  });
 
   return (
     <section className="overflow-hidden rounded-xl border border-[oklch(0.2_0.02_230)] bg-white">
@@ -64,8 +78,17 @@ export function TenantDetailHeader({
         </p>
         <p>
           <span className="font-medium">Contract detail: </span>
-          {contractDetailLine(tenant, lineItems)}
+          {contractDetailLine(tenant, lineItems, wht.withholding_tax)}
         </p>
+        {tenant.classification === "official" ? (
+          <p>
+            <span className="font-medium">Withholding tax: </span>
+            {formatMoney(wht.withholding_tax)}
+            {wht.yearly_tax
+              ? ` / month (Rs. ${formatMoney(wht.yearly_tax)} on yearly rent ${formatMoney(wht.yearly_rent)})`
+              : " / month"}
+          </p>
+        ) : null}
         {tenant.notes ? (
           <p className="text-muted-foreground">{tenant.notes}</p>
         ) : null}

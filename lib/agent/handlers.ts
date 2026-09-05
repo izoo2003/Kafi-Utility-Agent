@@ -672,7 +672,10 @@ export async function executeAgentTool(
         contract_end_date: r.contract_end_date,
         gross_rent: r.gross_rent,
         monthly_total: r.monthly_total,
+        other_charges: r.other_charges,
+        withholding_tax: r.withholding_tax,
         outstanding: r.outstanding,
+        due_months: r.due_months,
         month_count: r.month_count,
         agreement_expiry: r.contract_end_date ?? r.agreement_expiry,
         agreement_days_remaining: daysUntilAgreementExpiry(

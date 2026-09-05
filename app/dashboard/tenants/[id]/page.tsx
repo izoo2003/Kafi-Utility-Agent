@@ -4,6 +4,7 @@ import {
   getTenantLedger,
   listTenantElectricBills,
 } from "@/lib/supabase/tenants";
+import { ensureFilerWithholdingSlabs } from "@/lib/supabase/withholding-tax-slabs";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { TenantDetailHeader } from "@/components/dashboard/tenant-detail-header";
 import { TenantDetailTabs } from "@/components/dashboard/tenant-detail-tabs";
@@ -18,9 +19,10 @@ export default async function TenantDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [{ data, error }, bills] = await Promise.all([
+  const [{ data, error }, bills, slabs] = await Promise.all([
     getTenantLedger(supabase, id),
     listTenantElectricBills(supabase, id),
+    ensureFilerWithholdingSlabs(supabase),
   ]);
 
   if (error || !data?.tenant) {
@@ -50,7 +52,11 @@ export default async function TenantDetailPage({
           </Link>
         </div>
       </div>
-      <TenantDetailHeader tenant={data.tenant} lineItems={data.line_items} />
+      <TenantDetailHeader
+        tenant={data.tenant}
+        lineItems={data.line_items}
+        slabs={slabs.data ?? []}
+      />
       <TenantDetailTabs
         tenant={data.tenant}
         schedule={data.schedule}

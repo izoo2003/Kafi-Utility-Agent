@@ -9,8 +9,9 @@ import {
   writeOk,
   type DomainWriteResult,
 } from "@/lib/supabase/write-result";
-import { monthlyTotal } from "@/lib/tenants/ledger";
-import { withholdingForTenant } from "@/lib/tenants/withholding-tax";
+import { amountsForPeriod, monthlyTotal } from "@/lib/tenants/ledger";
+import { FILER_RENT_SLABS_2026_27 } from "@/lib/tenants/withholding-tax";
+import { periodProrateFactor } from "@/lib/tenants/schedule";
 import type { FrozenLineItem } from "@/lib/tenants/ledger";
 
 const SLABS = "withholding_tax_slabs" as const;
@@ -24,6 +25,38 @@ export async function listWithholdingTaxSlabs(supabase: SupabaseClient) {
     .order("min_amount", { ascending: true })
     .order("created_at", { ascending: true })
     .returns<WithholdingTaxSlab[]>();
+}
+
+export async function replaceWithFilerRentSlabs(
+  supabase: SupabaseClient,
+  updatedBy?: string | null,
+): Promise<{ data: WithholdingTaxSlab[] | null; error: { message: string } | null }> {
+  const del = await supabase.from(SLABS).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  if (del.error) return { data: null, error: { message: del.error.message } };
+  const { error } = await supabase.from(SLABS).insert(
+    FILER_RENT_SLABS_2026_27.map((band) => ({
+      label: band.label,
+      min_amount: band.min_amount,
+      max_amount: band.max_amount,
+      rate_percent: band.rate_percent,
+      notes: band.notes,
+      updated_by: updatedBy ?? null,
+    })),
+  );
+  if (error) return { data: null, error: { message: error.message } };
+  const reapplied = await reapplyWithholdingOnOfficialSchedules(supabase);
+  if (reapplied.error) return { data: null, error: reapplied.error };
+  return listWithholdingTaxSlabs(supabase);
+}
+
+export async function ensureFilerWithholdingSlabs(
+  supabase: SupabaseClient,
+  updatedBy?: string | null,
+) {
+  const existing = await listWithholdingTaxSlabs(supabase);
+  if (existing.error) return existing;
+  if ((existing.data ?? []).length > 0) return existing;
+  return replaceWithFilerRentSlabs(supabase, updatedBy);
 }
 
 export async function getWithholdingTaxSlab(
@@ -116,17 +149,22 @@ export async function reapplyWithholdingOnOfficialSchedules(
     const frozen = Array.isArray(row.line_items)
       ? (row.line_items as FrozenLineItem[])
       : [];
-    const rent = monthlyTotal(row.gross_rent, frozen);
-    const wht = withholdingForTenant({
+    const factor = periodProrateFactor(row.period_start, row.period_end);
+    const storedRent = monthlyTotal(row.gross_rent, frozen);
+    const fullRent = factor > 0 ? storedRent / factor : 0;
+    const billed = amountsForPeriod({
+      period_start: row.period_start,
+      period_end: row.period_end,
+      gross_rent: fullRent,
+      line_items: [],
       classification: "official",
-      monthlyRent: rent,
       slabs,
     });
     const { error: updErr } = await supabase
       .from(SCHEDULE)
       .update({
-        withholding_tax: wht.withholding_tax,
-        total_due: wht.total_due,
+        withholding_tax: billed.withholding_tax,
+        total_due: billed.total_due,
       })
       .eq("id", row.id);
     if (updErr) return { error: { message: updErr.message } };
