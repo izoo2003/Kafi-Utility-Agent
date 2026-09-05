@@ -24,7 +24,7 @@ import {
 } from "@/lib/tenants/agreement";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MessageCircle } from "lucide-react";
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { rentDueWhatsappHref } from "@/lib/tenants/whatsapp";
 import {
   Table,
@@ -311,12 +311,12 @@ export function TenantListPanel({
                             rel="noopener noreferrer"
                             className={cn(
                               buttonVariants({ variant: "outline", size: "sm" }),
-                              "text-[oklch(0.42_0.12_155)]",
+                              "border-[#25D366]/35 text-[#25D366] hover:bg-[#25D366]/10 hover:text-[#25D366]",
                             )}
                             aria-label={`WhatsApp rent reminder for ${tenant.tenant_name}`}
                             title="Open WhatsApp with a rent-due message"
                           >
-                            <MessageCircle />
+                            <WhatsAppIcon />
                           </a>
                         ) : (
                           <Button
@@ -326,7 +326,7 @@ export function TenantListPanel({
                             disabled
                             title="Add a WhatsApp number to send a reminder"
                           >
-                            <MessageCircle />
+                            <WhatsAppIcon />
                           </Button>
                         )}
                         <Link

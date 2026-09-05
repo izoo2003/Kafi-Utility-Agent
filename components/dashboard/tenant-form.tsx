@@ -23,6 +23,7 @@ import {
 } from "@/lib/tenants/withholding-tax";
 import { formatMoney } from "@/lib/tenants/payment-status";
 import { formatWhatsappDisplay } from "@/lib/tenants/whatsapp";
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { countCalendarMonths } from "@/lib/tenants/schedule";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -257,7 +258,10 @@ export function TenantForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="whatsapp_number">WhatsApp number</Label>
+          <Label htmlFor="whatsapp_number" className="inline-flex items-center gap-1.5">
+            <WhatsAppIcon className="size-3.5" />
+            WhatsApp number
+          </Label>
           <Input
             id="whatsapp_number"
             type="tel"
