@@ -76,7 +76,7 @@ export function amountsForPeriod(input: {
       amount: prorateMoney(item.amount, factor),
     })),
     withholding_tax: prorateMoney(wht.withholding_tax, factor),
-    total_due: prorateMoney(wht.total_due, factor),
+    total_due: prorateMoney(fullMonthly, factor),
   };
 }
 
@@ -84,11 +84,28 @@ export function paymentsReceived(payments: TenantRentPayment[]) {
   return payments.reduce((sum, p) => sum + Number(p.amount_received ?? 0), 0);
 }
 
+export function unpaidWithholdingTax(
+  withholdingTax: number | null | undefined,
+  withholdingTaxReceived: number | null | undefined,
+) {
+  return Math.max(
+    0,
+    Number(withholdingTax ?? 0) - Number(withholdingTaxReceived ?? 0),
+  );
+}
+
+/** Charges (gross + extras) − rent received + unpaid withholding tax. */
 export function scheduleBalance(
   totalDue: number | null | undefined,
   payments: TenantRentPayment[],
+  withholdingTax: number | null | undefined = 0,
+  withholdingTaxReceived: number | null | undefined = 0,
 ) {
-  return Number(totalDue ?? 0) - paymentsReceived(payments);
+  return (
+    Number(totalDue ?? 0) -
+    paymentsReceived(payments) +
+    unpaidWithholdingTax(withholdingTax, withholdingTaxReceived)
+  );
 }
 
 export function paymentRefLabel(payments: TenantRentPayment[]) {
@@ -127,7 +144,12 @@ export function toLedgerRows(
         ...row,
         payments: rowPayments,
         received: paymentsReceived(rowPayments),
-        balance: scheduleBalance(row.total_due, rowPayments),
+        balance: scheduleBalance(
+          row.total_due,
+          rowPayments,
+          row.withholding_tax,
+          row.withholding_tax_received,
+        ),
         month_label: periodRangeLabel(row.period_start, row.period_end),
         frozen_line_items: frozen,
       };

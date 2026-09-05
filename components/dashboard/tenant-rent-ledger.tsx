@@ -42,6 +42,7 @@ import {
 
 type PayForm = {
   amount_received: string;
+  withholding_tax_received: string;
   payer_bank_name: string;
   payer_bank_account: string;
   payee_bank_name: string;
@@ -52,6 +53,7 @@ type PayForm = {
 
 const emptyPay = (): PayForm => ({
   amount_received: "",
+  withholding_tax_received: "",
   payer_bank_name: "",
   payer_bank_account: "",
   payee_bank_name: "",
@@ -111,6 +113,10 @@ export function TenantRentLedger({
     return {
       gross: rows.reduce((s, r) => s + Number(r.gross_rent ?? 0), 0),
       withholding: rows.reduce((s, r) => s + Number(r.withholding_tax ?? 0), 0),
+      withholdingReceived: rows.reduce(
+        (s, r) => s + Number(r.withholding_tax_received ?? 0),
+        0,
+      ),
       extras: Object.fromEntries(
         extraLabels.map((label) => [
           label,
@@ -140,7 +146,13 @@ export function TenantRentLedger({
     setTarget(row);
     setForm({
       ...emptyPay(),
-      amount_received: String(Math.max(row.balance, 0) || row.total_due || ""),
+      amount_received: String(
+        Math.max(Number(row.total_due ?? 0) - row.received, 0) || "",
+      ),
+      withholding_tax_received:
+        row.withholding_tax_received == null
+          ? ""
+          : String(row.withholding_tax_received),
     });
     setReceipt(null);
     setError(null);
@@ -160,8 +172,12 @@ export function TenantRentLedger({
     setError(null);
     try {
       const cheque = form.cheque_no.trim();
+      const amount = Number(form.amount_received || 0);
       const body = {
-        amount_received: Number(form.amount_received || 0),
+        amount_received: amount,
+        withholding_tax_received: showWithholding
+          ? Number(form.withholding_tax_received || 0)
+          : undefined,
         payer_bank_name: form.payer_bank_name,
         payer_bank_account: form.payer_bank_account,
         payee_bank_name: form.payee_bank_name,
@@ -171,12 +187,23 @@ export function TenantRentLedger({
           form.payment_reference.trim() ||
           (cheque ? `CH # ${cheque}` : null),
       };
-      const payment = await apiFetch<TenantRentPayment>(
-        `/api/tenants/${tenantId}/schedule/${target.id}/payments`,
-        { method: "POST", body: JSON.stringify(body) },
-      );
-      if (receipt) {
-        await uploadRentPaymentReceipt(payment.id, receipt);
+      if (amount > 0) {
+        const payment = await apiFetch<TenantRentPayment>(
+          `/api/tenants/${tenantId}/schedule/${target.id}/payments`,
+          { method: "POST", body: JSON.stringify(body) },
+        );
+        if (receipt) {
+          await uploadRentPaymentReceipt(payment.id, receipt);
+        }
+      } else if (showWithholding) {
+        await apiFetch(`/api/tenants/${tenantId}/schedule/${target.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            withholding_tax_received: Number(form.withholding_tax_received || 0),
+          }),
+        });
+      } else {
+        throw new Error("Enter an amount received");
       }
       setOpen(false);
       router.refresh();
@@ -188,7 +215,7 @@ export function TenantRentLedger({
   }
 
   const showWithholding = tenant.classification === "official";
-  const colCount = (showWithholding ? 10 : 9) + extraLabels.length;
+  const colCount = (showWithholding ? 11 : 9) + extraLabels.length;
 
   return (
     <div className="space-y-3">
@@ -210,7 +237,10 @@ export function TenantRentLedger({
               <TableHead className="w-24">Received</TableHead>
               <TableHead className="w-24">Balance</TableHead>
               {showWithholding ? (
-                <TableHead className="w-28">Withholding tax</TableHead>
+                <>
+                  <TableHead className="w-28">Withholding tax</TableHead>
+                  <TableHead className="w-32">Withholding tax received</TableHead>
+                </>
               ) : null}
               <TableHead className="w-28">Cheque / ref</TableHead>
               <TableHead className="w-44 text-right">Actions</TableHead>
@@ -308,11 +338,18 @@ export function TenantRentLedger({
                       : formatMoney(row.balance)}
                   </TableCell>
                   {showWithholding ? (
-                    <TableCell>
-                      {row.withholding_tax
-                        ? formatMoney(row.withholding_tax)
-                        : "—"}
-                    </TableCell>
+                    <>
+                      <TableCell>
+                        {row.withholding_tax
+                          ? formatMoney(row.withholding_tax)
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {row.withholding_tax_received
+                          ? formatMoney(row.withholding_tax_received)
+                          : ""}
+                      </TableCell>
+                    </>
                   ) : null}
                   <TableCell>{paymentRefLabel(row.payments)}</TableCell>
                   <TableCell className="text-right">
@@ -366,7 +403,12 @@ export function TenantRentLedger({
                 <TableCell>{formatMoney(totals.received)}</TableCell>
                 <TableCell>{formatMoney(totals.balance)}</TableCell>
                 {showWithholding ? (
-                  <TableCell>{formatMoney(totals.withholding)}</TableCell>
+                  <>
+                    <TableCell>{formatMoney(totals.withholding)}</TableCell>
+                    <TableCell>
+                      {formatMoney(totals.withholdingReceived)}
+                    </TableCell>
+                  </>
                 ) : null}
                 <TableCell colSpan={2} />
               </TableRow>
@@ -396,6 +438,26 @@ export function TenantRentLedger({
                 }
               />
             </div>
+            {showWithholding ? (
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Withholding tax received</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.withholding_tax_received}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      withholding_tax_received: e.target.value,
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Unpaid tax (WHT − this amount) is added to the month balance.
+                </p>
+              </div>
+            ) : null}
             <div className="space-y-2">
               <Label>From bank</Label>
               <Input

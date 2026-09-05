@@ -99,9 +99,14 @@ export const tenantUpdateSchema = z.object({
   regenerate_schedule: z.boolean().optional(),
 });
 
+export const tenantScheduleWhtReceivedSchema = z.object({
+  withholding_tax_received: moneyField.transform((v) => v ?? 0),
+});
+
 export const tenantRentPaymentInsertSchema = z.object({
   schedule_id: z.string().uuid(),
   amount_received: optionalNumber.pipe(z.number().nonnegative()),
+  withholding_tax_received: moneyField.optional(),
   payer_bank_account: optionalText,
   payer_bank_name: optionalText,
   payee_bank_account: optionalText,

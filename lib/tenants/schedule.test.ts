@@ -5,7 +5,7 @@ import {
   ledgerPeriods,
   periodProrateFactor,
 } from "./schedule";
-import { amountsForPeriod } from "./ledger";
+import { amountsForPeriod, scheduleBalance } from "./ledger";
 
 describe("ledgerPeriods rent-day cycles", () => {
   it("builds Waheed-style rows: 14/04–28/08 with a 15-day August stub", () => {
@@ -54,5 +54,42 @@ describe("ledgerPeriods rent-day cycles", () => {
     assert.equal(billed.factor, 0.5);
     assert.equal(billed.gross_rent, 300_000);
     assert.equal(billed.total_due, 300_000);
+  });
+
+  it("keeps official total_due as charges, not net of WHT", () => {
+    const billed = amountsForPeriod({
+      period_start: "2026-04-01",
+      period_end: "2026-04-30",
+      gross_rent: 260_000,
+      line_items: [
+        { label: "Electricity", amount: 10_000 },
+        { label: "Water", amount: 5_000 },
+      ],
+      classification: "official",
+      slabs: [
+        {
+          id: "1",
+          created_at: "",
+          updated_at: "",
+          updated_by: null,
+          label: "test",
+          min_amount: 0,
+          max_amount: null,
+          rate_percent: 5,
+          notes: null,
+        },
+      ],
+    });
+    assert.equal(billed.total_due, 275_000);
+    assert.ok(billed.withholding_tax > 0);
+  });
+});
+
+describe("scheduleBalance", () => {
+  it("is charges minus received, plus unpaid WHT", () => {
+    const paid = [{ amount_received: 275_000 }] as never;
+    assert.equal(scheduleBalance(275_000, paid, 40_000, 0), 40_000);
+    assert.equal(scheduleBalance(275_000, paid, 40_000, 20_000), 20_000);
+    assert.equal(scheduleBalance(275_000, paid, 40_000, 40_000), 0);
   });
 });

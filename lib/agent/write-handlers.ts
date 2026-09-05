@@ -110,6 +110,7 @@ import {
   findScheduleByPeriod,
   findTenantByName,
   getTenant,
+  updateTenantScheduleWhtReceived,
   getTenantElectricBill,
   getTenantScheduleRow,
   updateTenant,
@@ -1540,6 +1541,7 @@ export async function executeWriteTool(
         month_date,
         attach_payment,
         payment_attachment_index,
+        withholding_tax_received,
         ...rest
       } = parsed.data;
       let scheduleId = schedule_id;
@@ -1566,7 +1568,7 @@ export async function executeWriteTool(
       if (!schedule.data) return { error: "Schedule month not found" };
       const tenant = await getTenant(supabase, schedule.data.tenant_id);
       const label = tenant.data?.tenant_name ?? "tenant";
-      const summary = `Record payment of ${rest.amount_received} for ${label} (${schedule.data.period_year}-${String(schedule.data.period_month).padStart(2, "0")})${attach_payment ? " — save attached receipt" : ""}.`;
+      const summary = `Record payment of ${rest.amount_received} for ${label} (${schedule.data.period_year}-${String(schedule.data.period_month).padStart(2, "0")})${withholding_tax_received != null ? `; WHT received ${withholding_tax_received}` : ""}${attach_payment ? " — save attached receipt" : ""}.`;
       if (!isConfirmed(input)) {
         return needsConfirmation(
           name,
@@ -1575,6 +1577,7 @@ export async function executeWriteTool(
             {
               schedule_id: scheduleId,
               ...rest,
+              withholding_tax_received,
               attach_payment,
               payment_attachment_index,
             },
@@ -1582,6 +1585,15 @@ export async function executeWriteTool(
             ctx,
           ),
         );
+      }
+      if (withholding_tax_received != null) {
+        const wht = await updateTenantScheduleWhtReceived(
+          supabase,
+          scheduleId,
+          Number(withholding_tax_received),
+          user.id,
+        );
+        if (wht.error) throw new Error(wht.error.message);
       }
       const { data, error, outcome } = await createTenantRentPayment(
         supabase,

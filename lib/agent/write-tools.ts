@@ -979,6 +979,11 @@ export const agentWriteTools: FunctionDeclaration[] = [
           description: "Any date in the billing month (YYYY-MM-DD or DD/MM/YYYY)",
         },
         amount_received: { type: SchemaType.NUMBER },
+        withholding_tax_received: {
+          type: SchemaType.NUMBER,
+          description:
+            "WHT remitted for this month. Unpaid WHT is added to the ledger balance.",
+        },
         payer_bank_name: { type: SchemaType.STRING },
         payer_bank_account: { type: SchemaType.STRING },
         payee_bank_name: { type: SchemaType.STRING },

@@ -121,7 +121,7 @@ export async function deleteWithholdingTaxSlab(
   return reapplyWithholdingOnOfficialSchedules(supabase);
 }
 
-/** Recalculate WHT + net total_due on official tenant schedule rows without deleting payments. */
+/** Recalculate WHT on official tenant schedule rows. total_due stays charges (not net of WHT). */
 export async function reapplyWithholdingOnOfficialSchedules(
   supabase: SupabaseClient,
 ) {

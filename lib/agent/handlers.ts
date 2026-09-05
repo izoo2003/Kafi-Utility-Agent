@@ -722,6 +722,8 @@ export async function executeAgentTool(
           month: s.month_label,
           total_due: s.total_due,
           received: s.received,
+          withholding_tax: s.withholding_tax,
+          withholding_tax_received: s.withholding_tax_received,
           balance: s.balance,
         })),
         agreement_expiry: row.contract_end_date ?? row.agreement_expiry,

@@ -175,7 +175,9 @@ Deprecated snapshot columns may still exist (`rent_amount`, `rent_due_date`, `pa
 - period_start / period_end date
 - snapshot of survey_no, sqft, rate, rate_type, gross_rent
 - line_items jsonb (`[{ label, amount }]`)
-- total_due numeric (gross_rent + line items)
+- withholding_tax / withholding_tax_received numeric (official tenants)
+- total_due numeric (gross_rent + line items — not net of WHT)
+- balance = total_due − rent received + (withholding_tax − withholding_tax_received)
 
 `tenant_rent_payments` (receipts against a schedule month):
 - schedule_id uuid → tenant_rent_schedule

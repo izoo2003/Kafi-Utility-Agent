@@ -332,6 +332,7 @@ export type TenantRentSchedule = AuditColumns & {
   gross_rent: number | null;
   line_items: TenantRentLineItemSnapshot[];
   withholding_tax: number;
+  withholding_tax_received: number;
   total_due: number;
 };
 

@@ -445,7 +445,14 @@ export async function loadExportBundle(
           ...r,
           tenant_name: names.get(r.tenant_id) ?? "",
           received: got,
-          balance: Number(r.total_due ?? 0) - got,
+          balance:
+            Number(r.total_due ?? 0) -
+            got +
+            Math.max(
+              0,
+              Number(r.withholding_tax ?? 0) -
+                Number(r.withholding_tax_received ?? 0),
+            ),
           payment_ref: (refs.get(r.id) ?? []).join("; "),
         };
       });
@@ -474,7 +481,12 @@ export async function loadExportBundle(
             header: "Withholding tax",
             value: (r) => r.withholding_tax,
           },
-          { key: "total_due", header: "Total due", value: (r) => r.total_due },
+          {
+            key: "withholding_tax_received",
+            header: "Withholding tax received",
+            value: (r) => r.withholding_tax_received,
+          },
+          { key: "total_due", header: "Charges", value: (r) => r.total_due },
           { key: "received", header: "Received", value: (r) => r.received },
           { key: "balance", header: "Balance", value: (r) => r.balance },
           { key: "payment_ref", header: "Cheque / ref", value: (r) => r.payment_ref },

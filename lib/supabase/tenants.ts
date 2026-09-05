@@ -141,6 +141,26 @@ export async function getTenantScheduleRow(
   return { data: (data as TenantRentSchedule | null) ?? null, error };
 }
 
+export async function updateTenantScheduleWhtReceived(
+  supabase: SupabaseClient,
+  id: string,
+  withholdingTaxReceived: number,
+  updatedBy?: string | null,
+): Promise<DomainWriteResult<TenantRentSchedule>> {
+  const amount = Math.max(0, Number(withholdingTaxReceived) || 0);
+  const { data, error } = await supabase
+    .from(SCHEDULE)
+    .update({
+      withholding_tax_received: amount,
+      updated_by: updatedBy ?? null,
+    })
+    .eq("id", id)
+    .select("*")
+    .single<TenantRentSchedule>();
+  if (error) return writeErr(error.message);
+  return writeOk(data, "updated");
+}
+
 export async function findScheduleByPeriod(
   supabase: SupabaseClient,
   tenantId: string,

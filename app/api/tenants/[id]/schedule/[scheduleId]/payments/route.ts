@@ -6,6 +6,7 @@ import { withUpdatedBy } from "@/lib/api/with-user";
 import {
   createTenantRentPayment,
   getTenantScheduleRow,
+  updateTenantScheduleWhtReceived,
 } from "@/lib/supabase/tenants";
 import { tenantRentPaymentInsertSchema } from "@/lib/validations/tenants";
 
@@ -28,10 +29,21 @@ export async function POST(request: Request, { params }: Params) {
   );
   if (parsed.error) return parsed.error;
 
+  const { withholding_tax_received, ...payment } = parsed.data;
+  if (withholding_tax_received !== undefined && withholding_tax_received !== null) {
+    const wht = await updateTenantScheduleWhtReceived(
+      supabase,
+      scheduleId,
+      Number(withholding_tax_received),
+      user.id,
+    );
+    if (wht.error) return supabaseErrorResponse(wht.error.message);
+  }
+
   return domainWriteResponse(
     await createTenantRentPayment(
       supabase,
-      withUpdatedBy({ ...parsed.data, schedule_id: scheduleId }, user),
+      withUpdatedBy({ ...payment, schedule_id: scheduleId }, user),
     ),
   );
 }
