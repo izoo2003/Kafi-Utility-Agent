@@ -42,6 +42,8 @@ import {
   tenantElectricBillFieldsSchema,
   tenantElectricBillInsertSchema,
   tenantElectricBillUpdateSchema,
+  tenantBrokerInsertSchema,
+  tenantBrokerUpdateSchema,
   tenantInsertSchema,
   tenantRentPaymentInsertSchema,
   tenantUpdateSchema,
@@ -98,6 +100,9 @@ export const WRITE_TOOL_NAMES = [
   "tenant_electric_bill_create",
   "tenant_electric_bill_update",
   "tenant_electric_bill_delete",
+  "tenant_brokers_create",
+  "tenant_brokers_update",
+  "tenant_brokers_delete",
   "chart_of_accounts_entry_create",
   "chart_of_accounts_entry_update",
   "chart_of_accounts_entry_delete",
@@ -342,6 +347,24 @@ export const tenantElectricBillUpdateSchemaAgent =
       bill_attachment_index: z.number().int().min(0).max(7).optional(),
     })
     .required({ id: true });
+
+export const tenantBrokerCreateSchema = tenantBrokerInsertSchema
+  .omit({ tenant_id: true })
+  .extend({
+    tenant_id: z.string().uuid().optional(),
+    tenant_name: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => Boolean(v.tenant_id || v.tenant_name), {
+    message: "Provide tenant_id or tenant_name",
+  });
+
+export const tenantBrokerUpdateSchemaAgent = tenantBrokerUpdateSchema
+  .extend({
+    tenant_name: z.string().trim().min(1).optional(),
+  })
+  .refine((v) => Boolean(v.id), {
+    message: "Provide id to update the broker record",
+  });
 
 export const chartOfAccountsEntryCreateSchema = chartOfAccountsEntryInsertSchema;
 export const chartOfAccountsEntryUpdateSchemaAgent =

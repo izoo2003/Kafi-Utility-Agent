@@ -151,6 +151,11 @@ export const dashboardNav = [
         match: "exact" as const,
       },
       {
+        href: "/dashboard/tenants/brokers",
+        label: "Brokers",
+        match: "prefix" as const,
+      },
+      {
         href: "/dashboard/tenants/withholding-tax",
         label: "Withholding Tax Slabs",
         match: "prefix" as const,

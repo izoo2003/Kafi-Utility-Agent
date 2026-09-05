@@ -410,6 +410,24 @@ const agentReadTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "tenant_brokers_list",
+    description:
+      "List broker commission slips (broker name, tenant, sqft, rate, stay, commission). Filter by broker_name or tenant_name.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        broker_name: {
+          type: SchemaType.STRING,
+          description: "Optional case-insensitive broker name filter",
+        },
+        tenant_name: {
+          type: SchemaType.STRING,
+          description: "Optional case-insensitive tenant name filter",
+        },
+      },
+    },
+  },
+  {
     name: "chart_of_accounts_list",
     description:
       "List Chart of Accounts ledger entries. ledger is required: solar_panel_clifton | eobi | k_electric_gondpass | kwsb_clifton. Returns rows oldest-first with running balance, debit/credit totals, and closing balance.",

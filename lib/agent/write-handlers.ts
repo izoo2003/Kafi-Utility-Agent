@@ -116,6 +116,16 @@ import {
   updateTenantElectricBill,
 } from "@/lib/supabase/tenants";
 import {
+  createTenantBroker,
+  deleteTenantBroker,
+  getTenantBroker,
+  updateTenantBroker,
+} from "@/lib/supabase/tenant-brokers";
+import {
+  computeBrokerCommission,
+  monthlyRentForBroker,
+} from "@/lib/tenants/broker-commission";
+import {
   clearElectricBillFile,
   clearTenantAgreementFile,
   setElectricBillFile,
@@ -167,6 +177,8 @@ import {
   solarMonitoringUpdateSchemaAgent,
   solarSpecsCreateSchema,
   solarSpecsUpdateSchemaAgent,
+  tenantBrokerCreateSchema,
+  tenantBrokerUpdateSchemaAgent,
   tenantCreateSchema,
   tenantDeleteSchema,
   tenantElectricBillCreateSchema,
@@ -1746,6 +1758,99 @@ export async function executeWriteTool(
         return needsConfirmation(name, summary, { id });
       }
       const { error } = await deleteTenantElectricBill(supabase, id);
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, deleted_id: id };
+    }
+
+    case "tenant_brokers_create": {
+      const parsed = tenantBrokerCreateSchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { tenant_name, ...fields } = parsed.data;
+      let tenantId = fields.tenant_id;
+      if (!tenantId && tenant_name) {
+        const found = await findTenantByName(supabase, tenant_name);
+        tenantId = found?.id;
+      }
+      if (!tenantId) return { error: "Tenant not found — call tenants_list first." };
+      const tenant = await getTenant(supabase, tenantId);
+      if (tenant.error) throw new Error(tenant.error.message);
+      if (!tenant.data) return { error: "Tenant not found" };
+      const monthly = monthlyRentForBroker({
+        sqft: fields.sqft ?? tenant.data.sqft,
+        rate: fields.rate ?? tenant.data.rate,
+        fallback_gross: tenant.data.gross_rent,
+      });
+      const billed = computeBrokerCommission({
+        monthly_rent: monthly,
+        contract_start_date: tenant.data.contract_start_date,
+        contract_end_date: tenant.data.contract_end_date,
+      });
+      const summary = `Create broker "${fields.broker_name}" for tenant "${tenant.data.tenant_name}" — commission ${billed.commission_amount}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, {
+          ...fields,
+          tenant_id: tenantId,
+        });
+      }
+      const { data, error } = await createTenantBroker(
+        supabase,
+        withUpdatedBy(
+          {
+            broker_name: fields.broker_name,
+            tenant_id: tenantId,
+            sqft: fields.sqft,
+            rate: fields.rate,
+            notes: fields.notes,
+          },
+          user,
+        ),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "tenant_brokers_update": {
+      const parsed = tenantBrokerUpdateSchemaAgent.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id, tenant_name, ...fields } = parsed.data;
+      if (!id) return { error: "Provide id" };
+      const existing = await getTenantBroker(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Broker record not found" };
+      let tenantId = fields.tenant_id;
+      if (!tenantId && tenant_name) {
+        const found = await findTenantByName(supabase, tenant_name);
+        tenantId = found?.id;
+      }
+      const patch = stripUndefined({
+        ...fields,
+        tenant_id: tenantId,
+      } as Record<string, unknown>);
+      const summary = `Update broker "${existing.data.broker_name}"${Object.keys(patch).length ? `: set ${summarizeFields(patch)}` : ""}.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id, ...patch });
+      }
+      const { data, error } = await updateTenantBroker(
+        supabase,
+        id,
+        withUpdatedBy(patch, user),
+      );
+      if (error) throw new Error(error.message);
+      return { status: "ok", summary, item: data };
+    }
+
+    case "tenant_brokers_delete": {
+      const parsed = idOnlySchema.safeParse(input);
+      if (!parsed.success) return { error: zodErrorMessage(parsed.error) };
+      const { id } = parsed.data;
+      const existing = await getTenantBroker(supabase, id);
+      if (existing.error) throw new Error(existing.error.message);
+      if (!existing.data) return { error: "Broker record not found" };
+      const summary = `DELETE broker "${existing.data.broker_name}" for ${existing.data.tenant_name || "tenant"}. This cannot be undone.`;
+      if (!isConfirmed(input)) {
+        return needsConfirmation(name, summary, { id });
+      }
+      const { error } = await deleteTenantBroker(supabase, id);
       if (error) throw new Error(error.message);
       return { status: "ok", summary, deleted_id: id };
     }

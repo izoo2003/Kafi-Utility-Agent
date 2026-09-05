@@ -274,3 +274,23 @@ export const tenantContractExtensionSchema = z
 export type TenantContractExtensionInput = z.infer<
   typeof tenantContractExtensionSchema
 >;
+
+export const tenantBrokerInsertSchema = z.object({
+  broker_name: z.string().trim().min(1, "Broker name is required"),
+  tenant_id: z.string().uuid("Select a tenant"),
+  sqft: moneyField,
+  rate: moneyField,
+  notes: optionalText,
+});
+
+export const tenantBrokerUpdateSchema = z.object({
+  id: z.string().uuid().optional(),
+  broker_name: z.string().trim().min(1).optional(),
+  tenant_id: z.string().uuid().optional(),
+  sqft: moneyField.optional(),
+  rate: moneyField.optional(),
+  notes: optionalText,
+});
+
+export type TenantBrokerInsertInput = z.infer<typeof tenantBrokerInsertSchema>;
+export type TenantBrokerUpdateInput = z.infer<typeof tenantBrokerUpdateSchema>;

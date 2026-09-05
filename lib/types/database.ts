@@ -401,6 +401,19 @@ export type TenantContractExtension = AuditColumns & {
   previous_contract_end_date: IsoDate | null;
 };
 
+export type TenantBroker = AuditColumns & {
+  broker_name: string;
+  tenant_id: Uuid;
+  sqft: number | null;
+  rate: number | null;
+  monthly_rent: number;
+  stay_months: number;
+  stay_days: number;
+  stay_factor: number;
+  commission_amount: number;
+  notes: string | null;
+};
+
 export type AlertNotificationChannel = "email" | "console";
 
 export type AlertNotification = {
@@ -506,6 +519,11 @@ export type Database = {
         Row: TenantContractExtension;
         Insert: TenantContractExtensionInsert;
         Update: TenantContractExtensionUpdate;
+      };
+      tenant_brokers: {
+        Row: TenantBroker;
+        Insert: TenantBrokerInsert;
+        Update: TenantBrokerUpdate;
       };
       alert_notifications: {
         Row: AlertNotification;
@@ -672,6 +690,12 @@ export type TenantContractExtensionInsert = Partial<
 export type TenantContractExtensionUpdate = Partial<
   OmitAuditOnWrite<TenantContractExtension>
 >;
+
+export type TenantBrokerInsert = Partial<OmitAuditOnWrite<TenantBroker>> & {
+  broker_name: string;
+  tenant_id: Uuid;
+};
+export type TenantBrokerUpdate = Partial<OmitAuditOnWrite<TenantBroker>>;
 
 export const SOLAR_SPECS_BUCKET = "solar-specs" as const;
 export const UTILITY_BILLS_BUCKET = "utility-bills" as const;

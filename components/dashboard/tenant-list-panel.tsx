@@ -110,6 +110,12 @@ export function TenantListPanel({
           <ExportButtons resource="tenants" />
           <ImportFilesButton target="tenants" />
           <Link
+            href="/dashboard/tenants/brokers"
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            Brokers
+          </Link>
+          <Link
             href="/dashboard/tenants/new"
             className={cn(buttonVariants())}
           >

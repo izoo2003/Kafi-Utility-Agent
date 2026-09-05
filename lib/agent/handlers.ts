@@ -49,6 +49,7 @@ import {
   listTenantSummaries,
   listTenants,
 } from "@/lib/supabase/tenants";
+import { listTenantBrokers } from "@/lib/supabase/tenant-brokers";
 import {
   listChartOfAccountsEntries,
 } from "@/lib/supabase/chart-of-accounts";
@@ -780,6 +781,39 @@ export async function executeAgentTool(
         tenant_name: names.get(r.tenant_id) ?? null,
       }));
       return truncatedList(mapped, limit);
+    }
+
+    case "tenant_brokers_list": {
+      const { data, error } = await listTenantBrokers(supabase);
+      if (error) throw new Error(error.message);
+      let rows = data ?? [];
+      if (typeof input.broker_name === "string" && input.broker_name.trim()) {
+        const q = normalizeKeyPart(input.broker_name);
+        rows = rows.filter((r) =>
+          normalizeKeyPart(r.broker_name).includes(q),
+        );
+      }
+      if (typeof input.tenant_name === "string" && input.tenant_name.trim()) {
+        const q = normalizeKeyPart(input.tenant_name);
+        rows = rows.filter((r) =>
+          normalizeKeyPart(r.tenant_name).includes(q),
+        );
+      }
+      return rows.map((r) => ({
+        id: r.id,
+        broker_name: r.broker_name,
+        tenant_id: r.tenant_id,
+        tenant_name: r.tenant_name,
+        survey_no: r.survey_no,
+        sqft: r.sqft,
+        rate: r.rate,
+        monthly_rent: r.monthly_rent,
+        stay_months: r.stay_months,
+        stay_days: r.stay_days,
+        stay_factor: r.stay_factor,
+        commission_amount: r.commission_amount,
+        notes: r.notes,
+      }));
     }
 
     case "chart_of_accounts_list": {

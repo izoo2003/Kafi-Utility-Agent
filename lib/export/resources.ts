@@ -23,6 +23,8 @@ import {
   listTenantSchedule,
   listTenants,
 } from "@/lib/supabase/tenants";
+import { listTenantBrokers } from "@/lib/supabase/tenant-brokers";
+import type { TenantBrokerListRow } from "@/lib/supabase/tenant-brokers";
 import { listChartOfAccountsEntries } from "@/lib/supabase/chart-of-accounts";
 import { solarSiteDisplayLabel } from "@/lib/sems/sites";
 import type {
@@ -63,6 +65,7 @@ export const EXPORT_RESOURCES = [
   "tenants",
   "tenant-rent",
   "tenant-electricity",
+  "tenant-brokers",
   "chart-of-accounts",
 ] as const;
 
@@ -554,6 +557,32 @@ export async function loadExportBundle(
           { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
         ]),
         rows: asRows(rows),
+      };
+    }
+    case "tenant-brokers": {
+      const { data, error } = await listTenantBrokers(supabase);
+      if (error) throw new Error(error.message);
+      return {
+        title: "Brokers",
+        filename: "tenant-brokers",
+        columns: cols<TenantBrokerListRow>([
+          { key: "broker_name", header: "Broker", value: (r) => r.broker_name },
+          { key: "tenant_name", header: "Tenant", value: (r) => r.tenant_name },
+          { key: "survey_no", header: "Survey no.", value: (r) => r.survey_no },
+          { key: "sqft", header: "Sqft", value: (r) => r.sqft },
+          { key: "rate", header: "Rate", value: (r) => r.rate },
+          { key: "monthly_rent", header: "Monthly rent", value: (r) => r.monthly_rent },
+          { key: "stay_months", header: "Stay months", value: (r) => r.stay_months },
+          { key: "stay_days", header: "Stay days", value: (r) => r.stay_days },
+          {
+            key: "commission_amount",
+            header: "Commission",
+            value: (r) => r.commission_amount,
+          },
+          { key: "notes", header: "Notes", value: (r) => r.notes },
+          { key: "updated_at", header: "Updated", value: (r) => r.updated_at },
+        ]),
+        rows: asRows(data),
       };
     }
     case "chart-of-accounts": {

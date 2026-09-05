@@ -1056,6 +1056,52 @@ export const agentWriteTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "tenant_brokers_create",
+    description:
+      "Create a broker commission slip. Pick a tenant (tenant_id or tenant_name); sqft/rate default from that tenant. Commission = (monthly rent / 12) × contract stay (leftover days / 30). Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        broker_name: { type: SchemaType.STRING },
+        tenant_id: { type: SchemaType.STRING },
+        tenant_name: { type: SchemaType.STRING },
+        sqft: { type: SchemaType.NUMBER },
+        rate: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["broker_name"],
+    },
+  },
+  {
+    name: "tenant_brokers_update",
+    description:
+      "Update a broker commission slip by id. Changing tenant or sqft/rate recalculates commission from the tenant contract. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: {
+        ...idProp,
+        broker_name: { type: SchemaType.STRING },
+        tenant_id: { type: SchemaType.STRING },
+        tenant_name: { type: SchemaType.STRING },
+        sqft: { type: SchemaType.NUMBER },
+        rate: { type: SchemaType.NUMBER },
+        notes: { type: SchemaType.STRING },
+        ...confirmedProperty,
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "tenant_brokers_delete",
+    description: "Delete a broker commission slip. Requires confirmation.",
+    parameters: {
+      type: SchemaType.OBJECT,
+      properties: { ...idProp, ...confirmedProperty },
+      required: ["id"],
+    },
+  },
+  {
     name: "chart_of_accounts_entry_create",
     description:
       "Create a Chart of Accounts ledger entry. ledger: solar_panel_clifton | eobi | k_electric_gondpass | kwsb_clifton. Map Date→entry_date, Ref No→ref_no, Accounts/Description→account_description, Document #→document_no, Debit→debit, Credit→credit. Dates DD/MM/YYYY or YYYY-MM-DD. Requires confirmation.",

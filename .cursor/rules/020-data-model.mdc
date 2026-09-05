@@ -185,6 +185,15 @@ Deprecated snapshot columns may still exist (`rent_amount`, `rent_due_date`, `pa
 - cheque_no / payment_reference text
 - payment_file_url text
 
+`tenant_brokers` (commission slips):
+- broker_name text
+- tenant_id uuid → tenants
+- sqft / rate numeric (copied from the tenant, editable)
+- monthly_rent numeric (sqft × rate, or tenant gross rent)
+- stay_months / stay_days / stay_factor (from contract From/To; leftover days / 30)
+- commission_amount numeric — (monthly_rent / 12) × stay_factor
+- notes text
+
 `tenant_electric_bills` (K-Electric charges billed to the tenant — not site utility meters):
 - tenant_id uuid → tenants
 - period_from / period_to date (billing From/To; months derived as calendar-month delta)
