@@ -351,7 +351,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "tenants_list",
     description:
-      "List tenant accounts with contract dates, survey no, gross rent, monthly total, outstanding ledger balance, and agreement_days_remaining. Call this BEFORE tenant_rent_payment_create or tenant_electric_bill_create so you can map a name to tenant_id.",
+      "List tenant accounts with contract dates, survey no, WhatsApp number, gross rent, monthly total, outstanding ledger balance, and agreement_days_remaining. Call this BEFORE tenant_rent_payment_create or tenant_electric_bill_create so you can map a name to tenant_id.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
@@ -365,7 +365,7 @@ const agentReadTools: FunctionDeclaration[] = [
   {
     name: "tenants_get",
     description:
-      "Get one tenant by id or tenant_name, including contract terms and a monthly schedule preview (due, received, balance).",
+      "Get one tenant by id or tenant_name, including contract terms, WhatsApp number, and a monthly schedule preview (due, received, balance).",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {

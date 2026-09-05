@@ -38,6 +38,7 @@ import {
 import { deriveElectricBillFields } from "@/lib/tenants/electricity";
 import { withholdingForTenant } from "@/lib/tenants/withholding-tax";
 import { listWithholdingTaxSlabs } from "@/lib/supabase/withholding-tax-slabs";
+import { normalizeWhatsappNumber } from "@/lib/tenants/whatsapp";
 
 function scheduleNeedsRebuild(
   start: string,
@@ -363,6 +364,9 @@ function tenantPayload(
   }
   if (input.contract_end_date !== undefined) {
     next.agreement_expiry = input.contract_end_date;
+  }
+  if (input.whatsapp_number !== undefined) {
+    next.whatsapp_number = normalizeWhatsappNumber(input.whatsapp_number);
   }
   return next;
 }

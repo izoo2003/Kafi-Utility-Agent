@@ -22,8 +22,10 @@ import {
   type AgreementExpiryStatus,
   agreementExpiryStatus,
 } from "@/lib/tenants/agreement";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MessageCircle } from "lucide-react";
+import { rentDueWhatsappHref } from "@/lib/tenants/whatsapp";
 import {
   Table,
   TableBody,
@@ -129,7 +131,7 @@ export function TenantListPanel({
               <TableHead className="w-32">Electricity due</TableHead>
               <TableHead className="w-32">Other charges</TableHead>
               <TableHead className="w-40">Status</TableHead>
-              <TableHead className="w-24 text-right">Actions</TableHead>
+              <TableHead className="w-40 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -148,6 +150,13 @@ export function TenantListPanel({
                   tenant.contract_end_date ?? tenant.agreement_expiry;
                 const expiryStatus = agreementExpiryStatus(expiryDate);
                 const electricityDue = tenant.electricity_due_month;
+                const whatsappHref = rentDueWhatsappHref({
+                  whatsapp_number: tenant.whatsapp_number,
+                  tenant_name: tenant.tenant_name,
+                  monthly_total: tenant.monthly_total,
+                  due_months:
+                    tenant.outstanding > 0 ? tenant.due_months : [],
+                });
                 return (
                   <TableRow
                     key={tenant.id}
@@ -287,6 +296,31 @@ export function TenantListPanel({
                       onClick={(e) => e.stopPropagation()}
                     >
                       <TableActions>
+                        {whatsappHref ? (
+                          <a
+                            href={whatsappHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(
+                              buttonVariants({ variant: "outline", size: "sm" }),
+                              "text-[oklch(0.42_0.12_155)]",
+                            )}
+                            aria-label={`WhatsApp rent reminder for ${tenant.tenant_name}`}
+                            title="Open WhatsApp with a rent-due message"
+                          >
+                            <MessageCircle />
+                          </a>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled
+                            title="Add a WhatsApp number to send a reminder"
+                          >
+                            <MessageCircle />
+                          </Button>
+                        )}
                         <Link
                           href={`/dashboard/tenants/${tenant.id}`}
                           className={cn(buttonVariants({ variant: "outline", size: "sm" }))}

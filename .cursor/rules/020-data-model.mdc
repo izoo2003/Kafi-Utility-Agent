@@ -150,6 +150,7 @@ Dashboard plants (display names): Good We Office, Sungrow Office, KMP Home Solar
 `tenants` (account + contract terms):
 - tenant_name text (unique, case-insensitive)
 - survey_no text
+- whatsapp_number text (international digits, e.g. 923001234567; click-to-chat rent reminders)
 - contract_start_date / contract_end_date date (lease period; monthly ledger is generated from overlapping calendar months)
 - security_deposit_amount numeric
 - security_deposit_bank_account / security_deposit_bank_name / security_deposit_cheque_no text

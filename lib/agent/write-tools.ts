@@ -855,12 +855,16 @@ export const agentWriteTools: FunctionDeclaration[] = [
   {
     name: "tenants_create",
     description:
-      "Create a tenant with contract dates, survey, deposit, sqft/rate or lum-sum gross rent, and optional extra monthly charges (line_items). Generates the monthly rent ledger. Requires confirmation.",
+      "Create a tenant with contract dates, survey, WhatsApp number, deposit, sqft/rate or lum-sum gross rent, and optional extra monthly charges (line_items). Generates the monthly rent ledger. Requires confirmation.",
     parameters: {
       type: SchemaType.OBJECT,
       properties: {
         tenant_name: { type: SchemaType.STRING },
         survey_no: { type: SchemaType.STRING },
+        whatsapp_number: {
+          type: SchemaType.STRING,
+          description: "Tenant WhatsApp: 03xx…, +92…, or 92…",
+        },
         contract_start_date: {
           type: SchemaType.STRING,
           description: "Agreement start YYYY-MM-DD or DD/MM/YYYY",
@@ -911,6 +915,10 @@ export const agentWriteTools: FunctionDeclaration[] = [
         },
         tenant_name: { type: SchemaType.STRING },
         survey_no: { type: SchemaType.STRING },
+        whatsapp_number: {
+          type: SchemaType.STRING,
+          description: "Tenant WhatsApp: 03xx…, +92…, or 92…",
+        },
         contract_start_date: { type: SchemaType.STRING },
         contract_end_date: { type: SchemaType.STRING },
         security_deposit_amount: { type: SchemaType.NUMBER },

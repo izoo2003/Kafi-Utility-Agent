@@ -1,10 +1,29 @@
 import { z } from "zod";
+import { normalizeWhatsappNumber } from "@/lib/tenants/whatsapp";
 import {
   optionalDate,
   optionalNumber,
   optionalText,
   requiredDate,
 } from "@/lib/validations/helpers";
+
+const optionalWhatsappNumber = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((v, ctx) => {
+    if (v === undefined) return undefined;
+    if (v == null) return null;
+    const t = String(v).trim();
+    if (t === "") return null;
+    const digits = normalizeWhatsappNumber(t);
+    if (!digits) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Enter a valid WhatsApp number (03xx, +92, or 92…)",
+      });
+      return z.NEVER;
+    }
+    return digits;
+  });
 
 export const tenantPaymentStatusSchema = z.enum([
   "paid",
@@ -37,6 +56,7 @@ export const tenantInsertSchema = z
   .object({
     tenant_name: z.string().trim().min(1, "Tenant name is required"),
     survey_no: optionalText,
+    whatsapp_number: optionalWhatsappNumber,
     classification: tenantClassificationSchema.optional().default("unofficial"),
     contract_start_date: requiredDate,
     contract_end_date: requiredDate,
@@ -61,6 +81,7 @@ export const tenantUpdateSchema = z.object({
   id: z.string().uuid().optional(),
   tenant_name: z.string().trim().min(1).optional(),
   survey_no: optionalText,
+  whatsapp_number: optionalWhatsappNumber,
   classification: tenantClassificationSchema.optional(),
   contract_start_date: optionalDate,
   contract_end_date: optionalDate,

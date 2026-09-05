@@ -381,6 +381,7 @@ export async function loadExportBundle(
         columns: cols<Tenant>([
           { key: "tenant_name", header: "Tenant name", value: (r) => r.tenant_name },
           { key: "survey_no", header: "Survey no.", value: (r) => r.survey_no },
+          { key: "whatsapp_number", header: "WhatsApp", value: (r) => r.whatsapp_number },
           {
             key: "contract_start_date",
             header: "Contract start",

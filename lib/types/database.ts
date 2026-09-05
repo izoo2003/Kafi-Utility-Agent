@@ -284,6 +284,8 @@ export type TenantRentLineItemSnapshot = {
 export type Tenant = AuditColumns & {
   tenant_name: string;
   survey_no: string | null;
+  /** International digits, e.g. 923001234567. Used for click-to-chat rent reminders. */
+  whatsapp_number: string | null;
   classification: TenantClassification;
   contract_start_date: IsoDate | null;
   contract_end_date: IsoDate | null;

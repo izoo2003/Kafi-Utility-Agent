@@ -22,6 +22,7 @@ import {
   withholdingForTenant,
 } from "@/lib/tenants/withholding-tax";
 import { formatMoney } from "@/lib/tenants/payment-status";
+import { formatWhatsappDisplay } from "@/lib/tenants/whatsapp";
 import { countCalendarMonths } from "@/lib/tenants/schedule";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ type LineForm = { label: string; amount: string };
 
 type FormState = {
   tenant_name: string;
+  whatsapp_number: string;
   survey_no: string;
   classification: TenantClassification;
   contract_start_date: string;
@@ -52,6 +54,7 @@ type FormState = {
 
 const emptyForm = (): FormState => ({
   tenant_name: "",
+  whatsapp_number: "",
   survey_no: "",
   classification: "unofficial",
   contract_start_date: "",
@@ -76,6 +79,7 @@ function numOrNull(value: string) {
 function toForm(tenant: Tenant, lineItems: TenantRentLineItem[]): FormState {
   return {
     tenant_name: tenant.tenant_name,
+    whatsapp_number: formatWhatsappDisplay(tenant.whatsapp_number),
     survey_no: tenant.survey_no ?? "",
     classification: tenant.classification === "official" ? "official" : "unofficial",
     contract_start_date: tenant.contract_start_date ?? "",
@@ -155,6 +159,7 @@ export function TenantForm({
   function payload() {
     return {
       tenant_name: form.tenant_name.trim(),
+      whatsapp_number: form.whatsapp_number,
       survey_no: form.survey_no,
       classification: form.classification,
       contract_start_date: form.contract_start_date,
@@ -242,13 +247,27 @@ export function TenantForm({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="space-y-2 sm:col-span-2">
+        <div className="space-y-2">
           <Label htmlFor="tenant_name">Tenant name</Label>
           <Input
             id="tenant_name"
             required
             value={form.tenant_name}
             onChange={(e) => setForm((p) => ({ ...p, tenant_name: e.target.value }))}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="whatsapp_number">WhatsApp number</Label>
+          <Input
+            id="whatsapp_number"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="03xx… or +92…"
+            value={form.whatsapp_number}
+            onChange={(e) =>
+              setForm((p) => ({ ...p, whatsapp_number: e.target.value }))
+            }
           />
         </div>
         <div className="space-y-2">

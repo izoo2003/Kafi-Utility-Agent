@@ -49,7 +49,7 @@ export const FILER_RENT_SLABS_2026_27: WithholdingSlabBand[] = [
 ];
 
 type SlabLike = Pick<
-  WithholdingTaxSlab,
+  WithholdingSlabBand,
   "min_amount" | "max_amount" | "rate_percent"
 >;
 
